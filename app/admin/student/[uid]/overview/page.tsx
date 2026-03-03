@@ -26,6 +26,18 @@ function parseDateKey(dateKey: string) {
   return new Date(y, (m ?? 1) - 1, d ?? 1);
 }
 
+function getDayName(dateKey?: string) {
+  if (!dateKey) return "";
+  const d = parseDateKey(dateKey);
+  return d.toLocaleDateString("en-US", { weekday: "short" }); // Mon, Tue
+}
+
+function getMonthLabel(dateKey?: string) {
+  if (!dateKey) return "";
+  const d = parseDateKey(dateKey);
+  return d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+}
+
 function diffDaysInclusive(startKey: string, endKey: string) {
   const a = parseDateKey(startKey);
   const b = parseDateKey(endKey);
@@ -290,6 +302,9 @@ setStudentName(
                 <table className="min-w-[1100px] w-full border-separate border-spacing-0">
                   <thead>
                     <tr className="text-left text-[11px] uppercase tracking-[0.18em] text-gray-500">
+                    <th className="sticky top-0 bg-white/60 backdrop-blur pb-3 pr-4 pl-2 border-b border-gray-200">
+                        Day
+                      </th>
                       <th className="sticky top-0 bg-white/60 backdrop-blur pb-3 pr-4 pl-2 border-b border-gray-200">
                         Date
                       </th>
@@ -344,7 +359,12 @@ setStudentName(
                   </thead>
 
                   <tbody className="divide-y divide-gray-200">
-                    {rows.map((r) => {
+                    {rows.map((r, index) => {
+                    const currentMonth = getMonthLabel(r.dateKey);
+                    const prevMonth =
+                    index > 0 ? getMonthLabel(rows[index - 1].dateKey) : null;
+
+                    const showMonthHeader = index === 0 || currentMonth !== prevMonth;
                       const g = num(r.weeklyGoal);
 
                       const startKey = toText(r.weeklyGoalStartDateKey);
@@ -364,7 +384,22 @@ setStudentName(
                       const completed = Boolean(completedKey) || (duration ?? 0) > 0;
 
                       return (
+                          <>
+                      {showMonthHeader && (
+                      <tr>
+                      <td
+                         colSpan={16}
+                         className="bg-gradient-to-r from-[#9c7c38]/15 to-transparent text-sm font-semibold text-gray-900 py-4 px-4 uppercase tracking-wider"
+                        >
+                       {currentMonth}
+                          </td>
+                              </tr>
+                          )}
+                        
                         <tr key={r.id} className="text-sm hover:bg-black/[0.02] transition-colors">
+                          <td className="py-4 pr-4 pl-2 font-medium text-gray-600">
+                        {getDayName(r.dateKey)}
+                        </td>
                           <td className="py-4 pr-4 pl-2 font-medium text-gray-900">
                             {r.dateKey ?? r.id}
                           </td>
@@ -435,6 +470,7 @@ setStudentName(
                             {duration ? `${duration} day(s)` : "—"}
                           </td>
                         </tr>
+                        </>
                       );
                     })}
                   </tbody>
