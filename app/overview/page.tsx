@@ -296,7 +296,7 @@ export default function OverviewPage() {
                     </tr>
                   </thead>
 
-                  <tbody className="divide-y divide-gray-200">
+                  <tbody className="divide-y divide-gray-300">
  {rows.map((r, index) => {
                     const currentMonth = getMonthLabel(r.dateKey);
                     const prevMonth =
