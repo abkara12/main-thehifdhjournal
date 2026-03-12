@@ -271,24 +271,24 @@ const [studentName, setStudentName] = useState("");
       const dur = data.weeklyGoalDurationDays;
       setWeeklyGoalDurationDays(typeof dur === "number" ? dur : dur ? Number(dur) : null);
 
-      // seed with snapshot
-      setSabak(toText(data.currentSabak));
-      setSabakDhor(toText(data.currentSabakDhor));
-      setDhor(toText(data.currentDhor));
-      setSabakDhorMistakes(toText(data.currentSabakDhorMistakes));
-      setDhorMistakes(toText(data.currentDhorMistakes));
+      // // seed with snapshot
+      // setSabak(toText(data.currentSabak));
+      // setSabakDhor(toText(data.currentSabakDhor));
+      // setDhor(toText(data.currentDhor));
+      // setSabakDhorMistakes(toText(data.currentSabakDhorMistakes));
+      // setDhorMistakes(toText(data.currentDhorMistakes));
 
       // ✅ seed reading snapshot
-      setSabakReadQuality(pickText(data.currentSabakRead, data.currentSabakReadQuality));
-      setSabakReadNotes(toText(data.currentSabakReadNotes));
+      // setSabakReadQuality(pickText(data.currentSabakRead, data.currentSabakReadQuality));
+      // setSabakReadNotes(toText(data.currentSabakReadNotes));
 
-      setSabakDhorReadQuality(
-        pickText(data.currentSabakDhorRead, data.currentSabakDhorReadQuality)
-      );
-      setSabakDhorReadNotes(toText(data.currentSabakDhorReadNotes));
+      // setSabakDhorReadQuality(
+      //   pickText(data.currentSabakDhorRead, data.currentSabakDhorReadQuality)
+      // );
+      // setSabakDhorReadNotes(toText(data.currentSabakDhorReadNotes));
 
-      setDhorReadQuality(pickText(data.currentDhorRead, data.currentDhorReadQuality));
-      setDhorReadNotes(toText(data.currentDhorReadNotes));
+      // setDhorReadQuality(pickText(data.currentDhorRead, data.currentDhorReadQuality));
+      // setDhorReadNotes(toText(data.currentDhorReadNotes));
     }
   }
 
