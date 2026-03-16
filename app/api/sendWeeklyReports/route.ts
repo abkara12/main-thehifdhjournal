@@ -33,7 +33,7 @@ export async function GET() {
     for (const userDoc of usersSnapshot.docs) {
       const userData = userDoc.data();
 
-      // Pull all logs for the user
+      // Pull logs
       const logsSnapshot = await db
         .collection("users")
         .doc(userDoc.id)
@@ -47,32 +47,33 @@ export async function GET() {
         return createdAt && createdAt >= sevenDaysAgo;
       });
 
-      // Start building the report
+      // Build the report
       let reportText = `Assalaamu Alaikum\n\nWeekly Hifdh Report\nStudent: ${userData.username}\n📅 ${new Date().toLocaleDateString()}\n\n`;
 
-      // Add user-level fields (weekly goal info, etc.)
-      reportText += `Weekly Goal: ${userData.weeklyGoal || "-"}\n`;
-      reportText += `Goal Start Date: ${userData.weeklyGoalStartDateKey || "-"}\n`;
-      reportText += `Goal Week Key: ${userData.weeklyGoalWeekKey || "-"}\n`;
-      reportText += `Goal Completed Date: ${userData.weeklyGoalCompletedDateKey || "-"}\n`;
-      reportText += `Goal Duration (days): ${userData.weeklyGoalDurationDays || "-"}\n\n`;
+      // Add weekly goal info from user doc
+      reportText += `Weekly Goal: ${userData.weeklyGoal ?? "-"}\n`;
+      reportText += `Goal Start Date: ${userData.weeklyGoalStartDateKey ?? "-"}\n`;
+      reportText += `Goal Week Key: ${userData.weeklyGoalWeekKey ?? "-"}\n`;
+      reportText += `Goal Completed Date: ${userData.weeklyGoalCompletedDateKey ?? "-"}\n`;
+      reportText += `Goal Duration (days): ${userData.weeklyGoalDurationDays ?? "-"}\n\n`;
 
-      // Add details from each recent log
       if (recentLogs.length > 0) {
         recentLogs.forEach((logDoc) => {
           const logData = logDoc.data();
-          reportText += `Log Date: ${logData.createdAt?.toDate().toLocaleString() || "-"}\n`;
-          reportText += `currentDhor: ${logData.currentDhor || "-"}\n`;
-          reportText += `currentDhorMistakes: ${logData.currentDhorMistakes || "-"}\n`;
-          reportText += `currentDhorReadNotes: ${logData.currentDhorReadNotes || "-"}\n`;
-          reportText += `currentDhorReadQuality: ${logData.currentDhorReadQuality || "-"}\n`;
-          reportText += `currentSabak: ${logData.currentSabak || "-"}\n`;
-          reportText += `currentSabakDhor: ${logData.currentSabakDhor || "-"}\n`;
-          reportText += `currentSabakDhorMistakes: ${logData.currentSabakDhorMistakes || "-"}\n`;
-          reportText += `currentSabakDhorReadNotes: ${logData.currentSabakDhorReadNotes || "-"}\n`;
-          reportText += `currentSabakDhorReadQuality: ${logData.currentSabakDhorReadQuality || "-"}\n`;
-          reportText += `currentSabakReadNotes: ${logData.currentSabakReadNotes || "-"}\n`;
-          reportText += `currentSabakReadQuality: ${logData.currentSabakReadQuality || "-"}\n\n`;
+
+          // Use exact field names and coalesce to "-" if missing
+          reportText += `Log Date: ${logData.createdAt?.toDate().toLocaleString() ?? "-"}\n`;
+          reportText += `currentDhor: ${logData["currentDhor"] ?? "-"}\n`;
+          reportText += `currentDhorMistakes: ${logData["currentDhorMistakes"] ?? "-"}\n`;
+          reportText += `currentDhorReadNotes: ${logData["currentDhorReadNotes"] ?? "-"}\n`;
+          reportText += `currentDhorReadQuality: ${logData["currentDhorReadQuality"] ?? "-"}\n`;
+          reportText += `currentSabak: ${logData["currentSabak"] ?? "-"}\n`;
+          reportText += `currentSabakDhor: ${logData["currentSabakDhor"] ?? "-"}\n`;
+          reportText += `currentSabakDhorMistakes: ${logData["currentSabakDhorMistakes"] ?? "-"}\n`;
+          reportText += `currentSabakDhorReadNotes: ${logData["currentSabakDhorReadNotes"] ?? "-"}\n`;
+          reportText += `currentSabakDhorReadQuality: ${logData["currentSabakDhorReadQuality"] ?? "-"}\n`;
+          reportText += `currentSabakReadNotes: ${logData["currentSabakReadNotes"] ?? "-"}\n`;
+          reportText += `currentSabakReadQuality: ${logData["currentSabakReadQuality"] ?? "-"}\n\n`;
         });
       } else {
         reportText += `No logs for the last 7 days.\n`;
