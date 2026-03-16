@@ -1,7 +1,7 @@
 // /app/api/sendWeeklyReports/route.ts
 import admin from "firebase-admin";
 
-// ----------------- Initialize Firebase Admin -----------------
+// Initialize Admin SDK
 const projectId = process.env.FIREBASE_PROJECT_ID;
 const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
 const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
@@ -37,42 +37,41 @@ export async function GET() {
         .orderBy("createdAt", "desc")
         .get();
 
-      // Filter logs for the last 7 days (works if createdAt is Firestore Timestamp)
+      // Filter logs for last 7 days
       const recentLogs = logsSnapshot.docs.filter((logDoc) => {
         const logData = logDoc.data();
         const createdAt = logData.createdAt;
         if (!createdAt) return false;
-        // Firestore Timestamp -> JS Date
         const logDate = createdAt.toDate ? createdAt.toDate() : new Date(createdAt);
         return logDate >= sevenDaysAgo;
       });
 
       let reportText = `Assalaamu Alaikum\n\nWeekly Hifdh Report\nStudent: ${userData.username}\n📅 ${new Date().toLocaleDateString()}\n\n`;
 
-      // Weekly Goal info (from user doc)
-      reportText += `Weekly Goal: ${userData.weeklyGoal ?? "-"}\n`;
-      reportText += `Goal Start Date: ${userData.weeklyGoalStartDateKey ?? "-"}\n`;
-      reportText += `Goal Week Key: ${userData.weeklyGoalWeekKey ?? "-"}\n`;
-      reportText += `Goal Completed Date: ${userData.weeklyGoalCompletedDateKey ?? "-"}\n`;
-      reportText += `Goal Duration (days): ${userData.weeklyGoalDurationDays ?? "-"}\n\n`;
-
-      // Add all recent logs
       if (recentLogs.length > 0) {
         recentLogs.forEach((logDoc) => {
           const logData = logDoc.data();
 
           reportText += `Log Date: ${logData.createdAt?.toDate ? logData.createdAt.toDate().toLocaleString() : logData.createdAt}\n`;
-          reportText += `currentDhor: ${logData.currentDhor ?? "-"}\n`;
-          reportText += `currentDhorMistakes: ${logData.currentDhorMistakes ?? "-"}\n`;
-          reportText += `currentDhorReadNotes: ${logData.currentDhorReadNotes ?? "-"}\n`;
-          reportText += `currentDhorReadQuality: ${logData.currentDhorReadQuality ?? "-"}\n`;
-          reportText += `currentSabak: ${logData.currentSabak ?? "-"}\n`;
-          reportText += `currentSabakDhor: ${logData.currentSabakDhor ?? "-"}\n`;
-          reportText += `currentSabakDhorMistakes: ${logData.currentSabakDhorMistakes ?? "-"}\n`;
-          reportText += `currentSabakDhorReadNotes: ${logData.currentSabakDhorReadNotes ?? "-"}\n`;
-          reportText += `currentSabakDhorReadQuality: ${logData.currentSabakDhorReadQuality ?? "-"}\n`;
-          reportText += `currentSabakReadNotes: ${logData.currentSabakReadNotes ?? "-"}\n`;
-          reportText += `currentSabakReadQuality: ${logData.currentSabakReadQuality ?? "-"}\n\n`;
+          reportText += `Dhor: ${logData.dhor ?? "-"}\n`;
+          reportText += `Dhor Mistakes: ${logData.dhorMistakes ?? "-"}\n`;
+          reportText += `Dhor Read Notes: ${logData.dhorReadNotes ?? "-"}\n`;
+          reportText += `Dhor Read Quality: ${logData.dhorReadQuality ?? "-"}\n`;
+          reportText += `Sabak: ${logData.sabak ?? "-"}\n`;
+          reportText += `Sabak Dhor: ${logData.sabakDhor ?? "-"}\n`;
+          reportText += `Sabak Dhor Mistakes: ${logData.sabakDhorMistakes ?? "-"}\n`;
+          reportText += `Sabak Dhor Read Notes: ${logData.sabakDhorReadNotes ?? "-"}\n`;
+          reportText += `Sabak Dhor Read Quality: ${logData.sabakDhorReadQuality ?? "-"}\n`;
+          reportText += `Sabak Read Notes: ${logData.sabakReadNotes ?? "-"}\n`;
+          reportText += `Sabak Read Quality: ${logData.sabakReadQuality ?? "-"}\n\n`;
+
+          // Weekly goal info from the log
+          reportText += `Weekly Goal: ${logData.weeklyGoal ?? "-"}\n`;
+          reportText += `Goal Start Date: ${logData.weeklyGoalStartDateKey ?? "-"}\n`;
+          reportText += `Goal Week Key: ${logData.weeklyGoalWeekKey ?? "-"}\n`;
+          reportText += `Goal Completed: ${logData.weeklyGoalCompleted ?? "-"}\n`;
+          reportText += `Goal Completed Date: ${logData.weeklyGoalCompletedDateKey ?? "-"}\n`;
+          reportText += `Goal Duration (days): ${logData.weeklyGoalDurationDays ?? "-"}\n\n`;
         });
       } else {
         reportText += `No logs for the last 7 days.\n`;
