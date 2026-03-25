@@ -218,10 +218,14 @@ const [studentName, setStudentName] = useState("");
 
   // weekly goal can be set only once per week
 const goalLocked =
-  weeklyGoal.trim().length > 0 && !weeklyGoalCompletedDateKey;
+  weeklyGoal.trim().length > 0 &&
+  weeklyGoalWeekKey === currentWeekKey &&
+  !weeklyGoalCompletedDateKey;
 
   const goalAlreadyCompleted =
     Boolean(weeklyGoalCompletedDateKey) || (weeklyGoalDurationDays ?? 0) > 0;
+
+    
 
       const goalNotReached =
   weeklyGoal &&
@@ -336,12 +340,13 @@ async function handleSave(e: React.FormEvent) {
   }
 
   // ✅ Allow NEW goal AFTER completion
-  if (nextCompletedKey && weeklyGoal !== nextGoal) {
-    nextStartKey = dateKey;
-    nextCompletedKey = "";
-    nextDuration = null;
-    nextWeekKey = currentWeekKey;
-  }
+  // If goal was completed BEFORE and user is typing a NEW goal → reset
+if (nextCompletedKey && weeklyGoal.trim() !== "" && !markGoalCompleted) {
+  nextStartKey = dateKey;
+  nextCompletedKey = "";
+  nextDuration = null;
+  nextWeekKey = currentWeekKey;
+}
 }
 
     // ---- 1) Save daily log ----
@@ -714,7 +719,7 @@ async function handleSave(e: React.FormEvent) {
                 <input
                   type="checkbox"
                   checked={goalAlreadyCompleted ? true : markGoalCompleted}
-                  disabled={goalAlreadyCompleted || !weeklyGoal.trim()}
+                  disabled={!weeklyGoal.trim() || goalAlreadyCompleted}
                   onChange={(e) => setMarkGoalCompleted(e.target.checked)}
                   className="h-6 w-6 accent-black disabled:opacity-50"
                 />
