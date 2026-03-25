@@ -217,7 +217,8 @@ const [studentName, setStudentName] = useState("");
   const currentWeekKey = useMemo(() => isoWeekKeyFromDateKey(dateKey), [dateKey]);
 
   // weekly goal can be set only once per week
- const goalLocked = !!weeklyGoalCompletedDateKey;
+ const goalLockedThisWeek =
+    weeklyGoal.trim().length > 0 && weeklyGoalWeekKey === currentWeekKey;
 
   const goalAlreadyCompleted =
     Boolean(weeklyGoalCompletedDateKey) || (weeklyGoalDurationDays ?? 0) > 0;
