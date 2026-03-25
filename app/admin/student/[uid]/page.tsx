@@ -217,8 +217,8 @@ const [studentName, setStudentName] = useState("");
   const currentWeekKey = useMemo(() => isoWeekKeyFromDateKey(dateKey), [dateKey]);
 
   // weekly goal can be set only once per week
-const goalLocked =
-  !!weeklyGoal && !weeklyGoalCompletedDateKey;
+const goalLockedThisWeek =
+    weeklyGoal.trim().length > 0 && weeklyGoalWeekKey === currentWeekKey;
 
   const goalAlreadyCompleted =
     Boolean(weeklyGoalCompletedDateKey) || (weeklyGoalDurationDays ?? 0) > 0;
@@ -323,26 +323,21 @@ async function handleSave(e: React.FormEvent) {
     let nextDuration: number | null = weeklyGoalDurationDays ?? null;
 
     if (nextGoal) {
-  // 1. First time setting goal
-  if (!nextStartKey) {
-    nextStartKey = dateKey;
-  }
+      const isNewWeekGoal = !nextWeekKey || nextWeekKey !== currentWeekKey;
+      if (isNewWeekGoal) {
+        nextWeekKey = currentWeekKey;
+        nextStartKey = dateKey;
+        nextCompletedKey = "";
+        nextDuration = null;
+        setMarkGoalCompleted(false);
+      }
 
-  // 2. Mark as completed
-  if (markGoalCompleted && !nextCompletedKey) {
-    const startKey = nextStartKey || dateKey;
-    nextCompletedKey = dateKey;
-    nextDuration = diffDaysInclusive(startKey, dateKey);
-  }
-
-  // 3. ✅ If goal is already completed AND ustad types a NEW goal
-  if (nextCompletedKey && !markGoalCompleted) {
-    // This means: previous goal is done → start fresh
-    nextStartKey = dateKey;
-    nextCompletedKey = "";
-    nextDuration = null;
-  }
-}
+      if (markGoalCompleted && !nextCompletedKey) {
+        const startKey = nextStartKey || dateKey;
+        nextCompletedKey = dateKey;
+        nextDuration = diffDaysInclusive(startKey, dateKey); // ✅ call the function, don’t pass it
+      }
+    }
 
     // ---- 1) Save daily log ----
     await setDoc(
@@ -681,15 +676,15 @@ async function handleSave(e: React.FormEvent) {
                 <div className="flex items-end justify-between gap-4">
                   <span className="text-sm font-semibold text-gray-900">Weekly Sabak Goal</span>
                   <span className="text-xs text-gray-500">
-                    {goalLocked ? "Locked until completed" : "Set a new goal"}
+                    {goalLockedThisWeek ? "Locked until completed" : "Set a new goal"}
                   </span>
                 </div>
 
                 <input
-                    value={weeklyGoal}
-  onChange={(e) => setWeeklyGoal(e.target.value)}
-  disabled={goalLocked}
-                  className="h-12 rounded-2xl border border-gray-300 bg-white/80 px-4 outline-none focus:ring-2 focus:ring-[#B8963D]/30 disabled:opacity-60"
+                  value={weeklyGoal}
+                  onChange={(e) => setWeeklyGoal(e.target.value)}
+                  disabled={goalLockedThisWeek}
+                  className="h-12 rounded-2xl border border-gray-200 bg-white/80 px-4 outline-none focus:ring-2 focus:ring-[#A46B72]/30 disabled:opacity-60"
                   placeholder="Example: 10 pages"
                 />
               </label>
