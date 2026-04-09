@@ -4,7 +4,17 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, serverTimestamp, setDoc } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDocs,
+  limit,
+  query,
+  serverTimestamp,
+  setDoc,
+  where,
+  writeBatch,
+} from "firebase/firestore";
 import { auth, db } from "../lib/firebase";
 import { useRouter } from "next/navigation";
 
@@ -23,7 +33,47 @@ function friendlySignupError(code?: string) {
   }
 }
 
-type AccountType = "parent" | "ustad";
+type AccountType = "admin" | "teacher";
+
+function slugifyMadrassahName(value: string) {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+function makeReadableJoinCode(name: string) {
+  const base = name
+    .toUpperCase()
+    .replace(/[^A-Z0-9 ]/g, "")
+    .split(" ")
+    .filter(Boolean)
+    .join("");
+
+  const cleanedBase = base.slice(0, 10) || "MADRASSAH";
+  const random4 = Math.floor(1000 + Math.random() * 9000);
+
+  return `${cleanedBase}${random4}`;
+}
+
+async function generateUniqueJoinCode(name: string) {
+  for (let i = 0; i < 10; i++) {
+    const code = makeReadableJoinCode(name);
+    const q = query(
+      collection(db, "madrassahs"),
+      where("joinCode", "==", code),
+      limit(1)
+    );
+    const snap = await getDocs(q);
+    if (snap.empty) return code;
+  }
+
+  throw new Error("Could not generate a unique join code. Please try again.");
+}
 
 export default function SignupPage() {
   const router = useRouter();
@@ -31,9 +81,11 @@ export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [username, setUsername] = useState("");
+  const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
-  const [accountType, setAccountType] = useState<AccountType>("parent");
+  const [accountType, setAccountType] = useState<AccountType>("admin");
+  const [madrassahName, setMadrassahName] = useState("");
+  const [joinCode, setJoinCode] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -41,49 +93,136 @@ export default function SignupPage() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErr(null);
+
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanFullName = fullName.trim();
+    const cleanPhone = phone.trim();
+    const cleanMadrassahName = madrassahName.trim();
+    const cleanJoinCode = joinCode.trim().toUpperCase();
+
+    if (!cleanFullName) {
+      setErr("Please enter your full name.");
+      return;
+    }
+
+    if (!cleanPhone) {
+      setErr("Please enter your phone number.");
+      return;
+    }
+
+    if (accountType === "admin" && !cleanMadrassahName) {
+      setErr("Please enter the madrassah name.");
+      return;
+    }
+
+    if (accountType === "teacher" && !cleanJoinCode) {
+      setErr("Please enter the madrassah join code.");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const cleanEmail = email.trim().toLowerCase();
-      const cred = await createUserWithEmailAndPassword(auth, cleanEmail, password);
+      if (accountType === "admin") {
+        const cred = await createUserWithEmailAndPassword(auth, cleanEmail, password);
+        const userId = cred.user.uid;
 
-      const baseData = {
-        email: (cred.user.email ?? cleanEmail).toLowerCase(),
-        username: username.trim(),
-        phone: phone.trim(),
-        accountType,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      };
+        const madrassahRef = doc(collection(db, "madrassahs"));
+        const madrassahId = madrassahRef.id;
+        const slug = slugifyMadrassahName(cleanMadrassahName);
+        const uniqueJoinCode = await generateUniqueJoinCode(cleanMadrassahName);
 
-      if (accountType === "parent") {
-        await setDoc(
-          doc(db, "users", cred.user.uid),
-          {
-            ...baseData,
-            role: "student",
-            profileCompleted: false,
-          },
-          { merge: true }
-        );
+        const batch = writeBatch(db);
 
-        router.push("/complete-profile");
+        batch.set(madrassahRef, {
+          name: cleanMadrassahName,
+          slug,
+          joinCode: uniqueJoinCode,
+          createdBy: userId,
+          adminUserId: userId,
+          isActive: true,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+
+        batch.set(doc(db, "users", userId), {
+          email: (cred.user.email ?? cleanEmail).toLowerCase(),
+          fullName: cleanFullName,
+          phone: cleanPhone,
+          role: "admin",
+          madrassahId,
+          madrassahName: cleanMadrassahName,
+          isActive: true,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+
+        batch.set(doc(db, "madrassahs", madrassahId, "staff", userId), {
+          userId,
+          fullName: cleanFullName,
+          email: (cred.user.email ?? cleanEmail).toLowerCase(),
+          phone: cleanPhone,
+          role: "admin",
+          isActive: true,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+
+        await batch.commit();
+        router.push("/admin");
         return;
       }
 
-      await setDoc(
-        doc(db, "users", cred.user.uid),
-        {
-          ...baseData,
-          role: "pending_admin",
-          profileCompleted: true,
-        },
-        { merge: true }
+      const madrassahQuery = query(
+        collection(db, "madrassahs"),
+        where("joinCode", "==", cleanJoinCode),
+        limit(1)
       );
+      const madrassahSnap = await getDocs(madrassahQuery);
 
-      router.push("/");
+      if (madrassahSnap.empty) {
+        setErr("That join code is not valid. Please check it and try again.");
+        setLoading(false);
+        return;
+      }
+
+      const madrassahDoc = madrassahSnap.docs[0];
+      const madrassahId = madrassahDoc.id;
+      const madrassahData = madrassahDoc.data() as { name?: string };
+      const foundMadrassahName = madrassahData.name?.toString().trim() || "Madrassah";
+
+      const cred = await createUserWithEmailAndPassword(auth, cleanEmail, password);
+      const userId = cred.user.uid;
+
+      const batch = writeBatch(db);
+
+      batch.set(doc(db, "users", userId), {
+        email: (cred.user.email ?? cleanEmail).toLowerCase(),
+        fullName: cleanFullName,
+        phone: cleanPhone,
+        role: "teacher",
+        madrassahId,
+        madrassahName: foundMadrassahName,
+        isActive: true,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+
+      batch.set(doc(db, "madrassahs", madrassahId, "staff", userId), {
+        userId,
+        fullName: cleanFullName,
+        email: (cred.user.email ?? cleanEmail).toLowerCase(),
+        phone: cleanPhone,
+        role: "teacher",
+        isActive: true,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+
+      await batch.commit();
+      router.push("/admin");
     } catch (error: any) {
-      setErr(friendlySignupError(error?.code));
+      setErr(friendlySignupError(error?.code) || error?.message || "Signup failed.");
     } finally {
       setLoading(false);
     }
@@ -121,11 +260,11 @@ export default function SignupPage() {
                 Create your account
               </h1>
               <p className="mt-3 text-gray-700 leading-relaxed">
-                Choose your account type and create your Hifdh Journal account.
+                Set up your madrassah account or join your madrassah as a teacher.
               </p>
 
               <div className="mt-6 grid grid-cols-2 gap-3">
-                {["Secure login", "Easy setup", "Clean dashboard", "Structured system"].map((t) => (
+                {["Secure login", "Fast onboarding", "Multi-madrassah ready", "Clean dashboard"].map((t) => (
                   <div
                     key={t}
                     className="rounded-2xl border border-gray-300 bg-white/70 px-4 py-4 text-sm font-medium"
@@ -166,40 +305,68 @@ export default function SignupPage() {
                   <div className="mt-2 grid grid-cols-2 gap-3">
                     <button
                       type="button"
-                      onClick={() => setAccountType("parent")}
+                      onClick={() => setAccountType("admin")}
                       className={`h-12 rounded-2xl border text-sm font-semibold transition-colors ${
-                        accountType === "parent"
+                        accountType === "admin"
                           ? "border-black bg-black text-white"
                           : "border-gray-300 bg-white/80 text-gray-800 hover:bg-white"
                       }`}
                     >
-                      Parent
+                      Admin
                     </button>
 
                     <button
                       type="button"
-                      onClick={() => setAccountType("ustad")}
+                      onClick={() => setAccountType("teacher")}
                       className={`h-12 rounded-2xl border text-sm font-semibold transition-colors ${
-                        accountType === "ustad"
+                        accountType === "teacher"
                           ? "border-black bg-black text-white"
                           : "border-gray-300 bg-white/80 text-gray-800 hover:bg-white"
                       }`}
                     >
-                      Ustad / Teacher
+                      Teacher
                     </button>
                   </div>
                 </div>
 
+                {accountType === "admin" && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-800">Madrassah Name</label>
+                    <input
+                      value={madrassahName}
+                      onChange={(e) => setMadrassahName(e.target.value)}
+                      type="text"
+                      required
+                      placeholder="e.g. Umm Abbad Academy"
+                      className="mt-2 w-full h-12 rounded-2xl border border-gray-300 bg-white/80 px-4 outline-none focus:ring-2 focus:ring-[#B8963D]/40"
+                    />
+                  </div>
+                )}
+
+                {accountType === "teacher" && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-800">Madrassah Join Code</label>
+                    <input
+                      value={joinCode}
+                      onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                      type="text"
+                      required
+                      placeholder="e.g. UMMABBAD4821"
+                      className="mt-2 w-full h-12 rounded-2xl border border-gray-300 bg-white/80 px-4 outline-none uppercase focus:ring-2 focus:ring-[#B8963D]/40"
+                    />
+                  </div>
+                )}
+
                 <div>
                   <label className="text-sm font-medium text-gray-800">Full Name</label>
                   <input
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
                     type="text"
                     required
                     placeholder={
-                      accountType === "parent"
-                        ? "e.g. Ahmed Khan"
+                      accountType === "admin"
+                        ? "e.g. Moulana Ahmed"
                         : "e.g. Ustadh Muhammad Ahmed"
                     }
                     className="mt-2 w-full h-12 rounded-2xl border border-gray-300 bg-white/80 px-4 outline-none focus:ring-2 focus:ring-[#B8963D]/40"
@@ -260,9 +427,9 @@ export default function SignupPage() {
                 </button>
 
                 <div className="text-sm text-gray-600 text-center">
-                  {accountType === "parent"
-                    ? "You will add the child details on the next step."
-                    : "Your account will be created and you can be made admin afterwards."}
+                  {accountType === "admin"
+                    ? "Your madrassah will be created automatically and you will become the admin."
+                    : "Use the madrassah join code given to you by the admin to join as a teacher."}
                 </div>
               </form>
 

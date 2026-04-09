@@ -1,4 +1,3 @@
-/* app/admin/student/[uid]/overview/page.tsx */
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -29,7 +28,7 @@ function parseDateKey(dateKey: string) {
 function getDayName(dateKey?: string) {
   if (!dateKey) return "";
   const d = parseDateKey(dateKey);
-  return d.toLocaleDateString("en-US", { weekday: "short" }); // Mon, Tue
+  return d.toLocaleDateString("en-US", { weekday: "short" });
 }
 
 function getMonthLabel(dateKey?: string) {
@@ -39,25 +38,11 @@ function getMonthLabel(dateKey?: string) {
 }
 
 function diffDaysInclusive(startKey: string, endKey: string) {
-  function getDayName(dateKey?: string) {
-  if (!dateKey) return "";
-  const d = parseDateKey(dateKey);
-  return d.toLocaleDateString("en-US", { weekday: "short" });
-}
-
-function getMonthLabel(dateKey?: string) {
-  if (!dateKey) return "";
-  const d = parseDateKey(dateKey);
-  return d.toLocaleDateString("en-US", {
-    month: "long",
-    year: "numeric",
-  });
-}
   const a = parseDateKey(startKey);
   const b = parseDateKey(endKey);
   const ms = b.getTime() - a.getTime();
   const days = Math.floor(ms / (1000 * 60 * 60 * 24));
-  return Math.max(0, days) + 1; // inclusive
+  return Math.max(0, days) + 1;
 }
 
 /* ---------------- sabak normalization ---------------- */
@@ -65,13 +50,11 @@ function sabakToLines(v: unknown) {
   const s = toText(v).toLowerCase().trim();
   if (!s) return 0;
 
-  // If user wrote "page" or "p"
   if (s.includes("page") || s.includes("p")) {
     const n = parseFloat(s);
-    return isNaN(n) ? 0 : n * 13; // convert page → 13 lines
+    return isNaN(n) ? 0 : n * 13;
   }
 
-  // Otherwise assume it's lines
   const n = parseFloat(s.replace(",", "."));
   return isNaN(n) ? 0 : n;
 }
@@ -104,8 +87,11 @@ type LogRow = {
   weeklyGoalDurationDays?: number | string;
 };
 
-async function fetchLogs(uid: string): Promise<LogRow[]> {
-  const q = query(collection(db, "users", uid, "logs"), orderBy("dateKey", "desc"));
+async function fetchLogs(madrassahId: string, studentId: string): Promise<LogRow[]> {
+  const q = query(
+    collection(db, "madrassahs", madrassahId, "students", studentId, "logs"),
+    orderBy("dateKey", "desc")
+  );
   const snap = await getDocs(q);
   return snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
 }
@@ -121,13 +107,14 @@ function Badge({ children }: { children: React.ReactNode }) {
 /* ---------------- page ---------------- */
 export default function AdminStudentOverviewPage() {
   const params = useParams<{ uid: string }>();
-  const studentUid = params.uid;
+  const studentId = params.uid;
 
   const [me, setMe] = useState<User | null>(null);
   const [checking, setChecking] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [role, setRole] = useState<string | null>(null);
+  const [madrassahId, setMadrassahId] = useState<string | null>(null);
 
-const [studentName, setStudentName] = useState("");
+  const [studentName, setStudentName] = useState("");
   const [rows, setRows] = useState<LogRow[]>([]);
   const [loadingRows, setLoadingRows] = useState(false);
 
@@ -136,15 +123,18 @@ const [studentName, setStudentName] = useState("");
       setMe(u);
 
       if (!u) {
-        setIsAdmin(false);
+        setRole(null);
+        setMadrassahId(null);
         setChecking(false);
         return;
       }
 
       try {
         const myDoc = await getDoc(doc(db, "users", u.uid));
-        const role = myDoc.exists() ? (myDoc.data() as any).role : null;
-        setIsAdmin(role === "admin");
+        const myData = myDoc.exists() ? (myDoc.data() as any) : null;
+
+        setRole(myData?.role ?? null);
+        setMadrassahId(myData?.madrassahId ?? null);
       } finally {
         setChecking(false);
       }
@@ -155,67 +145,69 @@ const [studentName, setStudentName] = useState("");
 
   useEffect(() => {
     async function loadStudentMeta() {
-      const sDoc = await getDoc(doc(db, "users", studentUid));
+      if (!madrassahId || !studentId) return;
+
+      const sDoc = await getDoc(doc(db, "madrassahs", madrassahId, "students", studentId));
       if (sDoc.exists()) {
         const data = sDoc.data() as any;
-setStudentName(
-  toText(data.username) || toText(data.email) || "Student"
-);      }
+        setStudentName(toText(data.fullName) || "Student");
+      } else {
+        setStudentName("Student");
+      }
     }
 
     async function loadLogs() {
+      if (!madrassahId || !studentId) return;
+
       setLoadingRows(true);
       try {
-        const data = await fetchLogs(studentUid);
+        const data = await fetchLogs(madrassahId, studentId);
         setRows(data);
       } finally {
         setLoadingRows(false);
       }
     }
 
-    if (studentUid) {
+    if (madrassahId && studentId) {
       loadStudentMeta();
       loadLogs();
     }
-  }, [studentUid]);
+  }, [madrassahId, studentId]);
 
   const absentsByMonth = useMemo(() => {
-    
-  const map: Record<string, number> = {};
+    const map: Record<string, number> = {};
 
-  rows.forEach((r) => {
-    if (r.attendance !== "absent") return;
+    rows.forEach((r) => {
+      if (r.attendance !== "absent") return;
 
-    const month = getMonthLabel(r.dateKey);
-    if (!month) return;
+      const month = getMonthLabel(r.dateKey);
+      if (!month) return;
 
-    map[month] = (map[month] || 0) + 1;
-  });
+      map[month] = (map[month] || 0) + 1;
+    });
 
-  return map;
-}, [rows]);
+    return map;
+  }, [rows]);
 
-const currentMonth = getMonthLabel(new Date().toISOString().slice(0, 10));
-
-const currentMonthAbsents = absentsByMonth[currentMonth] || 0;
+  const currentMonth = getMonthLabel(new Date().toISOString().slice(0, 10));
+  const currentMonthAbsents = absentsByMonth[currentMonth] || 0;
 
   const summary = useMemo(() => {
-  if (!rows.length) return { totalDays: 0, avgSabakLines: 0, avgPresentLines: 0, lastGoal: 0 };
+    if (!rows.length) {
+      return { totalDays: 0, avgSabakLines: 0, avgPresentLines: 0, lastGoal: 0 };
+    }
 
-  // Total lines including all days (0 sabak counts)
-  const totalLines = rows.reduce((sum, r) => sum + sabakToLines(r.sabak), 0);
+    const totalLines = rows.reduce((sum, r) => sum + sabakToLines(r.sabak), 0);
+    const avgSabakLines = totalLines / rows.length;
 
-  const avgSabakLines = totalLines / rows.length;
+    const presentRows = rows.filter((r) => r.attendance === "present");
+    const totalPresentLines = presentRows.reduce((sum, r) => sum + sabakToLines(r.sabak), 0);
+    const avgPresentLines = presentRows.length ? totalPresentLines / presentRows.length : 0;
 
-  // Only present days
-  const presentRows = rows.filter((r) => r.attendance === "present");
- const totalPresentLines = presentRows.reduce((sum, r) => sum + sabakToLines(r.sabak), 0);
-  const avgPresentLines = presentRows.length ? totalPresentLines / presentRows.length : 0;
+    const lastGoal = num(rows[0]?.weeklyGoal);
 
-  const lastGoal = num(rows[0]?.weeklyGoal);
-
-  return { totalDays: rows.length, avgSabakLines, avgPresentLines, lastGoal };
-}, [rows]);
+    return { totalDays: rows.length, avgSabakLines, avgPresentLines, lastGoal };
+  }, [rows]);
 
   if (checking) {
     return (
@@ -247,9 +239,9 @@ const currentMonthAbsents = absentsByMonth[currentMonth] || 0;
               </Link>
               <Link
                 href="/admin"
-                className="inline-flex items-center justify-center h-11 px-6 rounded-full border border-gray-300 bg-white/70 backdrop-blur-xl backdrop-blur text-sm font-medium hover:bg-white"
+                className="inline-flex items-center justify-center h-11 px-6 rounded-full border border-gray-300 bg-white/70 backdrop-blur text-sm font-medium hover:bg-white"
               >
-                Back to Admin
+                Back to Dashboard
               </Link>
             </div>
           </div>
@@ -258,22 +250,36 @@ const currentMonthAbsents = absentsByMonth[currentMonth] || 0;
     );
   }
 
-  if (!isAdmin) {
+  if (!role || !["admin", "teacher"].includes(role)) {
     return (
       <main className="min-h-screen">
         <FancyBg />
         <div className="max-w-6xl mx-auto px-6 sm:px-10 py-16">
           <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur p-10 shadow-sm">
             <h1 className="text-3xl font-semibold tracking-tight">Not allowed</h1>
-            <p className="mt-3 text-gray-700">This account is not an admin.</p>
+            <p className="mt-3 text-gray-700">This account cannot view student overviews.</p>
             <div className="mt-6 flex gap-3">
               <Link href="/" className="underline">
                 Home
               </Link>
               <Link href="/admin" className="underline">
-                Admin
+                Dashboard
               </Link>
             </div>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  if (!madrassahId) {
+    return (
+      <main className="min-h-screen">
+        <FancyBg />
+        <div className="max-w-6xl mx-auto px-6 sm:px-10 py-16">
+          <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur p-10 shadow-sm">
+            <h1 className="text-3xl font-semibold tracking-tight">No madrassah linked</h1>
+            <p className="mt-3 text-gray-700">This account is missing a madrassah connection.</p>
           </div>
         </div>
       </main>
@@ -306,14 +312,14 @@ const currentMonthAbsents = absentsByMonth[currentMonth] || 0;
 
         <div className="flex flex-wrap items-center gap-3">
           <Link
-            href={`/admin/student/${studentUid}`}
+            href={`/admin/student/${studentId}`}
             className="inline-flex items-center justify-center h-11 px-5 rounded-full bg-black text-white text-sm font-medium hover:bg-gray-900"
           >
             Log Work
           </Link>
           <Link
             href="/admin"
-            className="inline-flex items-center justify-center h-11 px-5 rounded-full border border-gray-300 bg-white/70 backdrop-blur-xl backdrop-blur text-sm font-medium hover:bg-white"
+            className="inline-flex items-center justify-center h-11 px-5 rounded-full border border-gray-300 bg-white/70 backdrop-blur text-sm font-medium hover:bg-white"
           >
             Back
           </Link>
@@ -321,24 +327,20 @@ const currentMonthAbsents = absentsByMonth[currentMonth] || 0;
       </header>
 
       <section className="max-w-6xl mx-auto px-6 sm:px-10 pb-16">
-        {/* Summary cards */}
         <div className="grid sm:grid-cols-4 gap-4 mb-8">
           <StatCard label="Days logged" value={String(summary.totalDays)} />
-                    <StatCard
-            label="Absences (this month)"
-            value={String(currentMonthAbsents)}
+          <StatCard label="Absences (this month)" value={String(currentMonthAbsents)} />
+          <StatCard
+            label="Average Sabak"
+            value={summary.avgSabakLines ? `${summary.avgSabakLines.toFixed(1)} lines/day` : "—"}
           />
-<StatCard
-  label="Average Sabak"
-  value={
-    summary.avgSabakLines
-      ? `${summary.avgSabakLines.toFixed(1)} lines/day`
-      : "—"
-  }
-/>          <StatCard label="Latest weekly goal" value={summary.lastGoal ? String(summary.lastGoal) : "—"} />
+          <StatCard
+            label="Latest weekly goal"
+            value={summary.lastGoal ? String(summary.lastGoal) : "—"}
+          />
         </div>
 
-                <div className="mb-6 flex flex-wrap gap-3">
+        <div className="mb-6 flex flex-wrap gap-3">
           {Object.entries(absentsByMonth).map(([month, count]) => (
             <div
               key={month}
@@ -357,7 +359,7 @@ const currentMonthAbsents = absentsByMonth[currentMonth] || 0;
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <Badge>Admin view</Badge>
+              <Badge>{role === "admin" ? "Admin view" : "Teacher view"}</Badge>
               <Badge>Newest → oldest</Badge>
               <Badge>Goal duration</Badge>
             </div>
@@ -372,7 +374,7 @@ const currentMonthAbsents = absentsByMonth[currentMonth] || 0;
                 <p className="mt-2 text-gray-700">Once the student has entries, they will show here.</p>
                 <div className="mt-4">
                   <Link
-                    href={`/admin/student/${studentUid}`}
+                    href={`/admin/student/${studentId}`}
                     className="inline-flex items-center justify-center h-11 px-6 rounded-full bg-black text-white text-sm font-medium hover:bg-gray-900"
                   >
                     Log first entry
@@ -384,60 +386,60 @@ const currentMonthAbsents = absentsByMonth[currentMonth] || 0;
                 <table className="min-w-[1100px] w-full border-separate border-spacing-0">
                   <thead>
                     <tr className="text-left text-[11px] uppercase tracking-[0.18em] text-gray-500">
-                    <th className="sticky top-0 bg-white/70 backdrop-blur-xl backdrop-blur pb-3 pr-4 pl-2 border-b border-gray-300">
+                      <th className="sticky top-0 bg-white/70 backdrop-blur pb-3 pr-4 pl-2 border-b border-gray-300">
                         Day
                       </th>
-                      <th className="sticky top-0 bg-white/70 backdrop-blur-xl backdrop-blur pb-3 pr-4 pl-2 border-b border-gray-300">
+                      <th className="sticky top-0 bg-white/70 backdrop-blur pb-3 pr-4 pl-2 border-b border-gray-300">
                         Date
                       </th>
-                       <th className="sticky top-0 bg-white/70 backdrop-blur-xl backdrop-blur pb-3 pr-4 pl-2 border-b border-gray-300">
+                      <th className="sticky top-0 bg-white/70 backdrop-blur pb-3 pr-4 pl-2 border-b border-gray-300">
                         Attendance
                       </th>
 
-                      <th className="sticky top-0 bg-white/70 backdrop-blur-xl backdrop-blur pb-3 px-4 border-b border-gray-300 border-l border-gray-100">
+                      <th className="sticky top-0 bg-white/70 backdrop-blur pb-3 px-4 border-b border-gray-300 border-l border-gray-100">
                         Sabak
                       </th>
-                      <th className="sticky top-0 bg-white/70 backdrop-blur-xl backdrop-blur pb-3 px-4 border-b border-gray-300 border-l border-gray-100">
+                      <th className="sticky top-0 bg-white/70 backdrop-blur pb-3 px-4 border-b border-gray-300 border-l border-gray-100">
                         Read
                       </th>
-                      <th className="sticky top-0 bg-white/70 backdrop-blur-xl backdrop-blur pb-3 px-4 border-b border-gray-300 border-l border-gray-100">
-  Notes
-</th>
+                      <th className="sticky top-0 bg-white/70 backdrop-blur pb-3 px-4 border-b border-gray-300 border-l border-gray-100">
+                        Notes
+                      </th>
 
-                      <th className="sticky top-0 bg-white/70 backdrop-blur-xl backdrop-blur pb-3 px-4 border-b border-gray-300 border-l border-gray-100">
+                      <th className="sticky top-0 bg-white/70 backdrop-blur pb-3 px-4 border-b border-gray-300 border-l border-gray-100">
                         Sabak Dhor
                       </th>
-                      <th className="sticky top-0 bg-white/70 backdrop-blur-xl backdrop-blur pb-3 px-4 border-b border-gray-300 border-l border-gray-100">
+                      <th className="sticky top-0 bg-white/70 backdrop-blur pb-3 px-4 border-b border-gray-300 border-l border-gray-100">
                         Read
                       </th>
-                      <th className="sticky top-0 bg-white/70 backdrop-blur-xl backdrop-blur pb-3 px-4 border-b border-gray-300 border-l border-gray-100">
-  Notes
-</th>
+                      <th className="sticky top-0 bg-white/70 backdrop-blur pb-3 px-4 border-b border-gray-300 border-l border-gray-100">
+                        Notes
+                      </th>
 
-                      <th className="sticky top-0 bg-white/70 backdrop-blur-xl backdrop-blur pb-3 px-4 border-b border-gray-300 border-l border-gray-100">
+                      <th className="sticky top-0 bg-white/70 backdrop-blur pb-3 px-4 border-b border-gray-300 border-l border-gray-100">
                         Dhor
                       </th>
-                      <th className="sticky top-0 bg-white/70 backdrop-blur-xl backdrop-blur pb-3 px-4 border-b border-gray-300 border-l border-gray-100">
+                      <th className="sticky top-0 bg-white/70 backdrop-blur pb-3 px-4 border-b border-gray-300 border-l border-gray-100">
                         Read
                       </th>
-                      <th className="sticky top-0 bg-white/70 backdrop-blur-xl backdrop-blur pb-3 px-4 border-b border-gray-300 border-l border-gray-100">
-  Notes
-</th>
+                      <th className="sticky top-0 bg-white/70 backdrop-blur pb-3 px-4 border-b border-gray-300 border-l border-gray-100">
+                        Notes
+                      </th>
 
-                      <th className="sticky top-0 bg-white/70 backdrop-blur-xl backdrop-blur pb-3 px-4 border-b border-gray-300 border-l border-gray-100">
+                      <th className="sticky top-0 bg-white/70 backdrop-blur pb-3 px-4 border-b border-gray-300 border-l border-gray-100">
                         SD Mistakes
                       </th>
-                      <th className="sticky top-0 bg-white/70 backdrop-blur-xl backdrop-blur pb-3 px-4 border-b border-gray-300 border-l border-gray-100">
+                      <th className="sticky top-0 bg-white/70 backdrop-blur pb-3 px-4 border-b border-gray-300 border-l border-gray-100">
                         D Mistakes
                       </th>
 
-                      <th className="sticky top-0 bg-white/70 backdrop-blur-xl backdrop-blur pb-3 px-4 border-b border-gray-300 border-l border-gray-100">
+                      <th className="sticky top-0 bg-white/70 backdrop-blur pb-3 px-4 border-b border-gray-300 border-l border-gray-100">
                         Weekly Goal
                       </th>
-                      <th className="sticky top-0 bg-white/70 backdrop-blur-xl backdrop-blur pb-3 px-4 border-b border-gray-300 border-l border-gray-100">
+                      <th className="sticky top-0 bg-white/70 backdrop-blur pb-3 px-4 border-b border-gray-300 border-l border-gray-100">
                         Goal Status
                       </th>
-                      <th className="sticky top-0 bg-white/70 backdrop-blur-xl backdrop-blur pb-3 px-4 border-b border-gray-300 border-l border-gray-100">
+                      <th className="sticky top-0 bg-white/70 backdrop-blur pb-3 px-4 border-b border-gray-300 border-l border-gray-100">
                         Duration
                       </th>
                     </tr>
@@ -445,11 +447,11 @@ const currentMonthAbsents = absentsByMonth[currentMonth] || 0;
 
                   <tbody className="divide-y divide-gray-300">
                     {rows.map((r, index) => {
-                    const currentMonth = getMonthLabel(r.dateKey);
-                    const prevMonth =
-                    index > 0 ? getMonthLabel(rows[index - 1].dateKey) : null;
+                      const currentMonthLabel = getMonthLabel(r.dateKey);
+                      const prevMonthLabel =
+                        index > 0 ? getMonthLabel(rows[index - 1].dateKey) : null;
 
-                    const showMonthHeader = index === 0 || currentMonth !== prevMonth;
+                      const showMonthHeader = index === 0 || currentMonthLabel !== prevMonthLabel;
                       const g = num(r.weeklyGoal);
 
                       const startKey = toText(r.weeklyGoalStartDateKey);
@@ -467,120 +469,120 @@ const currentMonthAbsents = absentsByMonth[currentMonth] || 0;
 
                       const duration = storedDur ?? calcDur;
                       const notReached =
-                      startKey &&
-                      !completedKey &&
-                      diffDaysInclusive(startKey, r.dateKey || "") > 7;
+                        startKey &&
+                        !completedKey &&
+                        diffDaysInclusive(startKey, r.dateKey || "") > 7;
 
-                    const completed = Boolean(completedKey);
+                      const completed = Boolean(completedKey);
 
                       return (
-                          <>
-                      {showMonthHeader && (
-                      <tr>
-                      <td
-                         colSpan={16}
-                         className="bg-gradient-to-r from-[#B8963D]/15 to-transparent text-sm font-semibold text-gray-900 py-4 px-4 uppercase tracking-wider"
-                        >
-                       {currentMonth}
-                          </td>
-                              </tr>
+                        <tbody key={`group-${r.id}`}>
+                          {showMonthHeader && (
+                            <tr>
+                              <td
+                                colSpan={17}
+                                className="bg-gradient-to-r from-[#B8963D]/15 to-transparent text-sm font-semibold text-gray-900 py-4 px-4 uppercase tracking-wider"
+                              >
+                                {currentMonthLabel}
+                              </td>
+                            </tr>
                           )}
-                        
-                        <tr key={r.id} className="text-sm hover:bg-black/[0.02] transition-colors">
-                          <td className="py-4 pr-4 pl-2 font-medium text-gray-600">
-                        {getDayName(r.dateKey)}
-                        </td>
-                          <td className="py-4 pr-4 pl-2 font-medium text-gray-900">
-                            {r.dateKey ?? r.id}
-                          </td>
+
+                          <tr className="text-sm hover:bg-black/[0.02] transition-colors">
+                            <td className="py-4 pr-4 pl-2 font-medium text-gray-600">
+                              {getDayName(r.dateKey)}
+                            </td>
+                            <td className="py-4 pr-4 pl-2 font-medium text-gray-900">
+                              {r.dateKey ?? r.id}
+                            </td>
 
                             <td className="py-4 px-4 border-l border-gray-100">
-                            {r.attendance === "present" ? (
-                              <span className="text-emerald-600 font-semibold">Present</span>
-                            ) : r.attendance === "absent" ? (
-                              <span className="text-red-600 font-semibold">Absent</span>
-                            ) : (
-                              "—"
-                            )}
-                          </td>
+                              {r.attendance === "present" ? (
+                                <span className="text-emerald-600 font-semibold">Present</span>
+                              ) : r.attendance === "absent" ? (
+                                <span className="text-red-600 font-semibold">Absent</span>
+                              ) : (
+                                "—"
+                              )}
+                            </td>
 
-                          <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
-                            {toText(r.sabak) || "—"}
-                          </td>
-                          <td className="py-4 px-4 text-gray-700 border-l border-gray-100">
-                            {toText(r.sabakRead) || "—"}
-                          </td>
-                          <td className="py-4 px-4 text-gray-700 border-l border-gray-100 max-w-[200px]">
-  {toText(r.sabakReadNotes) || "—"}
-</td>
+                            <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
+                              {toText(r.sabak) || "—"}
+                            </td>
+                            <td className="py-4 px-4 text-gray-700 border-l border-gray-100">
+                              {toText(r.sabakRead) || "—"}
+                            </td>
+                            <td className="py-4 px-4 text-gray-700 border-l border-gray-100 max-w-[200px]">
+                              {toText(r.sabakReadNotes) || "—"}
+                            </td>
 
-                          <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
-                            {toText(r.sabakDhor) || "—"}
-                          </td>
-                          <td className="py-4 px-4 text-gray-700 border-l border-gray-100">
-                            {toText(r.sabakDhorRead) || "—"}
-                          </td>
-                          <td className="py-4 px-4 text-gray-700 border-l border-gray-100 max-w-[200px]">
-  {toText(r.sabakDhorReadNotes) || "—"}
-</td>
+                            <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
+                              {toText(r.sabakDhor) || "—"}
+                            </td>
+                            <td className="py-4 px-4 text-gray-700 border-l border-gray-100">
+                              {toText(r.sabakDhorRead) || "—"}
+                            </td>
+                            <td className="py-4 px-4 text-gray-700 border-l border-gray-100 max-w-[200px]">
+                              {toText(r.sabakDhorReadNotes) || "—"}
+                            </td>
 
-                          <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
-                            {toText(r.dhor) || "—"}
-                          </td>
-                          <td className="py-4 px-4 text-gray-700 border-l border-gray-100">
-                            {toText(r.dhorRead) || "—"}
-                          </td>
-                          <td className="py-4 px-4 text-gray-700 border-l border-gray-100 max-w-[200px]">
-  {toText(r.dhorReadNotes) || "—"}
-</td>
+                            <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
+                              {toText(r.dhor) || "—"}
+                            </td>
+                            <td className="py-4 px-4 text-gray-700 border-l border-gray-100">
+                              {toText(r.dhorRead) || "—"}
+                            </td>
+                            <td className="py-4 px-4 text-gray-700 border-l border-gray-100 max-w-[200px]">
+                              {toText(r.dhorReadNotes) || "—"}
+                            </td>
 
-                          <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
-                            {toText(r.sabakDhorMistakes) || "—"}
-                          </td>
-                          <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
-                            {toText(r.dhorMistakes) || "—"}
-                          </td>
+                            <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
+                              {toText(r.sabakDhorMistakes) || "—"}
+                            </td>
+                            <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
+                              {toText(r.dhorMistakes) || "—"}
+                            </td>
 
-                          <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
-                            {toText(r.weeklyGoal) || "—"}
-                          </td>
+                            <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
+                              {toText(r.weeklyGoal) || "—"}
+                            </td>
 
-                          <td className="py-4 px-4 border-l border-gray-100">
-                            {g > 0 ? (
-                              <span
-                                className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold border ${
-                                  completed
-                                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                                    : notReached
-                                    ? "border-red-200 bg-red-50 text-red-700"
-                                    : "border-amber-200 bg-amber-50 text-amber-700"
-                                }`}
-                              >
+                            <td className="py-4 px-4 border-l border-gray-100">
+                              {g > 0 ? (
                                 <span
-                                  className={`h-2 w-2 rounded-full ${
+                                  className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold border ${
                                     completed
-                                      ? "bg-emerald-500"
+                                      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
                                       : notReached
-                                      ? "bg-red-500"
-                                      : "bg-amber-500"
+                                      ? "border-red-200 bg-red-50 text-red-700"
+                                      : "border-amber-200 bg-amber-50 text-amber-700"
                                   }`}
-                                />
-                                {completed
-                                  ? "Completed"
-                                  : notReached
-                                  ? "Not reached"
-                                  : "In progress"}
-                              </span>
-                            ) : (
-                              <span className="text-xs text-gray-500">No goal set</span>
-                            )}
-</td>
+                                >
+                                  <span
+                                    className={`h-2 w-2 rounded-full ${
+                                      completed
+                                        ? "bg-emerald-500"
+                                        : notReached
+                                        ? "bg-red-500"
+                                        : "bg-amber-500"
+                                    }`}
+                                  />
+                                  {completed
+                                    ? "Completed"
+                                    : notReached
+                                    ? "Not reached"
+                                    : "In progress"}
+                                </span>
+                              ) : (
+                                <span className="text-xs text-gray-500">No goal set</span>
+                              )}
+                            </td>
 
-                          <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
-                            {duration ? `${duration} day(s)` : "—"}
-                          </td>
-                        </tr>
-                        </>
+                            <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
+                              {duration ? `${duration} day(s)` : "—"}
+                            </td>
+                          </tr>
+                        </tbody>
                       );
                     })}
                   </tbody>
@@ -609,20 +611,11 @@ function StatCard({ label, value }: { label: string; value: string }) {
 function FancyBg() {
   return (
     <div className="pointer-events-none fixed inset-0 -z-10">
-      {/* Clean luxury base */}
       <div className="absolute inset-0 bg-[#F8F6F1]" />
-
-      {/* Deep contrast blobs */}
       <div className="absolute -top-72 -right-40 h-[900px] w-[900px] rounded-full bg-[#1F3F3F]/25 blur-3xl" />
       <div className="absolute bottom-[-25%] left-[-15%] h-[1000px] w-[1000px] rounded-full bg-[#B8963D]/20 blur-3xl" />
-
-      {/* Subtle radial glow */}
       <div className="absolute inset-0 bg-[radial-gradient(1000px_circle_at_70%_20%,rgba(184,150,61,0.15),transparent_60%)]" />
-
-      {/* Elegant vignette */}
       <div className="absolute inset-0 bg-[radial-gradient(900px_circle_at_50%_10%,transparent_50%,rgba(0,0,0,0.08))]" />
-
-      {/* Premium grain texture (make sure noise.png is in /public) */}
       <div className="absolute inset-0 opacity-[0.03] mix-blend-multiply bg-[url('/noise.png')]" />
     </div>
   );

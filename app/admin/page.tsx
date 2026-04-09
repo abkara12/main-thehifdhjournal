@@ -3,18 +3,10 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { onAuthStateChanged, User } from "firebase/auth";
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  orderBy,
-  query,
-  where,
-} from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, orderBy, query } from "firebase/firestore";
 import { auth, db } from "../lib/firebase";
 
-type StudentOption = { uid: string; username: string };
+type StudentOption = { id: string; fullName: string };
 
 function getDateKeySA() {
   const now = new Date();
@@ -44,29 +36,20 @@ function PageShell({
 }) {
   return (
     <main className="min-h-screen text-gray-900">
-      {/* Background (matches your site vibe) */}
-     <div className="pointer-events-none fixed inset-0 -z-10">
-  {/* Clean luxury base */}
-  <div className="absolute inset-0 bg-[#F8F6F1]" />
+      <div className="pointer-events-none fixed inset-0 -z-10">
+        <div className="absolute inset-0 bg-[#F8F6F1]" />
+        <div className="absolute -top-72 -right-40 h-[900px] w-[900px] rounded-full bg-[#1F3F3F]/25 blur-3xl" />
+        <div className="absolute bottom-[-25%] left-[-15%] h-[1000px] w-[1000px] rounded-full bg-[#B8963D]/20 blur-3xl" />
+        <div className="absolute inset-0 bg-[radial-gradient(1000px_circle_at_70%_20%,rgba(184,150,61,0.15),transparent_60%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(900px_circle_at_50%_10%,transparent_50%,rgba(0,0,0,0.08))]" />
+        <div className="absolute inset-0 opacity-[0.035] mix-blend-multiply bg-[url('/noise.png')]" />
+      </div>
 
-  {/* Deep contrast blobs */}
-  <div className="absolute -top-72 -right-40 h-[900px] w-[900px] rounded-full bg-[#1F3F3F]/25 blur-3xl" />
-  <div className="absolute bottom-[-25%] left-[-15%] h-[1000px] w-[1000px] rounded-full bg-[#B8963D]/20 blur-3xl" />
-
-  {/* Subtle radial glow */}
-  <div className="absolute inset-0 bg-[radial-gradient(1000px_circle_at_70%_20%,rgba(184,150,61,0.15),transparent_60%)]" />
-
-  {/* Elegant vignette */}
-  <div className="absolute inset-0 bg-[radial-gradient(900px_circle_at_50%_10%,transparent_50%,rgba(0,0,0,0.08))]" />
-
-  {/* Noise */}
-  <div className="absolute inset-0 opacity-[0.035] mix-blend-multiply bg-[url('/noise.png')]" />
-</div>
       <div className="max-w-5xl mx-auto px-6 sm:px-10 py-10">
         <div className="flex items-start justify-between gap-6">
           <div>
             <p className="uppercase tracking-widest text-xs text-[#B8963D]">
-              Admin Portal
+              Madrassah Dashboard
             </p>
             <h1 className="mt-2 text-3xl sm:text-4xl font-semibold tracking-tight">
               {title}
@@ -78,9 +61,7 @@ function PageShell({
             ) : null}
           </div>
 
-          {rightSlot ? (
-            <div className="shrink-0">{rightSlot}</div>
-          ) : null}
+          {rightSlot ? <div className="shrink-0">{rightSlot}</div> : null}
         </div>
 
         <div className="mt-8">{children}</div>
@@ -91,7 +72,7 @@ function PageShell({
 
 function SkeletonCard() {
   return (
-    <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur-xl backdrop-blur p-6 shadow-sm">
+    <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur p-6 shadow-sm">
       <div className="h-4 w-28 bg-black/10 rounded-full animate-pulse" />
       <div className="mt-3 h-8 w-2/3 bg-black/10 rounded-2xl animate-pulse" />
       <div className="mt-6 grid gap-3">
@@ -105,11 +86,13 @@ function SkeletonCard() {
 export default function AdminPage() {
   const [me, setMe] = useState<User | null>(null);
   const [checking, setChecking] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [role, setRole] = useState<string | null>(null);
+  const [madrassahId, setMadrassahId] = useState<string | null>(null);
+  const [madrassahName, setMadrassahName] = useState<string>("");
 
   const [students, setStudents] = useState<StudentOption[]>([]);
   const [loadingStudents, setLoadingStudents] = useState(false);
-  const [selectedUid, setSelectedUid] = useState<string>("");
+  const [selectedStudentId, setSelectedStudentId] = useState<string>("");
 
   const [err, setErr] = useState<string | null>(null);
 
@@ -120,15 +103,44 @@ export default function AdminPage() {
       setMe(u);
 
       if (!u) {
-        setIsAdmin(false);
+        setRole(null);
+        setMadrassahId(null);
+        setMadrassahName("");
         setChecking(false);
         return;
       }
 
       try {
-        const myDoc = await getDoc(doc(db, "users", u.uid));
-        const role = myDoc.exists() ? (myDoc.data() as any).role : null;
-        setIsAdmin(role === "admin");
+        const mySnap = await getDoc(doc(db, "users", u.uid));
+
+        if (!mySnap.exists()) {
+          setRole(null);
+          setMadrassahId(null);
+          setMadrassahName("");
+          setErr("Your account record was not found.");
+          return;
+        }
+
+        const myData = mySnap.data() as {
+          role?: string;
+          madrassahId?: string;
+          madrassahName?: string;
+          isActive?: boolean;
+        };
+
+        if (myData.isActive === false) {
+          setErr("This account is inactive.");
+          setRole(null);
+          setMadrassahId(null);
+          setMadrassahName("");
+          return;
+        }
+
+        setRole(myData.role ?? null);
+        setMadrassahId(myData.madrassahId ?? null);
+        setMadrassahName(myData.madrassahName ?? "");
+      } catch (e: any) {
+        setErr(e?.message ?? "Could not load your account.");
       } finally {
         setChecking(false);
       }
@@ -139,33 +151,28 @@ export default function AdminPage() {
 
   useEffect(() => {
     async function loadStudents() {
-      if (!isAdmin) return;
+      if (!madrassahId || !role || !["admin", "teacher"].includes(role)) return;
 
       setLoadingStudents(true);
       setErr(null);
 
       try {
-        // Requires composite index (role + email) which you already created
-        const qy = query(
-          collection(db, "users"),
-          where("role", "==", "student"),
-          orderBy("username")
-        );
-
+        const studentsRef = collection(db, "madrassahs", madrassahId, "students");
+        const qy = query(studentsRef, orderBy("fullName"));
         const snap = await getDocs(qy);
-       const list: StudentOption[] = snap.docs.map((d) => {
-  const data = d.data() as any;
-  return {
-    uid: d.id,
-    username: (data.username || data.email || "Unnamed").toString(),
-  };
-});
+
+        const list: StudentOption[] = snap.docs.map((d) => {
+          const data = d.data() as any;
+          return {
+            id: d.id,
+            fullName: (data.fullName || "Unnamed Student").toString(),
+          };
+        });
 
         setStudents(list);
 
-        // auto-select first (nice UX)
-        if (!selectedUid && list.length > 0) {
-          setSelectedUid(list[0].uid);
+        if (!selectedStudentId && list.length > 0) {
+          setSelectedStudentId(list[0].id);
         }
       } catch (e: any) {
         setErr(e?.message ?? "Could not load students.");
@@ -175,10 +182,8 @@ export default function AdminPage() {
     }
 
     loadStudents();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdmin]);
+  }, [madrassahId, role, selectedStudentId]);
 
-  // Smooth loading: do NOT show “not admin” until checking is done
   if (checking) {
     return (
       <PageShell title="Loading…" subtitle="Just a moment.">
@@ -191,7 +196,7 @@ export default function AdminPage() {
     return (
       <PageShell
         title="Please sign in"
-        subtitle="You need to be signed in as the admin to manage students."
+        subtitle="You need to be signed in to access the madrassah dashboard."
         rightSlot={
           <Link
             href="/"
@@ -202,9 +207,7 @@ export default function AdminPage() {
         }
       >
         <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur p-7 shadow-sm">
-          <p className="text-gray-700">
-            Go to login, then come back to the admin dashboard.
-          </p>
+          <p className="text-gray-700">Go to login, then come back to the dashboard.</p>
           <div className="mt-5 flex flex-wrap gap-3">
             <Link
               href="/login"
@@ -224,11 +227,11 @@ export default function AdminPage() {
     );
   }
 
-  if (!isAdmin) {
+  if (!role || !["admin", "teacher"].includes(role)) {
     return (
       <PageShell
         title="Access denied"
-        subtitle='This account is not marked as admin in Firestore. (It needs role: "admin")'
+        subtitle="This account does not have permission to use the madrassah dashboard."
         rightSlot={
           <Link
             href="/"
@@ -241,22 +244,29 @@ export default function AdminPage() {
         <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur p-7 shadow-sm">
           <div className="text-sm text-gray-600">Signed in as</div>
           <div className="mt-1 font-semibold">{me.email}</div>
+        </div>
+      </PageShell>
+    );
+  }
 
-          <div className="mt-5 text-sm text-gray-700">
-            In Firestore → <code className="font-mono">users/{me.uid}</code> set{" "}
-            <code className="font-mono">role</code> to{" "}
-            <code className="font-mono">"admin"</code>.
-          </div>
-
-          <div className="mt-6 flex flex-wrap gap-3">
-      
-            <Link
-              href="/"
-              className="inline-flex items-center justify-center h-11 px-6 rounded-full border border-gray-300 bg-white/70 hover:bg-white text-sm font-semibold"
-            >
-              Home
-            </Link>
-          </div>
+  if (!madrassahId) {
+    return (
+      <PageShell
+        title="No madrassah linked"
+        subtitle="This account is missing a madrassah connection."
+        rightSlot={
+          <Link
+            href="/"
+            className="inline-flex items-center justify-center h-11 px-5 rounded-full border border-gray-300 bg-white/70 hover:bg-white transition-colors text-sm font-semibold"
+          >
+            Home
+          </Link>
+        }
+      >
+        <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur p-7 shadow-sm">
+          <p className="text-gray-700">
+            Your account exists, but no madrassah is linked to it yet.
+          </p>
         </div>
       </PageShell>
     );
@@ -264,8 +274,10 @@ export default function AdminPage() {
 
   return (
     <PageShell
-      title="Admin Dashboard"
-      subtitle={`Select a student, then log their work for today (${today}).`}
+      title={role === "admin" ? "Admin Dashboard" : "Teacher Dashboard"}
+      subtitle={`${
+        madrassahName || "Your madrassah"
+      } • Select a student, then log their work for today (${today}).`}
       rightSlot={
         <Link
           href="/"
@@ -287,19 +299,17 @@ export default function AdminPage() {
 
             <div className="inline-flex items-center gap-2 rounded-full border border-gray-300 bg-white/70 px-4 py-2 text-xs font-semibold text-gray-700">
               <span className="h-2 w-2 rounded-full bg-emerald-500" />
-              Admin active
+              {role === "admin" ? "Admin active" : "Teacher active"}
             </div>
           </div>
 
           <div className="mt-6 grid gap-3">
-            <label className="text-sm font-semibold text-gray-900">
-              Students
-            </label>
+            <label className="text-sm font-semibold text-gray-900">Students</label>
 
             <div className="relative">
               <select
-                value={selectedUid}
-                onChange={(e) => setSelectedUid(e.target.value)}
+                value={selectedStudentId}
+                onChange={(e) => setSelectedStudentId(e.target.value)}
                 className="w-full h-12 rounded-2xl border border-gray-300 bg-white/80 px-4 pr-10 outline-none focus:ring-2 focus:ring-[#B8963D]/30"
                 disabled={loadingStudents}
               >
@@ -309,8 +319,8 @@ export default function AdminPage() {
                   <option>No students found</option>
                 ) : (
                   students.map((s) => (
-                    <option key={s.uid} value={s.uid}>
-                      {s.username}
+                    <option key={s.id} value={s.id}>
+                      {s.fullName}
                     </option>
                   ))
                 )}
@@ -329,34 +339,30 @@ export default function AdminPage() {
 
             <div className="mt-2 flex flex-col sm:flex-row gap-3">
               <Link
-                href={selectedUid ? `/admin/student/${selectedUid}` : "/admin"}
+                href={selectedStudentId ? `/admin/student/${selectedStudentId}` : "/admin"}
                 className={`inline-flex items-center justify-center h-12 px-6 rounded-2xl text-sm font-semibold transition-colors shadow-sm ${
-                  selectedUid
+                  selectedStudentId
                     ? "bg-[#111111] text-white hover:bg-[#1c1c1c] shadow-lg shadow-black/10"
                     : "bg-black/40 text-white cursor-not-allowed"
                 }`}
-                aria-disabled={!selectedUid}
+                aria-disabled={!selectedStudentId}
                 onClick={(e) => {
-                  if (!selectedUid) e.preventDefault();
+                  if (!selectedStudentId) e.preventDefault();
                 }}
               >
                 Log work for student →
               </Link>
 
               <Link
-                href={
-                  selectedUid
-                    ? `/admin/student/${selectedUid}/overview`
-                    : "/admin"
-                }
+                href={selectedStudentId ? `/admin/student/${selectedStudentId}/overview` : "/admin"}
                 className={`inline-flex items-center justify-center h-12 px-6 rounded-2xl border text-sm font-semibold transition-colors ${
-                  selectedUid
+                  selectedStudentId
                     ? "border-gray-300 bg-white/70 hover:bg-white"
                     : "border-gray-300 bg-white/40 text-gray-500 cursor-not-allowed"
                 }`}
-                aria-disabled={!selectedUid}
+                aria-disabled={!selectedStudentId}
                 onClick={(e) => {
-                  if (!selectedUid) e.preventDefault();
+                  if (!selectedStudentId) e.preventDefault();
                 }}
               >
                 View student overview
@@ -365,18 +371,13 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* Optional small footer note (clean + not boring) */}
-        <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur-xl backdrop-blur p-6 shadow-sm">
-          <div className="text-sm font-semibold text-gray-900">
-            Tip for faster workflow
-          </div>
+        <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur p-6 shadow-sm">
+          <div className="text-sm font-semibold text-gray-900">Tip for faster workflow</div>
           <p className="mt-1 text-sm text-gray-700">
-            Keep this page open on your phone. Select the student → log work →
-            save → next student.
+            Keep this page open on your phone. Select the student → log work → save → next student.
           </p>
         </div>
       </div>
     </PageShell>
   );
 }
-
