@@ -29,12 +29,10 @@ export default function SignupPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [username, setUsername] = useState("");
+  const [phone, setPhone] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-
-  const [parentName, setParentName] = useState("");
-  const [parentPhone, setParentPhone] = useState("");
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -45,22 +43,18 @@ export default function SignupPage() {
       const cleanEmail = email.trim().toLowerCase();
       const cred = await createUserWithEmailAndPassword(auth, cleanEmail, password);
 
-      // ✅ Create a profile doc so Admin can search students by email + set roles
-     await setDoc(
-  doc(db, "users", cred.user.uid),
-  {
-    email: (cred.user.email ?? cleanEmail).toLowerCase(),
-    username: username.trim(),
-
-    parentName: parentName.trim(),
-    parentPhone: parentPhone.trim(),
-
-    role: "student",
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  },
-  { merge: true }
-);
+      await setDoc(
+        doc(db, "users", cred.user.uid),
+        {
+          email: (cred.user.email ?? cleanEmail).toLowerCase(),
+          username: username.trim(),
+          phone: phone.trim(),
+          role: "student",
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
 
       router.push("/");
     } catch (error: any) {
@@ -72,65 +66,49 @@ export default function SignupPage() {
 
   return (
     <main className="min-h-screen text-gray-900">
-      {/* background */}
-     <div className="pointer-events-none fixed inset-0 -z-10">
-  {/* Clean luxury base */}
-  <div className="absolute inset-0 bg-[#F8F6F1]" />
-
-  {/* Deep contrast blobs */}
-  <div className="absolute -top-72 -right-40 h-[900px] w-[900px] rounded-full bg-[#1F3F3F]/25 blur-3xl" />
-  <div className="absolute bottom-[-25%] left-[-15%] h-[1000px] w-[1000px] rounded-full bg-[#B8963D]/20 blur-3xl" />
-
-  {/* Subtle radial glow */}
-  <div className="absolute inset-0 bg-[radial-gradient(1000px_circle_at_70%_20%,rgba(184,150,61,0.15),transparent_60%)]" />
-
-  {/* Elegant vignette */}
-  <div className="absolute inset-0 bg-[radial-gradient(900px_circle_at_50%_10%,transparent_50%,rgba(0,0,0,0.08))]" />
-
-  {/* Noise */}
-  <div className="absolute inset-0 opacity-[0.035] mix-blend-multiply bg-[url('/noise.png')]" />
-</div>
+      <div className="pointer-events-none fixed inset-0 -z-10">
+        <div className="absolute inset-0 bg-[#F8F6F1]" />
+        <div className="absolute -top-72 -right-40 h-[900px] w-[900px] rounded-full bg-[#1F3F3F]/25 blur-3xl" />
+        <div className="absolute bottom-[-25%] left-[-15%] h-[1000px] w-[1000px] rounded-full bg-[#B8963D]/20 blur-3xl" />
+        <div className="absolute inset-0 bg-[radial-gradient(1000px_circle_at_70%_20%,rgba(184,150,61,0.15),transparent_60%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(900px_circle_at_50%_10%,transparent_50%,rgba(0,0,0,0.08))]" />
+        <div className="absolute inset-0 opacity-[0.035] mix-blend-multiply bg-[url('/noise.png')]" />
+      </div>
 
       <div className="max-w-6xl mx-auto px-6 sm:px-10 py-10">
-        {/* top */}
         <div className="flex items-center justify-between">
           <Link href="/" className="inline-flex items-center gap-3">
             <div className="h-[80px] w-[85px] rounded-xl bg-white/100 backdrop-blur border border-gray-300 shadow-sm grid place-items-center">
               <Image src="/logo4.png" alt="Hifdh Journal" width={58} height={58} className="rounded" />
             </div>
           </Link>
+
           <Link href="/login" className="text-sm font-medium text-gray-700 hover:text-black">
             Already have an account? <span className="text-[#B8963D]">Sign In</span>
           </Link>
         </div>
 
         <div className="mt-10 grid lg:grid-cols-12 gap-8 items-stretch">
-          {/* left */}
           <div className="lg:col-span-6">
-            <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur-xl backdrop-blur p-8 shadow-lg">
-              <p className="uppercase tracking-widest text-xs text-[#B8963D]">Student Portal</p>
+            <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur-xl p-8 shadow-lg">
+              <p className="uppercase tracking-widest text-xs text-[#B8963D]">Hifdh Journal</p>
               <h1 className="mt-3 text-4xl font-bold tracking-tight leading-tight">
                 Create your account
               </h1>
               <p className="mt-3 text-gray-700 leading-relaxed">
-                Sign up to track <span className="font-semibold">Sabak</span>,{" "}
-                <span className="font-semibold">Sabak Dhor</span>,{" "}
-                <span className="font-semibold">Dhor</span> and your{" "}
-                <span className="font-semibold">weekly goals</span>.
+                Create your account to access the Hifdh Journal system.
               </p>
 
               <div className="mt-6 grid grid-cols-2 gap-3">
-                {["Secure login", "Private progress", "Weekly targets", "Clean overview"].map(
-                  (t) => (
-                    <div
-                      key={t}
-                      className="rounded-2xl border border-gray-300 bg-white/70 px-4 py-4 text-sm font-medium"
-                    >
-                      {t}
-                      <div className="mt-1 h-1 w-10 rounded-full bg-[#B8963D]/60" />
-                    </div>
-                  )
-                )}
+                {["Secure login", "Private access", "Easy setup", "Clean dashboard"].map((t) => (
+                  <div
+                    key={t}
+                    className="rounded-2xl border border-gray-300 bg-white/70 px-4 py-4 text-sm font-medium"
+                  >
+                    {t}
+                    <div className="mt-1 h-1 w-10 rounded-full bg-[#B8963D]/60" />
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -144,12 +122,11 @@ export default function SignupPage() {
             </div>
           </div>
 
-          {/* right form */}
           <div className="lg:col-span-6">
             <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur p-8 shadow-lg">
               <h2 className="text-2xl font-semibold tracking-tight">Sign Up</h2>
               <p className="mt-2 text-sm text-gray-600">
-                Use your email to create your student account.
+                Use your details to create your account.
               </p>
 
               {err && (
@@ -159,55 +136,38 @@ export default function SignupPage() {
               )}
 
               <form onSubmit={onSubmit} className="mt-6 grid gap-4">
-              <div>
-              <label className="text-sm font-medium text-gray-800">
-              Student's Name
-              </label>
-              <input
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              type="text"
-                required
-                  placeholder="e.g. Muhammad Ahmed"
-                className="mt-2 w-full h-12 rounded-2xl border border-gray-300 bg-white/80 px-4 outline-none focus:ring-2 focus:ring-[#B8963D]/40"
-                />
-                </div>
                 <div>
-
-                                <div>
-                  <label className="text-sm font-medium text-gray-800">
-                    Parent's Name
-                  </label>
+                  <label className="text-sm font-medium text-gray-800">Full Name</label>
                   <input
-                    value={parentName}
-                    onChange={(e) => setParentName(e.target.value)}
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
                     type="text"
                     required
-                    placeholder="e.g. Ahmed Khan"
+                    placeholder="e.g. Ustadh Muhammad Ahmed"
                     className="mt-2 w-full h-12 rounded-2xl border border-gray-300 bg-white/80 px-4 outline-none focus:ring-2 focus:ring-[#B8963D]/40"
                   />
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium text-gray-800">
-                    Parent's Phone Number
-                  </label>
+                  <label className="text-sm font-medium text-gray-800">Phone Number</label>
                   <input
-                    value={parentPhone}
-                    onChange={(e) => setParentPhone(e.target.value)}
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
                     type="tel"
                     required
                     placeholder="e.g. 082 123 4567"
                     className="mt-2 w-full h-12 rounded-2xl border border-gray-300 bg-white/80 px-4 outline-none focus:ring-2 focus:ring-[#B8963D]/40"
                   />
                 </div>
+
+                <div>
                   <label className="text-sm font-medium text-gray-800">Email</label>
                   <input
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     type="email"
                     required
-                    placeholder="Parent's Email"
+                    placeholder="e.g. name@email.com"
                     className="mt-2 w-full h-12 rounded-2xl border border-gray-300 bg-white/80 px-4 outline-none focus:ring-2 focus:ring-[#B8963D]/40"
                   />
                 </div>
@@ -242,7 +202,7 @@ export default function SignupPage() {
                 </button>
 
                 <div className="text-sm text-gray-600 text-center">
-                  By signing up you agree to use the portal respectfully.
+                  Parent details can be added later for each student profile.
                 </div>
               </form>
 
@@ -253,7 +213,6 @@ export default function SignupPage() {
                 </Link>
               </div>
             </div>
-
           </div>
         </div>
       </div>
