@@ -476,114 +476,110 @@ export default function AdminStudentOverviewPage() {
                       const completed = Boolean(completedKey);
 
                       return (
-                        <tbody key={`group-${r.id}`}>
-                          {showMonthHeader && (
-                            <tr>
-                              <td
-                                colSpan={17}
-                                className="bg-gradient-to-r from-[#B8963D]/15 to-transparent text-sm font-semibold text-gray-900 py-4 px-4 uppercase tracking-wider"
-                              >
-                                {currentMonthLabel}
-                              </td>
-                            </tr>
-                          )}
+  <>
+    {showMonthHeader && (
+      <tr key={`month-${r.id}`}>
+        <td
+          colSpan={17}
+          className="bg-gradient-to-r from-[#B8963D]/15 to-transparent text-sm font-semibold text-gray-900 py-4 px-4 uppercase tracking-wider"
+        >
+          {currentMonthLabel}
+        </td>
+      </tr>
+    )}
 
-                          <tr className="text-sm hover:bg-black/[0.02] transition-colors">
-                            <td className="py-4 pr-4 pl-2 font-medium text-gray-600">
-                              {getDayName(r.dateKey)}
-                            </td>
-                            <td className="py-4 pr-4 pl-2 font-medium text-gray-900">
-                              {r.dateKey ?? r.id}
-                            </td>
+    <tr key={r.id} className="text-sm hover:bg-black/[0.02] transition-colors">
+      <td className="py-4 pr-4 pl-2 font-medium text-gray-600">
+        {getDayName(r.dateKey)}
+      </td>
+      <td className="py-4 pr-4 pl-2 font-medium text-gray-900">
+        {r.dateKey ?? r.id}
+      </td>
 
-                            <td className="py-4 px-4 border-l border-gray-100">
-                              {r.attendance === "present" ? (
-                                <span className="text-emerald-600 font-semibold">Present</span>
-                              ) : r.attendance === "absent" ? (
-                                <span className="text-red-600 font-semibold">Absent</span>
-                              ) : (
-                                "—"
-                              )}
-                            </td>
+      <td className="py-4 px-4 border-l border-gray-100">
+        {r.attendance === "present" ? (
+          <span className="text-emerald-600 font-semibold">Present</span>
+        ) : r.attendance === "absent" ? (
+          <span className="text-red-600 font-semibold">Absent</span>
+        ) : (
+          "—"
+        )}
+      </td>
 
-                            <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
-                              {toText(r.sabak) || "—"}
-                            </td>
-                            <td className="py-4 px-4 text-gray-700 border-l border-gray-100">
-                              {toText(r.sabakRead) || "—"}
-                            </td>
-                            <td className="py-4 px-4 text-gray-700 border-l border-gray-100 max-w-[200px]">
-                              {toText(r.sabakReadNotes) || "—"}
-                            </td>
+      <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
+        {toText(r.sabak) || "—"}
+      </td>
+      <td className="py-4 px-4 text-gray-700 border-l border-gray-100">
+        {toText(r.sabakRead) || "—"}
+      </td>
+      <td className="py-4 px-4 text-gray-700 border-l border-gray-100 max-w-[200px]">
+        {toText(r.sabakReadNotes) || "—"}
+      </td>
 
-                            <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
-                              {toText(r.sabakDhor) || "—"}
-                            </td>
-                            <td className="py-4 px-4 text-gray-700 border-l border-gray-100">
-                              {toText(r.sabakDhorRead) || "—"}
-                            </td>
-                            <td className="py-4 px-4 text-gray-700 border-l border-gray-100 max-w-[200px]">
-                              {toText(r.sabakDhorReadNotes) || "—"}
-                            </td>
+      <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
+        {toText(r.sabakDhor) || "—"}
+      </td>
+      <td className="py-4 px-4 text-gray-700 border-l border-gray-100">
+        {toText(r.sabakDhorRead) || "—"}
+      </td>
+      <td className="py-4 px-4 text-gray-700 border-l border-gray-100 max-w-[200px]">
+        {toText(r.sabakDhorReadNotes) || "—"}
+      </td>
 
-                            <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
-                              {toText(r.dhor) || "—"}
-                            </td>
-                            <td className="py-4 px-4 text-gray-700 border-l border-gray-100">
-                              {toText(r.dhorRead) || "—"}
-                            </td>
-                            <td className="py-4 px-4 text-gray-700 border-l border-gray-100 max-w-[200px]">
-                              {toText(r.dhorReadNotes) || "—"}
-                            </td>
+      <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
+        {toText(r.dhor) || "—"}
+      </td>
+      <td className="py-4 px-4 text-gray-700 border-l border-gray-100">
+        {toText(r.dhorRead) || "—"}
+      </td>
+      <td className="py-4 px-4 text-gray-700 border-l border-gray-100 max-w-[200px]">
+        {toText(r.dhorReadNotes) || "—"}
+      </td>
 
-                            <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
-                              {toText(r.sabakDhorMistakes) || "—"}
-                            </td>
-                            <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
-                              {toText(r.dhorMistakes) || "—"}
-                            </td>
+      <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
+        {toText(r.sabakDhorMistakes) || "—"}
+      </td>
+      <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
+        {toText(r.dhorMistakes) || "—"}
+      </td>
 
-                            <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
-                              {toText(r.weeklyGoal) || "—"}
-                            </td>
+      <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
+        {toText(r.weeklyGoal) || "—"}
+      </td>
 
-                            <td className="py-4 px-4 border-l border-gray-100">
-                              {g > 0 ? (
-                                <span
-                                  className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold border ${
-                                    completed
-                                      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                                      : notReached
-                                      ? "border-red-200 bg-red-50 text-red-700"
-                                      : "border-amber-200 bg-amber-50 text-amber-700"
-                                  }`}
-                                >
-                                  <span
-                                    className={`h-2 w-2 rounded-full ${
-                                      completed
-                                        ? "bg-emerald-500"
-                                        : notReached
-                                        ? "bg-red-500"
-                                        : "bg-amber-500"
-                                    }`}
-                                  />
-                                  {completed
-                                    ? "Completed"
-                                    : notReached
-                                    ? "Not reached"
-                                    : "In progress"}
-                                </span>
-                              ) : (
-                                <span className="text-xs text-gray-500">No goal set</span>
-                              )}
-                            </td>
+      <td className="py-4 px-4 border-l border-gray-100">
+        {g > 0 ? (
+          <span
+            className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold border ${
+              completed
+                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                : notReached
+                ? "border-red-200 bg-red-50 text-red-700"
+                : "border-amber-200 bg-amber-50 text-amber-700"
+            }`}
+          >
+            <span
+              className={`h-2 w-2 rounded-full ${
+                completed
+                  ? "bg-emerald-500"
+                  : notReached
+                  ? "bg-red-500"
+                  : "bg-amber-500"
+              }`}
+            />
+            {completed ? "Completed" : notReached ? "Not reached" : "In progress"}
+          </span>
+        ) : (
+          <span className="text-xs text-gray-500">No goal set</span>
+        )}
+      </td>
 
-                            <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
-                              {duration ? `${duration} day(s)` : "—"}
-                            </td>
-                          </tr>
-                        </tbody>
-                      );
+      <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
+        {duration ? `${duration} day(s)` : "—"}
+      </td>
+    </tr>
+  </>
+);
                     })}
                   </tbody>
                 </table>
