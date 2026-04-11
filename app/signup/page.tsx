@@ -46,17 +46,19 @@ function slugifyMadrassahName(value: string) {
 }
 
 function makeReadableJoinCode(name: string) {
-  const base = name
+  const cleaned = name
     .toUpperCase()
-    .replace(/[^A-Z0-9 ]/g, "")
-    .split(" ")
-    .filter(Boolean)
-    .join("");
+    .replace(/[^A-Z0-9 ]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 
-  const cleanedBase = base.slice(0, 10) || "MADRASSAH";
-  const random4 = Math.floor(1000 + Math.random() * 9000);
+  const words = cleaned.split(" ").filter(Boolean);
+  const joined = words.join("");
 
-  return `${cleanedBase}${random4}`;
+  const base = (joined || "MADRASSAH").slice(0, 10);
+  const random2 = String(Math.floor(Math.random() * 100)).padStart(2, "0");
+
+  return `${base}-${random2}`;
 }
 
 function makeReportAccessKey() {
@@ -66,7 +68,7 @@ function makeReportAccessKey() {
 }
 
 async function generateUniqueJoinCode(name: string) {
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < 20; i++) {
     const code = makeReadableJoinCode(name);
     const q = query(
       collection(db, "madrassahs"),
@@ -373,7 +375,7 @@ export default function SignupPage() {
                       onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
                       type="text"
                       required
-                      placeholder="e.g. UMMABBAD4821"
+                      placeholder="e.g. UMMABBAD-21"
                       className="mt-2 w-full h-12 rounded-2xl border border-gray-300 bg-white/80 px-4 outline-none uppercase focus:ring-2 focus:ring-[#B8963D]/40"
                     />
                   </div>

@@ -263,7 +263,7 @@ export default function AdminStudentOverviewPage() {
                 Home
               </Link>
               <Link href="/admin" className="underline">
-                Dashboard
+                 Admin Dashboard
               </Link>
             </div>
           </div>

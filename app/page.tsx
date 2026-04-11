@@ -920,7 +920,7 @@ export default function Home() {
                     {user ? (
                       isDashboardUser ? (
                         <a href="/admin" className="block text-sm text-gray-700 hover:text-black">
-                          Dashboard
+                           Admin Dashboard
                         </a>
                       ) : (
                         <a href="/overview" className="block text-sm text-gray-700 hover:text-black">
