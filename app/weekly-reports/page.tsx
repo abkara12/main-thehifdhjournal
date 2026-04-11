@@ -20,6 +20,18 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function escapeForTemplateLiteral(value: string) {
+  return value.replace(/\\/g, "\\\\").replace(/`/g, "\\`").replace(/\$\{/g, "\\${");
+}
+
 function formatReportText({
   studentName,
   madrassahName,
@@ -215,7 +227,7 @@ export default async function WeeklyReportsPage({
     <main style={{ fontFamily: "sans-serif", background: "#f6f6f6", minHeight: "100vh", padding: 20 }}>
       <div style={{ maxWidth: 1000, margin: "0 auto" }}>
         <h1 style={{ marginBottom: 8 }}>Weekly Hifdh Reports</h1>
-        <p style={{ marginTop: 0, color: "#555" }}>{madrassahName}</p>
+        <p style={{ marginTop: 0, color: "#555" }}>{escapeHtml(madrassahName)}</p>
 
         {reports.map((r, i) => (
           <div
@@ -228,13 +240,14 @@ export default async function WeeklyReportsPage({
               background: "#ffffff",
             }}
           >
-            <h2 style={{ marginBottom: 6 }}>{r.student}</h2>
+            <h2 style={{ marginBottom: 6 }}>{escapeHtml(r.student)}</h2>
+
             <div style={{ color: "#666", fontSize: 14, marginBottom: 12 }}>
-              Parent: {r.parentName || "-"}
+              Parent: {escapeHtml(r.parentName || "-")}
               <br />
-              Phone: {r.parentPhone || "-"}
+              Phone: {escapeHtml(r.parentPhone || "-")}
               <br />
-              Email: {r.parentEmail || "-"}
+              Email: {escapeHtml(r.parentEmail || "-")}
             </div>
 
             <pre
@@ -260,12 +273,44 @@ export default async function WeeklyReportsPage({
                 borderRadius: 8,
                 cursor: "pointer",
               }}
-              onClick={() => navigator.clipboard.writeText(r.report)}
-            >
-              Copy to Clipboard
-            </button>
+              dangerouslySetInnerHTML={{
+                __html: "Copy to Clipboard",
+              }}
+              onClick={undefined as never}
+            />
+
+            <script
+              dangerouslySetInnerHTML={{
+                __html: `
+                  (function(){
+                    const buttons = document.querySelectorAll('[data-copy-report]');
+                    buttons.forEach(function(btn){
+                      if (btn.dataset.bound === '1') return;
+                      btn.dataset.bound = '1';
+                      btn.addEventListener('click', function(){
+                        navigator.clipboard.writeText(btn.getAttribute('data-copy-report') || '');
+                      });
+                    });
+                  })();
+                `,
+              }}
+            />
           </div>
         ))}
+
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              document.querySelectorAll('button').forEach((btn, index) => {
+                const reports = ${JSON.stringify(reports.map((r) => r.report))};
+                btn.setAttribute('data-copy-report', reports[index] || '');
+                btn.addEventListener('click', function() {
+                  navigator.clipboard.writeText(this.getAttribute('data-copy-report') || '');
+                });
+              });
+            `,
+          }}
+        />
       </div>
     </main>
   );
