@@ -34,7 +34,6 @@ function InstallAppPrompt() {
   const [standalone, setStandalone] = useState(false);
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
 
-  // Shows on every visit until installed (but if they close it, we wait a short cooldown)
   const DISMISS_KEY = "pwa_install_dismissed_at";
   const DISMISS_COOLDOWN_HOURS = 6;
 
@@ -55,7 +54,6 @@ function InstallAppPrompt() {
     const dismissedAt = Number(localStorage.getItem(DISMISS_KEY) || "0");
     const hoursSince = dismissedAt ? (Date.now() - dismissedAt) / (1000 * 60 * 60) : 999;
 
-    // iOS: no native prompt; always show our instructions
     if (ios) {
       if (hoursSince >= DISMISS_COOLDOWN_HOURS) setOpen(true);
       return;
@@ -77,8 +75,6 @@ function InstallAppPrompt() {
     window.addEventListener("beforeinstallprompt", onBIP);
     window.addEventListener("appinstalled", onInstalled);
 
-    // Some browsers (incl. some Huawei) don't fire beforeinstallprompt.
-    // Still show the modal with manual instructions.
     if (hoursSince >= DISMISS_COOLDOWN_HOURS) setOpen(true);
 
     return () => {
@@ -88,7 +84,7 @@ function InstallAppPrompt() {
   }, []);
 
   async function handleInstall() {
-    if (!deferred) return; // show manual instructions in UI
+    if (!deferred) return;
     try {
       await deferred.prompt();
       const choice = await deferred.userChoice;
@@ -168,9 +164,6 @@ function InstallAppPrompt() {
               ) : (
                 <div>
                   A calm, focused space for daily Qur’an progress.
-                  <div className="mt-2 text-xs text-gray-600">
-              
-                  </div>
                 </div>
               )}
             </div>
@@ -206,7 +199,6 @@ function InstallAppPrompt() {
   );
 }
 
-/* ✅ Icons */
 function MenuIcon() {
   return (
     <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" aria-hidden="true">
@@ -253,7 +245,6 @@ function ChevronIcon({ open }: { open: boolean }) {
   );
 }
 
-/* ✅ Fancy icon for menu rows */
 function DotArrowIcon() {
   return (
     <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden="true">
@@ -328,7 +319,6 @@ function FeatureCard({
   );
 }
 
-/* ✅ Fancy reusable menu row (with glow + arrow) */
 function MenuRow({
   href,
   label,
@@ -378,52 +368,39 @@ function MenuRow({
 }
 
 export default function Home() {
-
-
   const router = useRouter();
 
-  /* ✅ mobile menu state */
   const [mobileOpen, setMobileOpen] = useState(false);
   const [menuState, setMenuState] = useState<"open" | "closed">("closed");
 
-  // ✅ Track auth state to show correct links
   const [user, setUser] = useState<User | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [role, setRole] = useState<string | null>(null);
+
+  const isDashboardUser = role === "admin" || role === "teacher";
 
   useEffect(() => {
-  const unsub = onAuthStateChanged(auth, async (u) => {
-    setUser(u);
-    setIsAdmin(false);
+    const unsub = onAuthStateChanged(auth, async (u) => {
+      setUser(u);
+      setRole(null);
 
-    if (!u) return;
+      if (!u) return;
 
-    try {
-      const snap = await getDoc(doc(db, "users", u.uid));
+      try {
+        const snap = await getDoc(doc(db, "users", u.uid));
+        if (!snap.exists()) return;
 
-      if (!snap.exists()) return;
+        const data = snap.data() as any;
+        const nextRole = data?.role ?? null;
+        setRole(nextRole);
 
-      const data = snap.data() as any;
-      const role = data?.role ?? null;
-      const accountType = data?.accountType ?? "parent";
-      const profileCompleted = data?.profileCompleted === true;
-
-      setIsAdmin(role === "admin");
-
-      if (role === "admin") return;
-
-      if (accountType === "ustad" || role === "pending_admin") return;
-
-      if (accountType === "parent" && !profileCompleted) {
-        router.push("/complete-profile");
-        return;
+        if (nextRole === "admin" || nextRole === "teacher") return;
+      } catch {
+        setRole(null);
       }
-    } catch {
-      setIsAdmin(false);
-    }
-  });
+    });
 
-  return () => unsub();
-}, [router]);
+    return () => unsub();
+  }, [router]);
 
   const footerLinks = useMemo(
     () => [
@@ -431,7 +408,7 @@ export default function Home() {
       { label: "About", href: "#about" },
       { label: "FAQ", href: "#faq" },
       { label: "Sign In", href: "/login" },
-      { label: "Enrol (Sign Up)", href: "/signup" },
+      { label: "Sign Up", href: "/signup" },
     ],
     []
   );
@@ -443,27 +420,17 @@ export default function Home() {
 
   return (
     <main id="top" className="min-h-screen bg-transparent text-gray-900">
-      {/* ✅ ALWAYS-ON install prompt until installed */}
       <InstallAppPrompt />
-<div className="pointer-events-none fixed inset-0 -z-10">
-  {/* Clean luxury base */}
-  <div className="absolute inset-0 bg-[#F8F6F1]" />
 
-  {/* Deep contrast blobs */}
-  <div className="absolute -top-72 -right-40 h-[900px] w-[900px] rounded-full bg-[#1F3F3F]/25 blur-3xl" />
-  <div className="absolute bottom-[-25%] left-[-15%] h-[1000px] w-[1000px] rounded-full bg-[#B8963D]/20 blur-3xl" />
+      <div className="pointer-events-none fixed inset-0 -z-10">
+        <div className="absolute inset-0 bg-[#F8F6F1]" />
+        <div className="absolute -top-72 -right-40 h-[900px] w-[900px] rounded-full bg-[#1F3F3F]/25 blur-3xl" />
+        <div className="absolute bottom-[-25%] left-[-15%] h-[1000px] w-[1000px] rounded-full bg-[#B8963D]/20 blur-3xl" />
+        <div className="absolute inset-0 bg-[radial-gradient(1000px_circle_at_70%_20%,rgba(184,150,61,0.15),transparent_60%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(900px_circle_at_50%_10%,transparent_50%,rgba(0,0,0,0.08))]" />
+        <div className="absolute inset-0 opacity-[0.03] mix-blend-multiply bg-[url('/noise.png')]" />
+      </div>
 
-  {/* Subtle radial glow */}
-  <div className="absolute inset-0 bg-[radial-gradient(1000px_circle_at_70%_20%,rgba(184,150,61,0.15),transparent_60%)]" />
-
-  {/* Elegant vignette */}
-  <div className="absolute inset-0 bg-[radial-gradient(900px_circle_at_50%_10%,transparent_50%,rgba(0,0,0,0.08))]" />
-
-  {/* 🔥 Premium grain texture (ADD THIS LAST) */}
-  <div className="absolute inset-0 opacity-[0.03] mix-blend-multiply bg-[url('/noise.png')]" />
-</div>
-
-      {/* NAVBAR */}
       <header className="max-w-7xl mx-auto px-6 sm:px-10 py-7 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <div className="h-[80px] w-[85px] rounded-xl bg-white/100 backdrop-blur border border-gray-300 shadow-sm grid place-items-center">
@@ -471,21 +438,24 @@ export default function Home() {
           </div>
         </div>
 
-        {/* ✅ Desktop actions */}
         <div className="hidden lg:flex items-center gap-3">
-
           {user ? (
             <>
-              {isAdmin ? (
+              {isDashboardUser ? (
                 <Link
                   href="/admin"
                   className="inline-flex items-center justify-center h-11 px-5 rounded-full text-sm font-medium text-gray-900 hover:bg-white/70 backdrop-blur-xl transition-colors"
                 >
-                  Admin Dashboard
+                  Dashboard
                 </Link>
-              ) : null}
-
-             
+              ) : (
+                <Link
+                  href="/overview"
+                  className="inline-flex items-center justify-center h-11 px-5 rounded-full text-sm font-medium text-gray-900 hover:bg-white/70 backdrop-blur-xl transition-colors"
+                >
+                  My Overview
+                </Link>
+              )}
             </>
           ) : (
             <>
@@ -505,7 +475,6 @@ export default function Home() {
           )}
         </div>
 
-        {/* ✅ Burger (mobile) */}
         <button
           type="button"
           onClick={() => {
@@ -520,7 +489,6 @@ export default function Home() {
         </button>
       </header>
 
-      {/* ✅ Fancy Mobile Menu */}
       {mobileOpen && (
         <div className="fixed inset-0 z-50">
           <div
@@ -548,7 +516,7 @@ export default function Home() {
                     <Image src="/logo4.png" alt="Hifdh Journal" width={58} height={58} className="rounded" priority />
                   </div>
                   <div>
-                    <div className="text-sm font-semibold leading-tight"> The Hifdh Journal</div>
+                    <div className="text-sm font-semibold leading-tight">The Hifdh Journal</div>
                     <div className="text-xs text-gray-700">Menu</div>
                   </div>
                 </div>
@@ -590,9 +558,11 @@ export default function Home() {
 
                 {user ? (
                   <>
-                    {isAdmin ? (
-                      <MenuRow href="/admin" label="Admin Dashboard" sub="Manage students" onClick={closeMenu} />
-                    ) : null}
+                    {isDashboardUser ? (
+                      <MenuRow href="/admin" label="Dashboard" sub="Manage students and logs" onClick={closeMenu} />
+                    ) : (
+                      <MenuRow href="/overview" label="My Overview" sub="View your progress" onClick={closeMenu} />
+                    )}
                   </>
                 ) : (
                   <>
@@ -600,7 +570,7 @@ export default function Home() {
                     <MenuRow
                       href="/signup"
                       label="Sign Up"
-                      sub="Create student account"
+                      sub="Create your account"
                       onClick={closeMenu}
                       variant="primary"
                     />
@@ -630,11 +600,10 @@ export default function Home() {
         </div>
       )}
 
-      {/* HERO */}
       <section className="max-w-7xl mx-auto px-6 sm:px-10 pt-10 pb-16">
         <div className="grid lg:grid-cols-12 gap-10 items-stretch">
           <div className="lg:col-span-7">
-            <div className="inline-flex items-center gap-2 rounded-full border border-gray-300 bg-white/70 backdrop-blur-xl backdrop-blur px-4 py-2 text-sm">
+            <div className="inline-flex items-center gap-2 rounded-full border border-gray-300 bg-white/70 backdrop-blur-xl px-4 py-2 text-sm">
               <span className="h-2 w-2 rounded-full bg-[#B8963D]" />
               <span className="text-gray-800">The Hifdh Journal</span>
             </div>
@@ -652,43 +621,38 @@ export default function Home() {
             </p>
 
             <div className="mt-8 flex flex-col sm:flex-row gap-3">
-             {user ? (
-    isAdmin ? (
-      // ✅ Admin buttons
-      <>
-        <Link
-          href="/admin"
-          className="inline-flex items-center justify-center h-12 px-8 rounded-full border border-gray-300 bg-white/40 backdrop-blur text-base font-medium hover:bg-white/70 transition-colors"
-        >
-          Admin Dashboard
-        </Link>
-      </>
-    ) : (
-      // ✅ Student button
-      <Link
-        href="/overview"
-        className="inline-flex items-center justify-center h-12 px-8 rounded-full bg-black text-white text-base font-medium hover:bg-gray-900 shadow-sm"
-      >
-        My Overview
-      </Link>
-    )
-  ) : (
-    // ✅ Guest buttons
-    <>
-      <Link
-        href="/signup"
-        className="inline-flex items-center justify-center h-12 px-8 rounded-full bg-black text-white text-base font-medium hover:bg-gray-900 shadow-sm"
-      >
-        Begin My Journey
-      </Link>
-      <a
-        href="#about"
-        className="inline-flex items-center justify-center h-12 px-8 rounded-full border border-gray-300 bg-white/40 backdrop-blur text-base font-medium hover:bg-white/70 transition-colors"
-      >
-        Explore Program
-      </a>
-    </>
-  )}
+              {user ? (
+                isDashboardUser ? (
+                  <Link
+                    href="/admin"
+                    className="inline-flex items-center justify-center h-12 px-8 rounded-full bg-black text-white text-base font-medium hover:bg-gray-900 shadow-sm"
+                  >
+                    Dashboard
+                  </Link>
+                ) : (
+                  <Link
+                    href="/overview"
+                    className="inline-flex items-center justify-center h-12 px-8 rounded-full bg-black text-white text-base font-medium hover:bg-gray-900 shadow-sm"
+                  >
+                    My Overview
+                  </Link>
+                )
+              ) : (
+                <>
+                  <Link
+                    href="/signup"
+                    className="inline-flex items-center justify-center h-12 px-8 rounded-full bg-black text-white text-base font-medium hover:bg-gray-900 shadow-sm"
+                  >
+                    Begin My Journey
+                  </Link>
+                  <a
+                    href="#about"
+                    className="inline-flex items-center justify-center h-12 px-8 rounded-full border border-gray-300 bg-white/40 backdrop-blur text-base font-medium hover:bg-white/70 transition-colors"
+                  >
+                    Explore Program
+                  </a>
+                </>
+              )}
             </div>
 
             <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl items-stretch">
@@ -741,7 +705,7 @@ export default function Home() {
               ].map((item) => (
                 <div
                   key={item.k}
-                  className="group relative overflow-hidden rounded-3xl border border-gray-300 bg-white/70 backdrop-blur-xl backdrop-blur px-5 py-5 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 h-[88px] flex items-center"
+                  className="group relative overflow-hidden rounded-3xl border border-gray-300 bg-white/70 backdrop-blur-xl px-5 py-5 shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 h-[88px] flex items-center"
                 >
                   <div className="absolute left-0 top-0 h-1 w-full bg-gradient-to-r from-[#B8963D] via-[#B8963D]/60 to-transparent" />
                   <div className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-[#B8963D]/10 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -775,8 +739,7 @@ export default function Home() {
               <div className="absolute -right-24 -top-24 h-56 w-56 rounded-full bg-[#B8963D]/25 blur-2xl" />
               <h3 className="mt-1 text-2xl font-semibold">Preview: Student Dashboard</h3>
               <p className="mt-3 text-white/70 leading-relaxed">
-                Secure login. Daily submissions. Weekly goals. A calm system designed for focus —
-                not distraction.
+                Secure login. Daily submissions. Weekly goals. A calm system designed for focus — not distraction.
               </p>
               <div className="mt-6 grid grid-cols-2 gap-3">
                 {["Sabak", "Sabak Dhor", "Dhor", "Weekly Goal"].map((t) => (
@@ -791,26 +754,23 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ABOUT */}
       <section id="about" className="py-20">
         <div className="max-w-5xl mx-auto px-6 sm:px-10">
-          <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur-xl backdrop-blur p-10 shadow-sm">
+          <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur-xl p-10 shadow-sm">
             <p className="uppercase tracking-widest text-sm text-[#B8963D] mb-3">About the Hifdh Journal</p>
-
             <h2 className="text-4xl font-semibold tracking-tight">Clarity, Consistency, and Accountability in Hifdh</h2>
 
             <div className="mt-6 grid md:grid-cols-2 gap-8">
               <p className="text-gray-800 leading-relaxed text-lg">
-A structured and organised platform designed to track and manage Hifdh progress with clarity and consistency.
+                A structured and organised platform designed to track and manage Hifdh progress with clarity and consistency.
 
-Through focused Sabak tracking, Dhor monitoring, weekly targets, and personalised notes, the system ensures steady memorisation progress while promoting discipline and accountability.              </p>
-             
+                Through focused Sabak tracking, Dhor monitoring, weekly targets, and personalised notes, the system ensures steady memorisation progress while promoting discipline and accountability.
+              </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* FEATURES */}
       <section className="py-12 pb-24">
         <div className="max-w-6xl mx-auto px-6 sm:px-10">
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10">
@@ -863,7 +823,6 @@ Through focused Sabak tracking, Dhor monitoring, weekly targets, and personalise
         </div>
       </section>
 
-      {/* FAQ */}
       <section id="faq" className="py-24">
         <div className="max-w-4xl mx-auto px-6 sm:px-10">
           <div className="text-center mb-12">
@@ -892,7 +851,6 @@ Through focused Sabak tracking, Dhor monitoring, weekly targets, and personalise
         </div>
       </section>
 
-      {/* CTA */}
       <section className="py-20">
         <div className="max-w-6xl mx-auto px-6 sm:px-10">
           <div className="rounded-3xl border border-gray-300 bg-gradient-to-br from-white/70 to-white/40 backdrop-blur p-10 shadow-lg overflow-hidden relative">
@@ -929,15 +887,14 @@ Through focused Sabak tracking, Dhor monitoring, weekly targets, and personalise
         </div>
       </section>
 
-      {/* FOOTER */}
-      <footer className="border-t border-gray-300 bg-white/70 backdrop-blur-xl backdrop-blur">
+      <footer className="border-t border-gray-300 bg-white/70 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-6 sm:px-10 py-14">
           <div className="grid gap-10 lg:grid-cols-12 items-start">
             <div className="lg:col-span-4">
               <div className="flex items-center gap-4">
-               <div className="h-[80px] w-[85px] rounded-xl bg-white/100 backdrop-blur border border-gray-300 shadow-sm grid place-items-center">
-            <Image src="/logo4.png" alt="Hifdh Journal" width={58} height={58} className="rounded" priority />
-          </div>
+                <div className="h-[80px] w-[85px] rounded-xl bg-white/100 backdrop-blur border border-gray-300 shadow-sm grid place-items-center">
+                  <Image src="/logo4.png" alt="Hifdh Journal" width={58} height={58} className="rounded" priority />
+                </div>
                 <div>
                   <div className="font-semibold text-lg">The Hifdh Journal</div>
                 </div>
@@ -959,11 +916,17 @@ Through focused Sabak tracking, Dhor monitoring, weekly targets, and personalise
                   <div className="text-sm font-semibold text-gray-900 mb-4">Portal</div>
                   <div className="space-y-3">
                     <a href="/login" className="block text-sm text-gray-700 hover:text-black">Sign In</a>
-                    <a href="/signup" className="block text-sm text-gray-700 hover:text-black">Enrol (Sign Up)</a>
-                    {user && isAdmin ? (
-                      <a href="/admin" className="block text-sm text-gray-700 hover:text-black">
-                        Admin Dashboard
-                      </a>
+                    <a href="/signup" className="block text-sm text-gray-700 hover:text-black">Sign Up</a>
+                    {user ? (
+                      isDashboardUser ? (
+                        <a href="/admin" className="block text-sm text-gray-700 hover:text-black">
+                          Dashboard
+                        </a>
+                      ) : (
+                        <a href="/overview" className="block text-sm text-gray-700 hover:text-black">
+                          My Overview
+                        </a>
+                      )
                     ) : null}
                   </div>
                 </div>
