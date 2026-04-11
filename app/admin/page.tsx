@@ -3,7 +3,16 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { onAuthStateChanged, User } from "firebase/auth";
-import { collection, doc, getDoc, getDocs, orderBy, query } from "firebase/firestore";
+import {
+  addDoc,
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  orderBy,
+  query,
+  serverTimestamp,
+} from "firebase/firestore";
 import { auth, db } from "../lib/firebase";
 
 type StudentOption = { id: string; fullName: string };
@@ -89,14 +98,70 @@ export default function AdminPage() {
   const [role, setRole] = useState<string | null>(null);
   const [madrassahId, setMadrassahId] = useState<string | null>(null);
   const [madrassahName, setMadrassahName] = useState<string>("");
+  const [joinCode, setJoinCode] = useState<string>("");
 
   const [students, setStudents] = useState<StudentOption[]>([]);
   const [loadingStudents, setLoadingStudents] = useState(false);
   const [selectedStudentId, setSelectedStudentId] = useState<string>("");
 
+  const [studentFullName, setStudentFullName] = useState("");
+  const [parentName, setParentName] = useState("");
+  const [parentPhone, setParentPhone] = useState("");
+  const [parentEmail, setParentEmail] = useState("");
+  const [addingStudent, setAddingStudent] = useState(false);
+  const [studentMsg, setStudentMsg] = useState<string | null>(null);
+  const [joinCodeMsg, setJoinCodeMsg] = useState<string | null>(null);
+
   const [err, setErr] = useState<string | null>(null);
 
   const today = useMemo(() => getDateKeySA(), []);
+
+  async function loadStudents(currentMadrassahId: string) {
+    setLoadingStudents(true);
+    setErr(null);
+
+    try {
+      const studentsRef = collection(db, "madrassahs", currentMadrassahId, "students");
+      const qy = query(studentsRef, orderBy("fullName"));
+      const snap = await getDocs(qy);
+
+      const list: StudentOption[] = snap.docs.map((d) => {
+        const data = d.data() as any;
+        return {
+          id: d.id,
+          fullName: (data.fullName || "Unnamed Student").toString(),
+        };
+      });
+
+      setStudents(list);
+
+      if (list.length > 0) {
+        setSelectedStudentId((prev) => {
+          if (prev && list.some((s) => s.id === prev)) return prev;
+          return list[0].id;
+        });
+      } else {
+        setSelectedStudentId("");
+      }
+    } catch (e: any) {
+      setErr(e?.message ?? "Could not load students.");
+    } finally {
+      setLoadingStudents(false);
+    }
+  }
+
+  async function loadMadrassahMeta(currentMadrassahId: string) {
+    try {
+      const madrassahSnap = await getDoc(doc(db, "madrassahs", currentMadrassahId));
+      if (!madrassahSnap.exists()) return;
+
+      const data = madrassahSnap.data() as { name?: string; joinCode?: string };
+      if (data.name) setMadrassahName(data.name);
+      if (data.joinCode) setJoinCode(data.joinCode);
+    } catch (e: any) {
+      setErr(e?.message ?? "Could not load madrassah details.");
+    }
+  }
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
@@ -106,6 +171,7 @@ export default function AdminPage() {
         setRole(null);
         setMadrassahId(null);
         setMadrassahName("");
+        setJoinCode("");
         setChecking(false);
         return;
       }
@@ -117,6 +183,7 @@ export default function AdminPage() {
           setRole(null);
           setMadrassahId(null);
           setMadrassahName("");
+          setJoinCode("");
           setErr("Your account record was not found.");
           return;
         }
@@ -133,12 +200,24 @@ export default function AdminPage() {
           setRole(null);
           setMadrassahId(null);
           setMadrassahName("");
+          setJoinCode("");
           return;
         }
 
-        setRole(myData.role ?? null);
-        setMadrassahId(myData.madrassahId ?? null);
-        setMadrassahName(myData.madrassahName ?? "");
+        const nextRole = myData.role ?? null;
+        const nextMadrassahId = myData.madrassahId ?? null;
+        const nextMadrassahName = myData.madrassahName ?? "";
+
+        setRole(nextRole);
+        setMadrassahId(nextMadrassahId);
+        setMadrassahName(nextMadrassahName);
+
+        if (nextMadrassahId && nextRole && ["admin", "teacher"].includes(nextRole)) {
+          await Promise.all([
+            loadStudents(nextMadrassahId),
+            loadMadrassahMeta(nextMadrassahId),
+          ]);
+        }
       } catch (e: any) {
         setErr(e?.message ?? "Could not load your account.");
       } finally {
@@ -149,40 +228,123 @@ export default function AdminPage() {
     return () => unsub();
   }, []);
 
-  useEffect(() => {
-    async function loadStudents() {
-      if (!madrassahId || !role || !["admin", "teacher"].includes(role)) return;
+  async function handleAddStudent(e: React.FormEvent) {
+    e.preventDefault();
 
-      setLoadingStudents(true);
-      setErr(null);
+    if (!me || !madrassahId || !role || !["admin", "teacher"].includes(role)) return;
 
-      try {
-        const studentsRef = collection(db, "madrassahs", madrassahId, "students");
-        const qy = query(studentsRef, orderBy("fullName"));
-        const snap = await getDocs(qy);
+    const cleanFullName = studentFullName.trim();
+    const cleanParentName = parentName.trim();
+    const cleanParentPhone = parentPhone.trim();
+    const cleanParentEmail = parentEmail.trim().toLowerCase();
 
-        const list: StudentOption[] = snap.docs.map((d) => {
-          const data = d.data() as any;
-          return {
-            id: d.id,
-            fullName: (data.fullName || "Unnamed Student").toString(),
-          };
-        });
-
-        setStudents(list);
-
-        if (!selectedStudentId && list.length > 0) {
-          setSelectedStudentId(list[0].id);
-        }
-      } catch (e: any) {
-        setErr(e?.message ?? "Could not load students.");
-      } finally {
-        setLoadingStudents(false);
-      }
+    if (!cleanFullName) {
+      setStudentMsg("Please enter the student's full name.");
+      return;
     }
 
-    loadStudents();
-  }, [madrassahId, role, selectedStudentId]);
+    setAddingStudent(true);
+    setStudentMsg(null);
+
+    try {
+      const studentsRef = collection(db, "madrassahs", madrassahId, "students");
+
+      const newStudentRef = await addDoc(studentsRef, {
+        fullName: cleanFullName,
+        parentName: cleanParentName,
+        parentPhone: cleanParentPhone,
+        parentEmail: cleanParentEmail,
+        createdBy: me.uid,
+        isActive: true,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+
+        weeklyGoal: "",
+        weeklyGoalWeekKey: "",
+        weeklyGoalStartDateKey: "",
+        weeklyGoalCompletedDateKey: "",
+        weeklyGoalDurationDays: null,
+
+        currentSabak: "",
+        currentSabakDhor: "",
+        currentDhor: "",
+        currentSabakReadQuality: "",
+        currentSabakDhorReadQuality: "",
+        currentDhorReadQuality: "",
+        currentSabakReadNotes: "",
+        currentSabakDhorReadNotes: "",
+        currentDhorReadNotes: "",
+        currentSabakDhorMistakes: "",
+        currentDhorMistakes: "",
+      });
+
+      setStudentFullName("");
+      setParentName("");
+      setParentPhone("");
+      setParentEmail("");
+      setStudentMsg("Student added successfully.");
+      setSelectedStudentId(newStudentRef.id);
+
+      await loadStudents(madrassahId);
+    } catch (e: any) {
+      setStudentMsg(e?.message ?? "Could not add student.");
+    } finally {
+      setAddingStudent(false);
+    }
+  }
+
+  async function handleCopyJoinCode() {
+    if (!joinCode) return;
+
+    try {
+      await navigator.clipboard.writeText(joinCode);
+      setJoinCodeMsg("Join code copied.");
+      setTimeout(() => setJoinCodeMsg(null), 2000);
+    } catch {
+      setJoinCodeMsg("Could not copy join code.");
+      setTimeout(() => setJoinCodeMsg(null), 2000);
+    }
+  }
+
+  async function openWeeklyReports() {
+    const user = auth.currentUser;
+
+    if (!user) {
+      setErr("You must be signed in first.");
+      return;
+    }
+
+    try {
+      const token = await user.getIdToken();
+
+      const res = await fetch("/api/sendweeklyreports", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        setErr(text || "Could not open weekly reports.");
+        return;
+      }
+
+      const html = await res.text();
+
+      const newWindow = window.open("", "_blank");
+      if (!newWindow) {
+        setErr("Popup blocked. Please allow popups and try again.");
+        return;
+      }
+
+      newWindow.document.open();
+      newWindow.document.write(html);
+      newWindow.document.close();
+    } catch (e: any) {
+      setErr(e?.message ?? "Could not open weekly reports.");
+    }
+  }
 
   if (checking) {
     return (
@@ -277,7 +439,7 @@ export default function AdminPage() {
       title={role === "admin" ? "Admin Dashboard" : "Teacher Dashboard"}
       subtitle={`${
         madrassahName || "Your madrassah"
-      } • Select a student, then log their work for today (${today}).`}
+      } • Add students and log their work for today (${today}).`}
       rightSlot={
         <Link
           href="/"
@@ -291,15 +453,140 @@ export default function AdminPage() {
         <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur p-7 shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
             <div>
-              <div className="text-sm text-gray-600">Student selection</div>
+              <div className="text-sm text-gray-600">Teacher onboarding</div>
               <div className="mt-1 text-xl font-semibold tracking-tight">
-                Choose a student
+                Madrassah join code
               </div>
             </div>
 
             <div className="inline-flex items-center gap-2 rounded-full border border-gray-300 bg-white/70 px-4 py-2 text-xs font-semibold text-gray-700">
               <span className="h-2 w-2 rounded-full bg-emerald-500" />
               {role === "admin" ? "Admin active" : "Teacher active"}
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-4">
+            <div className="rounded-2xl border border-gray-300 bg-white/80 px-5 py-5">
+              <div className="text-xs uppercase tracking-widest text-gray-500">
+                Share this code with teachers
+              </div>
+              <div className="mt-2 text-2xl sm:text-3xl font-semibold tracking-[0.15em] text-gray-900 break-all">
+                {joinCode || "No join code found"}
+              </div>
+              <p className="mt-2 text-sm text-gray-600">
+                Teachers can use this code on the signup page to join this madrassah.
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  type="button"
+                  onClick={handleCopyJoinCode}
+                  disabled={!joinCode}
+                  className="h-12 w-full sm:w-auto px-7 rounded-2xl bg-black text-white font-semibold hover:bg-gray-900 disabled:opacity-60 shadow-sm"
+                >
+                  Copy Join Code
+                </button>
+
+                <button
+                  type="button"
+                  onClick={openWeeklyReports}
+                  className="h-12 w-full sm:w-auto px-7 rounded-2xl border border-gray-300 bg-white/70 hover:bg-white text-sm font-semibold transition-colors"
+                >
+                  Open Weekly Reports
+                </button>
+              </div>
+
+              <div className="text-sm font-medium text-gray-700">
+                {joinCodeMsg ?? ""}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur p-7 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+            <div>
+              <div className="text-sm text-gray-600">Student creation</div>
+              <div className="mt-1 text-xl font-semibold tracking-tight">
+                Add a new student
+              </div>
+            </div>
+          </div>
+
+          <form onSubmit={handleAddStudent} className="mt-6 grid gap-4">
+            <div className="grid sm:grid-cols-2 gap-4">
+              <label className="grid gap-2">
+                <span className="text-sm font-semibold text-gray-900">Student full name</span>
+                <input
+                  value={studentFullName}
+                  onChange={(e) => setStudentFullName(e.target.value)}
+                  className="h-12 rounded-2xl border border-gray-300 bg-white/80 px-4 outline-none focus:ring-2 focus:ring-[#B8963D]/30"
+                  placeholder="e.g. Muhammad Ismail"
+                />
+              </label>
+
+              <label className="grid gap-2">
+                <span className="text-sm font-semibold text-gray-900">Parent name</span>
+                <input
+                  value={parentName}
+                  onChange={(e) => setParentName(e.target.value)}
+                  className="h-12 rounded-2xl border border-gray-300 bg-white/80 px-4 outline-none focus:ring-2 focus:ring-[#B8963D]/30"
+                  placeholder="e.g. Ahmed Ismail"
+                />
+              </label>
+            </div>
+
+            <div className="grid sm:grid-cols-2 gap-4">
+              <label className="grid gap-2">
+                <span className="text-sm font-semibold text-gray-900">Parent phone</span>
+                <input
+                  value={parentPhone}
+                  onChange={(e) => setParentPhone(e.target.value)}
+                  className="h-12 rounded-2xl border border-gray-300 bg-white/80 px-4 outline-none focus:ring-2 focus:ring-[#B8963D]/30"
+                  placeholder="e.g. 082 123 4567"
+                />
+              </label>
+
+              <label className="grid gap-2">
+                <span className="text-sm font-semibold text-gray-900">Parent email</span>
+                <input
+                  value={parentEmail}
+                  onChange={(e) => setParentEmail(e.target.value)}
+                  type="email"
+                  className="h-12 rounded-2xl border border-gray-300 bg-white/80 px-4 outline-none focus:ring-2 focus:ring-[#B8963D]/30"
+                  placeholder="e.g. parent@email.com"
+                />
+              </label>
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2">
+              <button
+                disabled={addingStudent}
+                className="h-12 w-full sm:w-auto px-7 rounded-2xl bg-black text-white font-semibold hover:bg-gray-900 disabled:opacity-60 shadow-sm"
+              >
+                {addingStudent ? "Adding..." : "Add Student"}
+              </button>
+
+              <div
+                className={`text-sm font-medium ${
+                  studentMsg?.toLowerCase().includes("success") ? "text-emerald-700" : "text-gray-700"
+                }`}
+              >
+                {studentMsg ?? ""}
+              </div>
+            </div>
+          </form>
+        </div>
+
+        <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur p-7 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+            <div>
+              <div className="text-sm text-gray-600">Student selection</div>
+              <div className="mt-1 text-xl font-semibold tracking-tight">
+                Choose a student
+              </div>
             </div>
           </div>
 
@@ -374,7 +661,7 @@ export default function AdminPage() {
         <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur p-6 shadow-sm">
           <div className="text-sm font-semibold text-gray-900">Tip for faster workflow</div>
           <p className="mt-1 text-sm text-gray-700">
-            Keep this page open on your phone. Select the student → log work → save → next student.
+            Add the student once, share the join code with teachers, then select the student, log work, save, and move straight to the next one.
           </p>
         </div>
       </div>
