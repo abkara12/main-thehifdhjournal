@@ -20,7 +20,53 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 
-function escapeForScript(value: string) {
+function formatDateKey(dateKey?: string) {
+  if (!dateKey) return { dayName: "", dateFormatted: "" };
+
+  const dateObj = new Date(`${dateKey}T00:00:00`);
+  return {
+    dayName: dateObj.toLocaleDateString("en-US", { weekday: "short" }),
+    dateFormatted: dateObj.toLocaleDateString("en-US", {
+      day: "numeric",
+      month: "short",
+    }),
+  };
+}
+
+function getTodayDateKeySA() {
+  const now = new Date();
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Africa/Johannesburg",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
+
+  const y = parts.find((p) => p.type === "year")?.value ?? "0000";
+  const m = parts.find((p) => p.type === "month")?.value ?? "00";
+  const d = parts.find((p) => p.type === "day")?.value ?? "00";
+  return `${y}-${m}-${d}`;
+}
+
+function shiftDateKey(dateKey: string, daysToShift: number) {
+  const [y, m, d] = dateKey.split("-").map(Number);
+  const dt = new Date(y, (m ?? 1) - 1, d ?? 1);
+  dt.setDate(dt.getDate() + daysToShift);
+
+  const yy = dt.getFullYear();
+  const mm = String(dt.getMonth() + 1).padStart(2, "0");
+  const dd = String(dt.getDate()).padStart(2, "0");
+  return `${yy}-${mm}-${dd}`;
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function escapeJsString(value: string) {
   return value
     .replace(/\\/g, "\\\\")
     .replace(/`/g, "\\`")
@@ -43,7 +89,7 @@ function formatReportText({
 *Weekly Hifdh Report*
 *Student:* ${studentName}
 *Madrassah:* ${madrassahName}
-*Month:* ${monthLabel}
+*Month:* ${monthLabel || "-"}
 
 `;
 
@@ -51,13 +97,7 @@ function formatReportText({
     logs.forEach((logDoc, index) => {
       const logData = logDoc.data();
       const dateKey = (logData.dateKey as string | undefined) || "";
-      const dateObj = dateKey ? new Date(`${dateKey}T00:00:00`) : new Date();
-
-      const dayName = dateObj.toLocaleDateString("en-US", { weekday: "short" });
-      const dateFormatted = dateObj.toLocaleDateString("en-US", {
-        day: "numeric",
-        month: "short",
-      });
+      const { dayName, dateFormatted } = formatDateKey(dateKey);
 
       reportText += `*${dayName} ${dateFormatted}*\n\n`;
       reportText += `*Attendance:* ${logData.attendance ?? "-"}\n`;
@@ -110,7 +150,7 @@ export default async function WeeklyReportsPage({
 
   if (!madrassahId || !key) {
     return (
-      <main className="min-h-screen grid place-items-center p-8">
+      <main className="min-h-screen grid place-items-center p-8 bg-[#f6f6f6]">
         <div className="text-center">
           <h1 className="text-2xl font-semibold">Invalid report link</h1>
           <p className="mt-2 text-gray-600">Missing madrassah details.</p>
@@ -119,11 +159,14 @@ export default async function WeeklyReportsPage({
     );
   }
 
-  const madrassahSnap = await db.collection("madrassahs").doc(madrassahId).get();
+  const [madrassahSnap, configSnap] = await Promise.all([
+    db.collection("madrassahs").doc(madrassahId).get(),
+    db.collection("madrassahs").doc(madrassahId).collection("private").doc("config").get(),
+  ]);
 
   if (!madrassahSnap.exists) {
     return (
-      <main className="min-h-screen grid place-items-center p-8">
+      <main className="min-h-screen grid place-items-center p-8 bg-[#f6f6f6]">
         <div className="text-center">
           <h1 className="text-2xl font-semibold">Madrassah not found</h1>
         </div>
@@ -131,14 +174,27 @@ export default async function WeeklyReportsPage({
     );
   }
 
+  if (!configSnap.exists) {
+    return (
+      <main className="min-h-screen grid place-items-center p-8 bg-[#f6f6f6]">
+        <div className="text-center">
+          <h1 className="text-2xl font-semibold">Report configuration missing</h1>
+        </div>
+      </main>
+    );
+  }
+
   const madrassahData = madrassahSnap.data() as {
     name?: string;
+  };
+
+  const configData = configSnap.data() as {
     reportAccessKey?: string;
   };
 
-  if ((madrassahData.reportAccessKey || "") !== key) {
+  if ((configData.reportAccessKey || "") !== key) {
     return (
-      <main className="min-h-screen grid place-items-center p-8">
+      <main className="min-h-screen grid place-items-center p-8 bg-[#f6f6f6]">
         <div className="text-center">
           <h1 className="text-2xl font-semibold">Invalid access key</h1>
         </div>
@@ -163,8 +219,8 @@ export default async function WeeklyReportsPage({
     report: string;
   }[] = [];
 
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  const todayKey = getTodayDateKeySA();
+  const startKey = shiftDateKey(todayKey, -7);
 
   for (const studentDoc of studentsSnap.docs) {
     const studentData = studentDoc.data() as {
@@ -180,17 +236,12 @@ export default async function WeeklyReportsPage({
       .collection("students")
       .doc(studentDoc.id)
       .collection("logs")
+      .where("dateKey", ">=", startKey)
+      .where("dateKey", "<=", todayKey)
       .orderBy("dateKey", "desc")
       .get();
 
-    const recentLogs = logsSnap.docs.filter((logDoc) => {
-      const logData = logDoc.data();
-      const dateKey = logData.dateKey as string | undefined;
-      if (!dateKey) return false;
-
-      const logDate = new Date(`${dateKey}T00:00:00`);
-      return logDate >= sevenDaysAgo;
-    });
+    const recentLogs = logsSnap.docs;
 
     let monthLabel = "";
     if (recentLogs.length > 0) {
@@ -224,9 +275,8 @@ export default async function WeeklyReportsPage({
         <h1 style={{ marginBottom: 8 }}>Weekly Hifdh Reports</h1>
         <p style={{ marginTop: 0, color: "#555" }}>{madrassahName}</p>
 
-        {reports.map((r, i) => (
+        {reports.length === 0 ? (
           <div
-            key={`${r.student}-${i}`}
             style={{
               border: "1px solid #e0e0e0",
               padding: 20,
@@ -235,53 +285,114 @@ export default async function WeeklyReportsPage({
               background: "#ffffff",
             }}
           >
-            <h2 style={{ marginBottom: 6 }}>{r.student}</h2>
-            <div style={{ color: "#666", fontSize: 14, marginBottom: 12 }}>
-              Parent: {r.parentName || "-"}
-              <br />
-              Phone: {r.parentPhone || "-"}
-              <br />
-              Email: {r.parentEmail || "-"}
-            </div>
-
-            <pre
-              style={{
-                whiteSpace: "pre-wrap",
-                fontFamily: "monospace",
-                background: "#fafafa",
-                padding: 16,
-                borderRadius: 8,
-                border: "1px solid #eee",
-              }}
-            >
-              {r.report}
-            </pre>
-
-            <button
-              type="button"
-              style={{
-                marginTop: 10,
-                padding: "10px 14px",
-                border: "none",
-                background: "#111",
-                color: "white",
-                borderRadius: 8,
-                cursor: "pointer",
-              }}
-              data-copy-report={escapeForScript(r.report)}
-            >
-              Copy to Clipboard
-            </button>
+            No students found.
           </div>
-        ))}
+        ) : null}
+
+        {reports.map((r, i) => {
+          const safeReport = escapeHtml(r.report);
+          const reportJs = escapeJsString(r.report);
+
+          return (
+            <div
+              key={`${r.student}-${i}`}
+              style={{
+                border: "1px solid #e0e0e0",
+                padding: 20,
+                margin: "20px 0",
+                borderRadius: 12,
+                background: "#ffffff",
+              }}
+            >
+              <h2 style={{ marginBottom: 6 }}>{r.student}</h2>
+
+              <div style={{ color: "#666", fontSize: 14, marginBottom: 12 }}>
+                Parent: {r.parentName || "-"}
+                <br />
+                Phone: {r.parentPhone || "-"}
+                <br />
+                Email: {r.parentEmail || "-"}
+              </div>
+
+              <pre
+                style={{
+                  whiteSpace: "pre-wrap",
+                  fontFamily: "monospace",
+                  background: "#fafafa",
+                  padding: 16,
+                  borderRadius: 8,
+                  border: "1px solid #eee",
+                }}
+                dangerouslySetInnerHTML={{ __html: safeReport }}
+              />
+
+              <button
+                type="button"
+                style={{
+                  marginTop: 10,
+                  padding: "10px 14px",
+                  border: "none",
+                  background: "#111",
+                  color: "white",
+                  borderRadius: 8,
+                  cursor: "pointer",
+                }}
+                onClick={undefined as any}
+              >
+                Copy to Clipboard
+              </button>
+
+              <script
+                dangerouslySetInnerHTML={{
+                  __html: `
+                    (function () {
+                      const buttons = document.querySelectorAll("[data-copy-report]");
+                      if (!buttons.length) return;
+                    })();
+                  `,
+                }}
+              />
+
+              <button
+                type="button"
+                data-copy-report={reportJs}
+                style={{
+                  display: "none",
+                }}
+              />
+            </div>
+          );
+        })}
 
         <script
           dangerouslySetInnerHTML={{
             __html: `
-              document.querySelectorAll("[data-copy-report]").forEach((btn) => {
-                btn.addEventListener("click", function () {
-                  const text = this.getAttribute("data-copy-report") || "";
-                  navigator.clipboard.writeText(text);
+              document.querySelectorAll("[data-copy-report]").forEach((hiddenBtn) => {
+                const card = hiddenBtn.closest("div");
+                if (!card) return;
+
+                const visibleButton = Array.from(card.querySelectorAll("button")).find(
+                  (btn) => !btn.hasAttribute("data-copy-report")
+                );
+
+                if (!visibleButton) return;
+
+                visibleButton.addEventListener("click", async function () {
+                  const text = hiddenBtn.getAttribute("data-copy-report") || "";
+                  try {
+                    await navigator.clipboard.writeText(text);
+                    const original = this.textContent;
+                    this.textContent = "Copied";
+                    setTimeout(() => {
+                      this.textContent = original;
+                    }, 1200);
+                  } catch {
+                    const original = this.textContent;
+                    this.textContent = "Copy failed";
+                    setTimeout(() => {
+                      this.textContent = original;
+                    }, 1200);
+                  }
                 });
               });
             `,

@@ -25,6 +25,21 @@ function parseDateKey(dateKey: string) {
   return new Date(y, (m ?? 1) - 1, d ?? 1);
 }
 
+function getDateKeySA() {
+  const now = new Date();
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Africa/Johannesburg",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
+
+  const y = parts.find((p) => p.type === "year")?.value ?? "0000";
+  const m = parts.find((p) => p.type === "month")?.value ?? "00";
+  const d = parts.find((p) => p.type === "day")?.value ?? "00";
+  return `${y}-${m}-${d}`;
+}
+
 function getDayName(dateKey?: string) {
   if (!dateKey) return "";
   const d = parseDateKey(dateKey);
@@ -88,11 +103,11 @@ type LogRow = {
 };
 
 async function fetchLogs(madrassahId: string, studentId: string): Promise<LogRow[]> {
-  const q = query(
+  const qy = query(
     collection(db, "madrassahs", madrassahId, "students", studentId, "logs"),
     orderBy("dateKey", "desc")
   );
-  const snap = await getDocs(q);
+  const snap = await getDocs(qy);
   return snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
 }
 
@@ -107,7 +122,7 @@ function Badge({ children }: { children: React.ReactNode }) {
 /* ---------------- page ---------------- */
 export default function AdminStudentOverviewPage() {
   const params = useParams<{ uid: string }>();
-  const studentId = params.uid;
+  const studentId = params?.uid || "";
 
   const [me, setMe] = useState<User | null>(null);
   const [checking, setChecking] = useState(true);
@@ -115,8 +130,10 @@ export default function AdminStudentOverviewPage() {
   const [madrassahId, setMadrassahId] = useState<string | null>(null);
 
   const [studentName, setStudentName] = useState("");
+  const [studentExists, setStudentExists] = useState(false);
   const [rows, setRows] = useState<LogRow[]>([]);
   const [loadingRows, setLoadingRows] = useState(false);
+  const [pageErr, setPageErr] = useState<string | null>(null);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
@@ -135,6 +152,8 @@ export default function AdminStudentOverviewPage() {
 
         setRole(myData?.role ?? null);
         setMadrassahId(myData?.madrassahId ?? null);
+      } catch (e: any) {
+        setPageErr(e?.message ?? "Could not load your account.");
       } finally {
         setChecking(false);
       }
@@ -144,34 +163,38 @@ export default function AdminStudentOverviewPage() {
   }, []);
 
   useEffect(() => {
-    async function loadStudentMeta() {
+    async function loadStudentMetaAndLogs() {
       if (!madrassahId || !studentId) return;
 
-      const sDoc = await getDoc(doc(db, "madrassahs", madrassahId, "students", studentId));
-      if (sDoc.exists()) {
-        const data = sDoc.data() as any;
-        setStudentName(toText(data.fullName) || "Student");
-      } else {
-        setStudentName("Student");
-      }
-    }
-
-    async function loadLogs() {
-      if (!madrassahId || !studentId) return;
-
+      setPageErr(null);
       setLoadingRows(true);
+      setStudentExists(false);
+
       try {
+        const sDoc = await getDoc(doc(db, "madrassahs", madrassahId, "students", studentId));
+
+        if (!sDoc.exists()) {
+          setStudentName("Student");
+          setRows([]);
+          setPageErr("Student not found in this madrassah.");
+          return;
+        }
+
+        const sData = sDoc.data() as any;
+        setStudentExists(true);
+        setStudentName(toText(sData.fullName) || "Student");
+
         const data = await fetchLogs(madrassahId, studentId);
         setRows(data);
+      } catch (e: any) {
+        setRows([]);
+        setPageErr(e?.message ?? "Could not load the student overview.");
       } finally {
         setLoadingRows(false);
       }
     }
 
-    if (madrassahId && studentId) {
-      loadStudentMeta();
-      loadLogs();
-    }
+    loadStudentMetaAndLogs();
   }, [madrassahId, studentId]);
 
   const absentsByMonth = useMemo(() => {
@@ -189,7 +212,7 @@ export default function AdminStudentOverviewPage() {
     return map;
   }, [rows]);
 
-  const currentMonth = getMonthLabel(new Date().toISOString().slice(0, 10));
+  const currentMonth = getMonthLabel(getDateKeySA());
   const currentMonthAbsents = absentsByMonth[currentMonth] || 0;
 
   const summary = useMemo(() => {
@@ -263,7 +286,7 @@ export default function AdminStudentOverviewPage() {
                 Home
               </Link>
               <Link href="/admin" className="underline">
-                 Admin Dashboard
+                Admin Dashboard
               </Link>
             </div>
           </div>
@@ -280,6 +303,28 @@ export default function AdminStudentOverviewPage() {
           <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur p-10 shadow-sm">
             <h1 className="text-3xl font-semibold tracking-tight">No madrassah linked</h1>
             <p className="mt-3 text-gray-700">This account is missing a madrassah connection.</p>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  if (!studentId || !studentExists) {
+    return (
+      <main className="min-h-screen">
+        <FancyBg />
+        <div className="max-w-6xl mx-auto px-6 sm:px-10 py-16">
+          <div className="rounded-3xl border border-red-200 bg-red-50 p-10 shadow-sm">
+            <h1 className="text-3xl font-semibold tracking-tight text-red-700">Student not found</h1>
+            <p className="mt-3 text-red-700">{pageErr || "This student could not be found for your madrassah."}</p>
+            <div className="mt-6">
+              <Link
+                href="/admin"
+                className="inline-flex items-center justify-center h-11 px-6 rounded-full bg-black text-white text-sm font-medium hover:bg-gray-900"
+              >
+                Back to Dashboard
+              </Link>
+            </div>
           </div>
         </div>
       </main>
@@ -327,6 +372,12 @@ export default function AdminStudentOverviewPage() {
       </header>
 
       <section className="max-w-6xl mx-auto px-6 sm:px-10 pb-16">
+        {pageErr ? (
+          <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {pageErr}
+          </div>
+        ) : null}
+
         <div className="grid sm:grid-cols-4 gap-4 mb-8">
           <StatCard label="Days logged" value={String(summary.totalDays)} />
           <StatCard label="Absences (this month)" value={String(currentMonthAbsents)} />
@@ -392,7 +443,7 @@ export default function AdminStudentOverviewPage() {
                       <th className="sticky top-0 bg-white/70 backdrop-blur pb-3 pr-4 pl-2 border-b border-gray-300">
                         Date
                       </th>
-                      <th className="sticky top-0 bg-white/70 backdrop-blur pb-3 pr-4 pl-2 border-b border-gray-300">
+                      <th className="sticky top-0 bg-white/70 backdrop-blur pb-3 px-4 border-b border-gray-300 border-l border-gray-100">
                         Attendance
                       </th>
 
@@ -447,11 +498,11 @@ export default function AdminStudentOverviewPage() {
 
                   <tbody className="divide-y divide-gray-300">
                     {rows.map((r, index) => {
-                      const currentMonthLabel = getMonthLabel(r.dateKey);
+                      const rowMonthLabel = getMonthLabel(r.dateKey);
                       const prevMonthLabel =
                         index > 0 ? getMonthLabel(rows[index - 1].dateKey) : null;
 
-                      const showMonthHeader = index === 0 || currentMonthLabel !== prevMonthLabel;
+                      const showMonthHeader = index === 0 || rowMonthLabel !== prevMonthLabel;
                       const g = num(r.weeklyGoal);
 
                       const startKey = toText(r.weeklyGoalStartDateKey);
@@ -470,116 +521,111 @@ export default function AdminStudentOverviewPage() {
                       const duration = storedDur ?? calcDur;
                       const notReached =
                         startKey &&
+                        r.dateKey &&
                         !completedKey &&
-                        diffDaysInclusive(startKey, r.dateKey || "") > 7;
+                        diffDaysInclusive(startKey, r.dateKey) > 7;
 
                       const completed = Boolean(completedKey);
 
                       return (
-  <>
-    {showMonthHeader && (
-      <tr key={`month-${r.id}`}>
-        <td
-          colSpan={17}
-          className="bg-gradient-to-r from-[#B8963D]/15 to-transparent text-sm font-semibold text-gray-900 py-4 px-4 uppercase tracking-wider"
-        >
-          {currentMonthLabel}
-        </td>
-      </tr>
-    )}
+                        <FragmentRow
+                          key={r.id}
+                          showMonthHeader={showMonthHeader}
+                          currentMonthLabel={rowMonthLabel}
+                          row={
+                            <tr className="text-sm hover:bg-black/[0.02] transition-colors">
+                              <td className="py-4 pr-4 pl-2 font-medium text-gray-600">
+                                {getDayName(r.dateKey)}
+                              </td>
+                              <td className="py-4 pr-4 pl-2 font-medium text-gray-900">
+                                {r.dateKey ?? r.id}
+                              </td>
 
-    <tr key={r.id} className="text-sm hover:bg-black/[0.02] transition-colors">
-      <td className="py-4 pr-4 pl-2 font-medium text-gray-600">
-        {getDayName(r.dateKey)}
-      </td>
-      <td className="py-4 pr-4 pl-2 font-medium text-gray-900">
-        {r.dateKey ?? r.id}
-      </td>
+                              <td className="py-4 px-4 border-l border-gray-100">
+                                {r.attendance === "present" ? (
+                                  <span className="text-emerald-600 font-semibold">Present</span>
+                                ) : r.attendance === "absent" ? (
+                                  <span className="text-red-600 font-semibold">Absent</span>
+                                ) : (
+                                  "—"
+                                )}
+                              </td>
 
-      <td className="py-4 px-4 border-l border-gray-100">
-        {r.attendance === "present" ? (
-          <span className="text-emerald-600 font-semibold">Present</span>
-        ) : r.attendance === "absent" ? (
-          <span className="text-red-600 font-semibold">Absent</span>
-        ) : (
-          "—"
-        )}
-      </td>
+                              <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
+                                {toText(r.sabak) || "—"}
+                              </td>
+                              <td className="py-4 px-4 text-gray-700 border-l border-gray-100">
+                                {toText(r.sabakRead) || "—"}
+                              </td>
+                              <td className="py-4 px-4 text-gray-700 border-l border-gray-100 max-w-[200px]">
+                                {toText(r.sabakReadNotes) || "—"}
+                              </td>
 
-      <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
-        {toText(r.sabak) || "—"}
-      </td>
-      <td className="py-4 px-4 text-gray-700 border-l border-gray-100">
-        {toText(r.sabakRead) || "—"}
-      </td>
-      <td className="py-4 px-4 text-gray-700 border-l border-gray-100 max-w-[200px]">
-        {toText(r.sabakReadNotes) || "—"}
-      </td>
+                              <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
+                                {toText(r.sabakDhor) || "—"}
+                              </td>
+                              <td className="py-4 px-4 text-gray-700 border-l border-gray-100">
+                                {toText(r.sabakDhorRead) || "—"}
+                              </td>
+                              <td className="py-4 px-4 text-gray-700 border-l border-gray-100 max-w-[200px]">
+                                {toText(r.sabakDhorReadNotes) || "—"}
+                              </td>
 
-      <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
-        {toText(r.sabakDhor) || "—"}
-      </td>
-      <td className="py-4 px-4 text-gray-700 border-l border-gray-100">
-        {toText(r.sabakDhorRead) || "—"}
-      </td>
-      <td className="py-4 px-4 text-gray-700 border-l border-gray-100 max-w-[200px]">
-        {toText(r.sabakDhorReadNotes) || "—"}
-      </td>
+                              <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
+                                {toText(r.dhor) || "—"}
+                              </td>
+                              <td className="py-4 px-4 text-gray-700 border-l border-gray-100">
+                                {toText(r.dhorRead) || "—"}
+                              </td>
+                              <td className="py-4 px-4 text-gray-700 border-l border-gray-100 max-w-[200px]">
+                                {toText(r.dhorReadNotes) || "—"}
+                              </td>
 
-      <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
-        {toText(r.dhor) || "—"}
-      </td>
-      <td className="py-4 px-4 text-gray-700 border-l border-gray-100">
-        {toText(r.dhorRead) || "—"}
-      </td>
-      <td className="py-4 px-4 text-gray-700 border-l border-gray-100 max-w-[200px]">
-        {toText(r.dhorReadNotes) || "—"}
-      </td>
+                              <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
+                                {toText(r.sabakDhorMistakes) || "—"}
+                              </td>
+                              <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
+                                {toText(r.dhorMistakes) || "—"}
+                              </td>
 
-      <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
-        {toText(r.sabakDhorMistakes) || "—"}
-      </td>
-      <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
-        {toText(r.dhorMistakes) || "—"}
-      </td>
+                              <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
+                                {toText(r.weeklyGoal) || "—"}
+                              </td>
 
-      <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
-        {toText(r.weeklyGoal) || "—"}
-      </td>
+                              <td className="py-4 px-4 border-l border-gray-100">
+                                {g > 0 ? (
+                                  <span
+                                    className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold border ${
+                                      completed
+                                        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                                        : notReached
+                                        ? "border-red-200 bg-red-50 text-red-700"
+                                        : "border-amber-200 bg-amber-50 text-amber-700"
+                                    }`}
+                                  >
+                                    <span
+                                      className={`h-2 w-2 rounded-full ${
+                                        completed
+                                          ? "bg-emerald-500"
+                                          : notReached
+                                          ? "bg-red-500"
+                                          : "bg-amber-500"
+                                      }`}
+                                    />
+                                    {completed ? "Completed" : notReached ? "Not reached" : "In progress"}
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-gray-500">No goal set</span>
+                                )}
+                              </td>
 
-      <td className="py-4 px-4 border-l border-gray-100">
-        {g > 0 ? (
-          <span
-            className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold border ${
-              completed
-                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                : notReached
-                ? "border-red-200 bg-red-50 text-red-700"
-                : "border-amber-200 bg-amber-50 text-amber-700"
-            }`}
-          >
-            <span
-              className={`h-2 w-2 rounded-full ${
-                completed
-                  ? "bg-emerald-500"
-                  : notReached
-                  ? "bg-red-500"
-                  : "bg-amber-500"
-              }`}
-            />
-            {completed ? "Completed" : notReached ? "Not reached" : "In progress"}
-          </span>
-        ) : (
-          <span className="text-xs text-gray-500">No goal set</span>
-        )}
-      </td>
-
-      <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
-        {duration ? `${duration} day(s)` : "—"}
-      </td>
-    </tr>
-  </>
-);
+                              <td className="py-4 px-4 text-gray-800 border-l border-gray-100">
+                                {duration ? `${duration} day(s)` : "—"}
+                              </td>
+                            </tr>
+                          }
+                        />
+                      );
                     })}
                   </tbody>
                 </table>
@@ -593,6 +639,32 @@ export default function AdminStudentOverviewPage() {
 }
 
 /* ---------------- UI bits ---------------- */
+function FragmentRow({
+  showMonthHeader,
+  currentMonthLabel,
+  row,
+}: {
+  showMonthHeader: boolean;
+  currentMonthLabel: string;
+  row: React.ReactNode;
+}) {
+  return (
+    <>
+      {showMonthHeader ? (
+        <tr>
+          <td
+            colSpan={17}
+            className="bg-gradient-to-r from-[#B8963D]/15 to-transparent text-sm font-semibold text-gray-900 py-4 px-4 uppercase tracking-wider"
+          >
+            {currentMonthLabel}
+          </td>
+        </tr>
+      ) : null}
+      {row}
+    </>
+  );
+}
+
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
     <div className="group relative overflow-hidden rounded-3xl border border-gray-300 bg-white/70 backdrop-blur p-6 shadow-sm hover:shadow-lg transition-all duration-300">

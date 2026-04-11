@@ -115,6 +115,8 @@ export default function AdminPage() {
   const [err, setErr] = useState<string | null>(null);
 
   const today = useMemo(() => getDateKeySA(), []);
+  const isAdmin = role === "admin";
+  const isTeacher = role === "teacher";
 
   async function loadStudents(currentMadrassahId: string) {
     setLoadingStudents(true);
@@ -150,14 +152,30 @@ export default function AdminPage() {
     }
   }
 
-  async function loadMadrassahMeta(currentMadrassahId: string) {
+  async function loadMadrassahMeta(currentMadrassahId: string, currentRole: string) {
     try {
       const madrassahSnap = await getDoc(doc(db, "madrassahs", currentMadrassahId));
-      if (!madrassahSnap.exists()) return;
 
-      const data = madrassahSnap.data() as { name?: string; joinCode?: string };
-      if (data.name) setMadrassahName(data.name);
-      if (data.joinCode) setJoinCode(data.joinCode);
+      if (madrassahSnap.exists()) {
+        const data = madrassahSnap.data() as { name?: string };
+        if (data.name) setMadrassahName(data.name);
+      }
+
+      // Only admins may read the private config / join code
+      if (currentRole === "admin") {
+        const configSnap = await getDoc(
+          doc(db, "madrassahs", currentMadrassahId, "private", "config")
+        );
+
+        if (configSnap.exists()) {
+          const config = configSnap.data() as { joinCode?: string };
+          if (config.joinCode) setJoinCode(config.joinCode);
+        } else {
+          setJoinCode("");
+        }
+      } else {
+        setJoinCode("");
+      }
     } catch (e: any) {
       setErr(e?.message ?? "Could not load madrassah details.");
     }
@@ -215,7 +233,7 @@ export default function AdminPage() {
         if (nextMadrassahId && nextRole && ["admin", "teacher"].includes(nextRole)) {
           await Promise.all([
             loadStudents(nextMadrassahId),
-            loadMadrassahMeta(nextMadrassahId),
+            loadMadrassahMeta(nextMadrassahId, nextRole),
           ]);
         }
       } catch (e: any) {
@@ -382,7 +400,7 @@ export default function AdminPage() {
 
   return (
     <PageShell
-      title={role === "admin" ? "Admin Dashboard" : "Teacher Dashboard"}
+      title={isAdmin ? "Admin Dashboard" : "Teacher Dashboard"}
       subtitle={`${
         madrassahName || "Your madrassah"
       } • Add students and log their work for today (${today}).`}
@@ -396,52 +414,64 @@ export default function AdminPage() {
       }
     >
       <div className="grid gap-6">
-        <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur p-7 shadow-sm">
-          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-            <div>
-              <div className="text-sm text-gray-600">Teacher onboarding</div>
-              <div className="mt-1 text-xl font-semibold tracking-tight">
-                Madrassah join code
+        {isAdmin ? (
+          <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur p-7 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+              <div>
+                <div className="text-sm text-gray-600">Teacher onboarding</div>
+                <div className="mt-1 text-xl font-semibold tracking-tight">
+                  Madrassah join code
+                </div>
+              </div>
+
+              <div className="inline-flex items-center gap-2 rounded-full border border-gray-300 bg-white/70 px-4 py-2 text-xs font-semibold text-gray-700">
+                <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                Admin active
               </div>
             </div>
 
-            <div className="inline-flex items-center gap-2 rounded-full border border-gray-300 bg-white/70 px-4 py-2 text-xs font-semibold text-gray-700">
+            <div className="mt-6 grid gap-4">
+              <div className="rounded-2xl border border-gray-300 bg-white/80 px-5 py-5">
+                <div className="text-xs uppercase tracking-widest text-gray-500">
+                  Share this code with teachers
+                </div>
+                <div className="mt-2 text-2xl sm:text-3xl font-semibold tracking-[0.15em] text-gray-900 break-all">
+                  {joinCode || "No join code found"}
+                </div>
+                <p className="mt-2 text-sm text-gray-600">
+                  Teachers can use this code on the signup page to join this madrassah.
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <button
+                    type="button"
+                    onClick={handleCopyJoinCode}
+                    disabled={!joinCode}
+                    className="h-12 w-full sm:w-auto px-7 rounded-2xl bg-black text-white font-semibold hover:bg-gray-900 disabled:opacity-60 shadow-sm"
+                  >
+                    Copy Join Code
+                  </button>
+                </div>
+
+                <div className="text-sm font-medium text-gray-700">
+                  {joinCodeMsg ?? ""}
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur p-6 shadow-sm">
+            <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
               <span className="h-2 w-2 rounded-full bg-emerald-500" />
-              {role === "admin" ? "Admin active" : "Teacher active"}
+              Teacher active
             </div>
+            <p className="mt-2 text-sm text-gray-700">
+              You can add students, log work, and view student overviews for your madrassah.
+            </p>
           </div>
-
-          <div className="mt-6 grid gap-4">
-            <div className="rounded-2xl border border-gray-300 bg-white/80 px-5 py-5">
-              <div className="text-xs uppercase tracking-widest text-gray-500">
-                Share this code with teachers
-              </div>
-              <div className="mt-2 text-2xl sm:text-3xl font-semibold tracking-[0.15em] text-gray-900 break-all">
-                {joinCode || "No join code found"}
-              </div>
-              <p className="mt-2 text-sm text-gray-600">
-                Teachers can use this code on the signup page to join this madrassah.
-              </p>
-            </div>
-
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div className="flex flex-col sm:flex-row gap-3">
-                <button
-                  type="button"
-                  onClick={handleCopyJoinCode}
-                  disabled={!joinCode}
-                  className="h-12 w-full sm:w-auto px-7 rounded-2xl bg-black text-white font-semibold hover:bg-gray-900 disabled:opacity-60 shadow-sm"
-                >
-                  Copy Join Code
-                </button>
-              </div>
-
-              <div className="text-sm font-medium text-gray-700">
-                {joinCodeMsg ?? ""}
-              </div>
-            </div>
-          </div>
-        </div>
+        )}
 
         <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur p-7 shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
@@ -509,7 +539,9 @@ export default function AdminPage() {
 
               <div
                 className={`text-sm font-medium ${
-                  studentMsg?.toLowerCase().includes("success") ? "text-emerald-700" : "text-gray-700"
+                  studentMsg?.toLowerCase().includes("success")
+                    ? "text-emerald-700"
+                    : "text-gray-700"
                 }`}
               >
                 {studentMsg ?? ""}

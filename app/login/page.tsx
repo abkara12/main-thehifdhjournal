@@ -54,6 +54,8 @@ export default function LoginPage() {
       const me = meSnap.data() as {
         role?: string;
         madrassahId?: string;
+        linkedStudentId?: string;
+        linkedMadrassahId?: string;
         isActive?: boolean;
       };
 
@@ -71,7 +73,13 @@ export default function LoginPage() {
       }
 
       if (role === "parent") {
-        router.push("/");
+        if (!me.linkedStudentId || !me.linkedMadrassahId) {
+          setErr("This parent account is not linked to a student yet.");
+          setLoading(false);
+          return;
+        }
+
+        router.push("/overview");
         return;
       }
 
@@ -114,7 +122,7 @@ export default function LoginPage() {
                 Sign in to continue
               </h1>
               <p className="mt-3 text-gray-700 leading-relaxed">
-                Admins and teachers can sign in to access their madrassah dashboard.
+                Admins, teachers, and parents can sign in to access their account.
               </p>
             </div>
 

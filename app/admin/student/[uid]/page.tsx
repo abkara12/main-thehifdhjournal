@@ -41,6 +41,7 @@ function isoWeekKeyFromDateKey(dateKey: string) {
   const date = new Date(d.getFullYear(), d.getMonth(), d.getDate());
   const day = (date.getDay() + 6) % 7;
   date.setDate(date.getDate() - day + 3);
+
   const firstThursday = new Date(date.getFullYear(), 0, 4);
   const firstDay = (firstThursday.getDay() + 6) % 7;
   firstThursday.setDate(firstThursday.getDate() - firstDay + 3);
@@ -135,7 +136,7 @@ const READING_OPTIONS = [
 /** -------------------- Page -------------------- */
 export default function AdminStudentPage() {
   const params = useParams<{ uid: string }>();
-  const studentId = params.uid;
+  const studentId = params?.uid || "";
 
   const [attendance, setAttendance] = useState<"present" | "absent">("present");
 
@@ -145,6 +146,8 @@ export default function AdminStudentPage() {
   const [madrassahId, setMadrassahId] = useState<string | null>(null);
 
   const [studentName, setStudentName] = useState("");
+  const [studentExists, setStudentExists] = useState(false);
+  const [pageErr, setPageErr] = useState<string | null>(null);
 
   const [sabak, setSabak] = useState("");
   const [sabakDhor, setSabakDhor] = useState("");
@@ -204,8 +207,8 @@ export default function AdminStudentPage() {
     Boolean(weeklyGoalCompletedDateKey) || (weeklyGoalDurationDays ?? 0) > 0;
 
   const goalNotReached =
-    weeklyGoal &&
-    weeklyGoalStartDateKey &&
+    weeklyGoal.trim().length > 0 &&
+    weeklyGoalStartDateKey.trim().length > 0 &&
     !weeklyGoalCompletedDateKey &&
     diffDaysInclusive(weeklyGoalStartDateKey, dateKey) > 7;
 
@@ -226,6 +229,8 @@ export default function AdminStudentPage() {
 
         setRole(myData?.role ?? null);
         setMadrassahId(myData?.madrassahId ?? null);
+      } catch (e: any) {
+        setPageErr(e?.message ?? "Could not load your account.");
       } finally {
         setChecking(false);
       }
@@ -241,11 +246,21 @@ export default function AdminStudentPage() {
       resetFields();
       setMarkGoalCompleted(false);
       setMsg(null);
+      setPageErr(null);
+      setStudentExists(false);
 
-      const sDoc = await getDoc(doc(db, "madrassahs", madrassahId, "students", studentId));
-      if (sDoc.exists()) {
+      try {
+        const sDoc = await getDoc(doc(db, "madrassahs", madrassahId, "students", studentId));
+
+        if (!sDoc.exists()) {
+          setStudentName("Student");
+          setPageErr("Student not found in this madrassah.");
+          return;
+        }
+
         const data = sDoc.data() as any;
 
+        setStudentExists(true);
         setStudentName(toText(data.fullName) || "Student");
         setWeeklyGoal(toText(data.weeklyGoal));
         setWeeklyGoalWeekKey(toText(data.weeklyGoalWeekKey));
@@ -254,8 +269,9 @@ export default function AdminStudentPage() {
 
         const dur = data.weeklyGoalDurationDays;
         setWeeklyGoalDurationDays(typeof dur === "number" ? dur : dur ? Number(dur) : null);
-      } else {
+      } catch (e: any) {
         setStudentName("Student");
+        setPageErr(e?.message ?? "Could not load the student.");
       }
     }
 
@@ -265,7 +281,20 @@ export default function AdminStudentPage() {
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
 
-    if (!me || !madrassahId || !role || !["admin", "teacher"].includes(role)) return;
+    if (!studentId) {
+      setMsg("Error: Invalid student.");
+      return;
+    }
+
+    if (!me || !madrassahId || !role || !["admin", "teacher"].includes(role)) {
+      setMsg("Error: You do not have permission to save.");
+      return;
+    }
+
+    if (!studentExists) {
+      setMsg("Error: Student not found.");
+      return;
+    }
 
     setSaving(true);
     setMsg(null);
@@ -278,29 +307,33 @@ export default function AdminStudentPage() {
       let nextDuration: number | null = weeklyGoalDurationDays ?? null;
 
       if (nextGoal) {
-        if (!nextStartKey) {
+        if (!nextStartKey || nextWeekKey !== currentWeekKey) {
           nextStartKey = dateKey;
           nextWeekKey = currentWeekKey;
+          nextCompletedKey = "";
+          nextDuration = null;
         }
 
         if (markGoalCompleted && !nextCompletedKey) {
           nextCompletedKey = dateKey;
           nextDuration = diffDaysInclusive(nextStartKey, dateKey);
         }
-
-        if (nextCompletedKey && weeklyGoal.trim() !== "" && !markGoalCompleted) {
-          nextStartKey = dateKey;
-          nextCompletedKey = "";
-          nextDuration = null;
-          nextWeekKey = currentWeekKey;
-        }
+      } else {
+        nextWeekKey = "";
+        nextStartKey = "";
+        nextCompletedKey = "";
+        nextDuration = null;
       }
 
+      const logRef = doc(db, "madrassahs", madrassahId, "students", studentId, "logs", dateKey);
+      const existingLogSnap = await getDoc(logRef);
+
       await setDoc(
-        doc(db, "madrassahs", madrassahId, "students", studentId, "logs", dateKey),
+        logRef,
         {
           dateKey,
-          createdAt: serverTimestamp(),
+
+          ...(existingLogSnap.exists() ? {} : { createdAt: serverTimestamp() }),
 
           attendance,
 
@@ -331,7 +364,8 @@ export default function AdminStudentPage() {
           weeklyGoalCompleted: Boolean(nextCompletedKey),
 
           updatedBy: me.uid,
-          updatedByEmail: me.email ?? null,
+          updatedByEmail: me.email ?? "",
+          updatedAt: serverTimestamp(),
         },
         { merge: true }
       );
@@ -437,6 +471,24 @@ export default function AdminStudentPage() {
     );
   }
 
+  if (!studentId || !studentExists) {
+    return (
+      <Shell title="Student not found" subtitle="This student could not be found for your madrassah.">
+        <div className="rounded-3xl border border-red-200 bg-red-50 p-6 sm:p-7 shadow-sm">
+          <p className="text-red-700">{pageErr || "Invalid student."}</p>
+          <div className="mt-5">
+            <Link
+              href="/admin"
+              className="inline-flex items-center justify-center h-11 px-6 rounded-full bg-black text-white text-sm font-semibold hover:bg-gray-900"
+            >
+              Back to Dashboard
+            </Link>
+          </div>
+        </div>
+      </Shell>
+    );
+  }
+
   return (
     <Shell
       title={`Log work for ${studentName || "student"}`}
@@ -481,6 +533,12 @@ export default function AdminStudentPage() {
             ) : null}
           </div>
         </div>
+
+        {pageErr ? (
+          <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {pageErr}
+          </div>
+        ) : null}
 
         <form onSubmit={handleSave} className="mt-6 grid gap-5">
           <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur p-5 sm:p-6">

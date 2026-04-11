@@ -7,6 +7,7 @@ import { createUserWithEmailAndPassword } from "firebase/auth";
 import {
   collection,
   doc,
+  getDoc,
   getDocs,
   limit,
   query,
@@ -54,7 +55,6 @@ function makeReadableJoinCode(name: string) {
 
   const words = cleaned.split(" ").filter(Boolean);
   const joined = words.join("");
-
   const base = (joined || "MADRASSAH").slice(0, 10);
   const random2 = String(Math.floor(Math.random() * 100)).padStart(2, "0");
 
@@ -70,11 +70,13 @@ function makeReportAccessKey() {
 async function generateUniqueJoinCode(name: string) {
   for (let i = 0; i < 20; i++) {
     const code = makeReadableJoinCode(name);
+
     const q = query(
-      collection(db, "madrassahs"),
-      where("joinCode", "==", code),
+      collection(db, "teacherJoinCodes"),
+      where("__name__", "==", code),
       limit(1)
     );
+
     const snap = await getDocs(q);
     if (snap.empty) return code;
   }
@@ -85,11 +87,13 @@ async function generateUniqueJoinCode(name: string) {
 async function generateUniqueReportAccessKey() {
   for (let i = 0; i < 10; i++) {
     const key = makeReportAccessKey();
+
     const q = query(
       collection(db, "madrassahs"),
-      where("reportAccessKey", "==", key),
+      where("reportAccessKeyMirror", "==", key),
       limit(1)
     );
+
     const snap = await getDocs(q);
     if (snap.empty) return key;
   }
@@ -103,6 +107,7 @@ export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [accountType, setAccountType] = useState<AccountType>("admin");
@@ -129,6 +134,16 @@ export default function SignupPage() {
 
     if (!cleanPhone) {
       setErr("Please enter your phone number.");
+      return;
+    }
+
+    if (!cleanEmail) {
+      setErr("Please enter your email address.");
+      return;
+    }
+
+    if (!password || password.length < 6) {
+      setErr("Please enter a password of at least 6 characters.");
       return;
     }
 
@@ -160,10 +175,26 @@ export default function SignupPage() {
         batch.set(madrassahRef, {
           name: cleanMadrassahName,
           slug,
-          joinCode: uniqueJoinCode,
-          reportAccessKey: uniqueReportAccessKey,
           createdBy: userId,
           adminUserId: userId,
+          isActive: true,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+
+          // optional mirror field only for uniqueness lookup convenience
+          reportAccessKeyMirror: uniqueReportAccessKey,
+        });
+
+        batch.set(doc(db, "madrassahs", madrassahId, "private", "config"), {
+          joinCode: uniqueJoinCode,
+          reportAccessKey: uniqueReportAccessKey,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+
+        batch.set(doc(db, "teacherJoinCodes", uniqueJoinCode), {
+          madrassahId,
+          madrassahName: cleanMadrassahName,
           isActive: true,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
@@ -197,23 +228,29 @@ export default function SignupPage() {
         return;
       }
 
-      const madrassahQuery = query(
-        collection(db, "madrassahs"),
-        where("joinCode", "==", cleanJoinCode),
-        limit(1)
-      );
-      const madrassahSnap = await getDocs(madrassahQuery);
+      const joinCodeRef = doc(db, "teacherJoinCodes", cleanJoinCode);
+      const joinCodeSnap = await getDoc(joinCodeRef);
 
-      if (madrassahSnap.empty) {
+      if (!joinCodeSnap.exists()) {
         setErr("That join code is not valid. Please check it and try again.");
         setLoading(false);
         return;
       }
 
-      const madrassahDoc = madrassahSnap.docs[0];
-      const madrassahId = madrassahDoc.id;
-      const madrassahData = madrassahDoc.data() as { name?: string };
-      const foundMadrassahName = madrassahData.name?.toString().trim() || "Madrassah";
+      const joinData = joinCodeSnap.data() as {
+        madrassahId?: string;
+        madrassahName?: string;
+        isActive?: boolean;
+      };
+
+      if (joinData.isActive === false || !joinData.madrassahId) {
+        setErr("That join code is inactive.");
+        setLoading(false);
+        return;
+      }
+
+      const foundMadrassahId = joinData.madrassahId;
+      const foundMadrassahName = joinData.madrassahName?.trim() || "Madrassah";
 
       const cred = await createUserWithEmailAndPassword(auth, cleanEmail, password);
       const userId = cred.user.uid;
@@ -225,14 +262,14 @@ export default function SignupPage() {
         fullName: cleanFullName,
         phone: cleanPhone,
         role: "teacher",
-        madrassahId,
+        madrassahId: foundMadrassahId,
         madrassahName: foundMadrassahName,
         isActive: true,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
 
-      batch.set(doc(db, "madrassahs", madrassahId, "staff", userId), {
+      batch.set(doc(db, "madrassahs", foundMadrassahId, "staff", userId), {
         userId,
         fullName: cleanFullName,
         email: (cred.user.email ?? cleanEmail).toLowerCase(),
@@ -284,20 +321,8 @@ export default function SignupPage() {
                 Create your account
               </h1>
               <p className="mt-3 text-gray-700 leading-relaxed">
-                Set up your madrassah account or join your madrassah as a teacher.
+                Admins can set up their madrassah and teachers can join using the madrassah join code.
               </p>
-
-              <div className="mt-6 grid grid-cols-2 gap-3">
-                {["Secure login", "Fast onboarding", "Multi-madrassah ready", "Clean dashboard"].map((t) => (
-                  <div
-                    key={t}
-                    className="rounded-2xl border border-gray-300 bg-white/70 px-4 py-4 text-sm font-medium"
-                  >
-                    {t}
-                    <div className="mt-1 h-1 w-10 rounded-full bg-[#B8963D]/60" />
-                  </div>
-                ))}
-              </div>
             </div>
 
             <div className="mt-6 rounded-3xl bg-black text-white p-7 shadow-xl relative overflow-hidden">
@@ -314,7 +339,7 @@ export default function SignupPage() {
             <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur p-8 shadow-lg">
               <h2 className="text-2xl font-semibold tracking-tight">Sign Up</h2>
               <p className="mt-2 text-sm text-gray-600">
-                Use your details to create your account.
+                Create an admin or teacher account.
               </p>
 
               {err && (
@@ -325,7 +350,7 @@ export default function SignupPage() {
 
               <form onSubmit={onSubmit} className="mt-6 grid gap-4">
                 <div>
-                  <label className="text-sm font-medium text-gray-800">Account Type</label>
+                  <label className="text-sm font-medium text-gray-800">Account type</label>
                   <div className="mt-2 grid grid-cols-2 gap-3">
                     <button
                       type="button"
@@ -353,59 +378,27 @@ export default function SignupPage() {
                   </div>
                 </div>
 
-                {accountType === "admin" && (
-                  <div>
-                    <label className="text-sm font-medium text-gray-800">Madrassah Name</label>
-                    <input
-                      value={madrassahName}
-                      onChange={(e) => setMadrassahName(e.target.value)}
-                      type="text"
-                      required
-                      placeholder="e.g. Umm Abbad Academy"
-                      className="mt-2 w-full h-12 rounded-2xl border border-gray-300 bg-white/80 px-4 outline-none focus:ring-2 focus:ring-[#B8963D]/40"
-                    />
-                  </div>
-                )}
-
-                {accountType === "teacher" && (
-                  <div>
-                    <label className="text-sm font-medium text-gray-800">Madrassah Join Code</label>
-                    <input
-                      value={joinCode}
-                      onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                      type="text"
-                      required
-                      placeholder="e.g. UMMABBAD-21"
-                      className="mt-2 w-full h-12 rounded-2xl border border-gray-300 bg-white/80 px-4 outline-none uppercase focus:ring-2 focus:ring-[#B8963D]/40"
-                    />
-                  </div>
-                )}
-
                 <div>
-                  <label className="text-sm font-medium text-gray-800">Full Name</label>
+                  <label className="text-sm font-medium text-gray-800">Full name</label>
                   <input
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     type="text"
                     required
-                    placeholder={
-                      accountType === "admin"
-                        ? "e.g. Moulana Ahmed"
-                        : "e.g. Ustadh Muhammad Ahmed"
-                    }
-                    className="mt-2 w-full h-12 rounded-2xl border border-gray-300 bg-white/80 px-4 outline-none focus:ring-2 focus:ring-[#B8963D]/40"
+                    placeholder="Your full name"
+                    className="mt-2 w-full h-12 rounded-2xl border border-gray-300 bg-white/80 px-4 outline-none focus:border-black"
                   />
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium text-gray-800">Phone Number</label>
+                  <label className="text-sm font-medium text-gray-800">Phone number</label>
                   <input
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     type="tel"
                     required
-                    placeholder="e.g. 082 123 4567"
-                    className="mt-2 w-full h-12 rounded-2xl border border-gray-300 bg-white/80 px-4 outline-none focus:ring-2 focus:ring-[#B8963D]/40"
+                    placeholder="Your phone number"
+                    className="mt-2 w-full h-12 rounded-2xl border border-gray-300 bg-white/80 px-4 outline-none focus:border-black"
                   />
                 </div>
 
@@ -416,53 +409,67 @@ export default function SignupPage() {
                     onChange={(e) => setEmail(e.target.value)}
                     type="email"
                     required
-                    placeholder="e.g. name@email.com"
-                    className="mt-2 w-full h-12 rounded-2xl border border-gray-300 bg-white/80 px-4 outline-none focus:ring-2 focus:ring-[#B8963D]/40"
+                    placeholder="email@example.com"
+                    className="mt-2 w-full h-12 rounded-2xl border border-gray-300 bg-white/80 px-4 outline-none focus:border-black"
                   />
                 </div>
 
                 <div>
                   <label className="text-sm font-medium text-gray-800">Password</label>
-
                   <div className="mt-2 relative">
                     <input
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       type={showPassword ? "text" : "password"}
                       required
-                      placeholder="Minimum 6 characters"
-                      className="w-full h-12 rounded-2xl border border-gray-300 bg-white/80 px-4 pr-24 outline-none focus:ring-2 focus:ring-[#B8963D]/40"
+                      minLength={6}
+                      placeholder="At least 6 characters"
+                      className="w-full h-12 rounded-2xl border border-gray-300 bg-white/80 px-4 pr-20 outline-none focus:border-black"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword((v) => !v)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 h-9 px-3 rounded-xl border border-gray-300 bg-white/70 text-sm font-medium hover:bg-white"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-medium text-gray-600 hover:text-black"
                     >
                       {showPassword ? "Hide" : "Show"}
                     </button>
                   </div>
                 </div>
 
+                {accountType === "admin" ? (
+                  <div>
+                    <label className="text-sm font-medium text-gray-800">Madrassah name</label>
+                    <input
+                      value={madrassahName}
+                      onChange={(e) => setMadrassahName(e.target.value)}
+                      type="text"
+                      required
+                      placeholder="Enter the madrassah name"
+                      className="mt-2 w-full h-12 rounded-2xl border border-gray-300 bg-white/80 px-4 outline-none focus:border-black"
+                    />
+                  </div>
+                ) : (
+                  <div>
+                    <label className="text-sm font-medium text-gray-800">Join code</label>
+                    <input
+                      value={joinCode}
+                      onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                      type="text"
+                      required
+                      placeholder="Enter the madrassah join code"
+                      className="mt-2 w-full h-12 rounded-2xl border border-gray-300 bg-white/80 px-4 uppercase outline-none focus:border-black"
+                    />
+                  </div>
+                )}
+
                 <button
+                  type="submit"
                   disabled={loading}
-                  className="mt-2 h-12 rounded-2xl bg-black text-white font-semibold hover:bg-gray-900 transition-colors shadow-sm disabled:opacity-60"
+                  className="mt-2 h-12 rounded-2xl bg-black text-white font-semibold hover:bg-gray-900 transition-colors disabled:opacity-60"
                 >
-                  {loading ? "Creating..." : "Create Account"}
+                  {loading ? "Creating account..." : "Create account"}
                 </button>
-
-                <div className="text-sm text-gray-600 text-center">
-                  {accountType === "admin"
-                    ? "Your madrassah will be created automatically and you will become the admin."
-                    : "Use the madrassah join code given to you by the admin to join as a teacher."}
-                </div>
               </form>
-
-              <div className="mt-6 text-center text-sm text-gray-700">
-                Already have an account?{" "}
-                <Link href="/login" className="font-semibold text-[#B8963D] hover:underline">
-                  Sign In
-                </Link>
-              </div>
             </div>
           </div>
         </div>
