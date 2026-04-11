@@ -128,12 +128,10 @@ export async function GET(request: Request) {
     const madrassahId = me.madrassahId!;
     let madrassahName = me.madrassahName || "Madrassah";
 
-    if (madrassahId) {
-      const madrassahSnap = await db.collection("madrassahs").doc(madrassahId).get();
-      if (madrassahSnap.exists) {
-        const madrassahData = madrassahSnap.data() as { name?: string };
-        madrassahName = madrassahData.name || madrassahName;
-      }
+    const madrassahSnap = await db.collection("madrassahs").doc(madrassahId).get();
+    if (madrassahSnap.exists) {
+      const madrassahData = madrassahSnap.data() as { name?: string };
+      madrassahName = madrassahData.name || madrassahName;
     }
 
     const studentsSnap = await db
