@@ -11,7 +11,6 @@ import {
   limit,
   query,
   serverTimestamp,
-  setDoc,
   where,
   writeBatch,
 } from "firebase/firestore";
@@ -60,6 +59,12 @@ function makeReadableJoinCode(name: string) {
   return `${cleanedBase}${random4}`;
 }
 
+function makeReportAccessKey() {
+  const randomA = Math.random().toString(36).slice(2, 8).toUpperCase();
+  const randomB = Math.random().toString(36).slice(2, 8).toUpperCase();
+  return `REP-${randomA}${randomB}`;
+}
+
 async function generateUniqueJoinCode(name: string) {
   for (let i = 0; i < 10; i++) {
     const code = makeReadableJoinCode(name);
@@ -73,6 +78,21 @@ async function generateUniqueJoinCode(name: string) {
   }
 
   throw new Error("Could not generate a unique join code. Please try again.");
+}
+
+async function generateUniqueReportAccessKey() {
+  for (let i = 0; i < 10; i++) {
+    const key = makeReportAccessKey();
+    const q = query(
+      collection(db, "madrassahs"),
+      where("reportAccessKey", "==", key),
+      limit(1)
+    );
+    const snap = await getDocs(q);
+    if (snap.empty) return key;
+  }
+
+  throw new Error("Could not generate a unique report key. Please try again.");
 }
 
 export default function SignupPage() {
@@ -131,6 +151,7 @@ export default function SignupPage() {
         const madrassahId = madrassahRef.id;
         const slug = slugifyMadrassahName(cleanMadrassahName);
         const uniqueJoinCode = await generateUniqueJoinCode(cleanMadrassahName);
+        const uniqueReportAccessKey = await generateUniqueReportAccessKey();
 
         const batch = writeBatch(db);
 
@@ -138,6 +159,7 @@ export default function SignupPage() {
           name: cleanMadrassahName,
           slug,
           joinCode: uniqueJoinCode,
+          reportAccessKey: uniqueReportAccessKey,
           createdBy: userId,
           adminUserId: userId,
           isActive: true,
@@ -222,7 +244,7 @@ export default function SignupPage() {
       await batch.commit();
       router.push("/admin");
     } catch (error: any) {
-      setErr(friendlySignupError(error?.code) || error?.message || "Signup failed.");
+      setErr(error?.message || friendlySignupError(error?.code) || "Signup failed.");
     } finally {
       setLoading(false);
     }
