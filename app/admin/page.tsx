@@ -111,10 +111,17 @@ export default function AdminPage() {
   const [addingStudent, setAddingStudent] = useState(false);
   const [studentMsg, setStudentMsg] = useState<string | null>(null);
   const [joinCodeMsg, setJoinCodeMsg] = useState<string | null>(null);
+  const [reportLinkMsg, setReportLinkMsg] = useState<string | null>(null);
 
   const [err, setErr] = useState<string | null>(null);
 
   const today = useMemo(() => getDateKeySA(), []);
+  const reportLink =
+    madrassahId && joinCode
+      ? `${typeof window !== "undefined" ? window.location.origin : ""}/weekly-reports?m=${encodeURIComponent(
+          madrassahId
+        )}&key=${encodeURIComponent(joinCode)}`
+      : "";
 
   async function loadStudents(currentMadrassahId: string) {
     setLoadingStudents(true);
@@ -306,43 +313,16 @@ export default function AdminPage() {
     }
   }
 
-  async function openWeeklyReports() {
-    const user = auth.currentUser;
-
-    if (!user) {
-      setErr("You must be signed in first.");
-      return;
-    }
+  async function handleCopyReportLink() {
+    if (!reportLink) return;
 
     try {
-      const token = await user.getIdToken();
-
-      const res = await fetch("/api/sendweeklyreports", {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!res.ok) {
-        const text = await res.text();
-        setErr(text || "Could not open weekly reports.");
-        return;
-      }
-
-      const html = await res.text();
-
-      const newWindow = window.open("", "_blank");
-      if (!newWindow) {
-        setErr("Popup blocked. Please allow popups and try again.");
-        return;
-      }
-
-      newWindow.document.open();
-      newWindow.document.write(html);
-      newWindow.document.close();
-    } catch (e: any) {
-      setErr(e?.message ?? "Could not open weekly reports.");
+      await navigator.clipboard.writeText(reportLink);
+      setReportLinkMsg("Report link copied.");
+      setTimeout(() => setReportLinkMsg(null), 2000);
+    } catch {
+      setReportLinkMsg("Could not copy report link.");
+      setTimeout(() => setReportLinkMsg(null), 2000);
     }
   }
 
@@ -370,20 +350,6 @@ export default function AdminPage() {
       >
         <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur p-7 shadow-sm">
           <p className="text-gray-700">Go to login, then come back to the dashboard.</p>
-          <div className="mt-5 flex flex-wrap gap-3">
-            <Link
-              href="/login"
-              className="inline-flex items-center justify-center h-11 px-6 rounded-full bg-black text-white text-sm font-semibold hover:bg-gray-900"
-            >
-              Go to login
-            </Link>
-            <Link
-              href="/"
-              className="inline-flex items-center justify-center h-11 px-6 rounded-full border border-gray-300 bg-white/70 hover:bg-white text-sm font-semibold"
-            >
-              Back to Home
-            </Link>
-          </div>
         </div>
       </PageShell>
     );
@@ -426,9 +392,7 @@ export default function AdminPage() {
         }
       >
         <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur p-7 shadow-sm">
-          <p className="text-gray-700">
-            Your account exists, but no madrassah is linked to it yet.
-          </p>
+          <p className="text-gray-700">Your account exists, but no madrassah is linked to it yet.</p>
         </div>
       </PageShell>
     );
@@ -437,9 +401,7 @@ export default function AdminPage() {
   return (
     <PageShell
       title={role === "admin" ? "Admin Dashboard" : "Teacher Dashboard"}
-      subtitle={`${
-        madrassahName || "Your madrassah"
-      } • Add students and log their work for today (${today}).`}
+      subtitle={`${madrassahName || "Your madrassah"} • Add students and log their work for today (${today}).`}
       rightSlot={
         <Link
           href="/"
@@ -454,9 +416,7 @@ export default function AdminPage() {
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
             <div>
               <div className="text-sm text-gray-600">Teacher onboarding</div>
-              <div className="mt-1 text-xl font-semibold tracking-tight">
-                Madrassah join code
-              </div>
+              <div className="mt-1 text-xl font-semibold tracking-tight">Madrassah join code</div>
             </div>
 
             <div className="inline-flex items-center gap-2 rounded-full border border-gray-300 bg-white/70 px-4 py-2 text-xs font-semibold text-gray-700">
@@ -478,6 +438,18 @@ export default function AdminPage() {
               </p>
             </div>
 
+            <div className="rounded-2xl border border-gray-300 bg-white/80 px-5 py-5">
+              <div className="text-xs uppercase tracking-widest text-gray-500">
+                Weekly reports link
+              </div>
+              <div className="mt-2 text-sm font-medium text-gray-900 break-all">
+                {reportLink || "Report link not ready"}
+              </div>
+              <p className="mt-2 text-sm text-gray-600">
+                Open this link directly in your browser to generate all reports for this madrassah.
+              </p>
+            </div>
+
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div className="flex flex-col sm:flex-row gap-3">
                 <button
@@ -491,15 +463,16 @@ export default function AdminPage() {
 
                 <button
                   type="button"
-                  onClick={openWeeklyReports}
-                  className="h-12 w-full sm:w-auto px-7 rounded-2xl border border-gray-300 bg-white/70 hover:bg-white text-sm font-semibold transition-colors"
+                  onClick={handleCopyReportLink}
+                  disabled={!reportLink}
+                  className="h-12 w-full sm:w-auto px-7 rounded-2xl border border-gray-300 bg-white/70 hover:bg-white text-sm font-semibold transition-colors disabled:opacity-60"
                 >
-                  Open Weekly Reports
+                  Copy Report Link
                 </button>
               </div>
 
               <div className="text-sm font-medium text-gray-700">
-                {joinCodeMsg ?? ""}
+                {reportLinkMsg || joinCodeMsg || ""}
               </div>
             </div>
           </div>
@@ -509,9 +482,7 @@ export default function AdminPage() {
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
             <div>
               <div className="text-sm text-gray-600">Student creation</div>
-              <div className="mt-1 text-xl font-semibold tracking-tight">
-                Add a new student
-              </div>
+              <div className="mt-1 text-xl font-semibold tracking-tight">Add a new student</div>
             </div>
           </div>
 
@@ -569,11 +540,7 @@ export default function AdminPage() {
                 {addingStudent ? "Adding..." : "Add Student"}
               </button>
 
-              <div
-                className={`text-sm font-medium ${
-                  studentMsg?.toLowerCase().includes("success") ? "text-emerald-700" : "text-gray-700"
-                }`}
-              >
+              <div className={`text-sm font-medium ${studentMsg?.toLowerCase().includes("success") ? "text-emerald-700" : "text-gray-700"}`}>
                 {studentMsg ?? ""}
               </div>
             </div>
@@ -584,9 +551,7 @@ export default function AdminPage() {
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
             <div>
               <div className="text-sm text-gray-600">Student selection</div>
-              <div className="mt-1 text-xl font-semibold tracking-tight">
-                Choose a student
-              </div>
+              <div className="mt-1 text-xl font-semibold tracking-tight">Choose a student</div>
             </div>
           </div>
 
@@ -661,7 +626,7 @@ export default function AdminPage() {
         <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur p-6 shadow-sm">
           <div className="text-sm font-semibold text-gray-900">Tip for faster workflow</div>
           <p className="mt-1 text-sm text-gray-700">
-            Add the student once, share the join code with teachers, then select the student, log work, save, and move straight to the next one.
+            Add the student once, copy the report link, open it in your browser, then copy each student's report and send it manually.
           </p>
         </div>
       </div>
