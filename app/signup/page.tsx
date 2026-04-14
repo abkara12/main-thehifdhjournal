@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import {
   collection,
@@ -44,6 +44,23 @@ function slugifyMadrassahName(value: string) {
     .replace(/\s+/g, "-")
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "");
+}
+
+function normalizeName(value: string) {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function normalizePhone(value: string) {
+  return value.replace(/[^\d+]/g, "").trim();
+}
+
+function normalizeJoinCode(value: string) {
+  return value.toUpperCase().replace(/\s+/g, "").trim();
+}
+
+function isValidPhone(value: string) {
+  const digits = value.replace(/\D/g, "");
+  return digits.length >= 10 && digits.length <= 15;
 }
 
 function makeReadableJoinCode(name: string) {
@@ -117,15 +134,20 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
+  const joinCodeHint = useMemo(() => {
+    const clean = normalizeJoinCode(joinCode);
+    return clean || "JOIN-CODE";
+  }, [joinCode]);
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErr(null);
 
     const cleanEmail = email.trim().toLowerCase();
-    const cleanFullName = fullName.trim();
-    const cleanPhone = phone.trim();
-    const cleanMadrassahName = madrassahName.trim();
-    const cleanJoinCode = joinCode.trim().toUpperCase();
+    const cleanFullName = normalizeName(fullName);
+    const cleanPhone = normalizePhone(phone);
+    const cleanMadrassahName = normalizeName(madrassahName);
+    const cleanJoinCode = normalizeJoinCode(joinCode);
 
     if (!cleanFullName) {
       setErr("Please enter your full name.");
@@ -134,6 +156,11 @@ export default function SignupPage() {
 
     if (!cleanPhone) {
       setErr("Please enter your phone number.");
+      return;
+    }
+
+    if (!isValidPhone(cleanPhone)) {
+      setErr("Please enter a valid phone number.");
       return;
     }
 
@@ -180,8 +207,6 @@ export default function SignupPage() {
           isActive: true,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
-
-          // optional mirror field only for uniqueness lookup convenience
           reportAccessKeyMirror: uniqueReportAccessKey,
         });
 
@@ -283,7 +308,7 @@ export default function SignupPage() {
       await batch.commit();
       router.push("/admin");
     } catch (error: any) {
-      setErr(error?.message || friendlySignupError(error?.code) || "Signup failed.");
+      setErr(friendlySignupError(error?.code) || error?.message || "Signup failed.");
     } finally {
       setLoading(false);
     }
@@ -342,11 +367,11 @@ export default function SignupPage() {
                 Create an admin or teacher account.
               </p>
 
-              {err && (
+              {err ? (
                 <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                   {err}
                 </div>
-              )}
+              ) : null}
 
               <form onSubmit={onSubmit} className="mt-6 grid gap-4">
                 <div>
@@ -453,12 +478,15 @@ export default function SignupPage() {
                     <label className="text-sm font-medium text-gray-800">Join code</label>
                     <input
                       value={joinCode}
-                      onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                      onChange={(e) => setJoinCode(normalizeJoinCode(e.target.value))}
                       type="text"
                       required
                       placeholder="Enter the madrassah join code"
                       className="mt-2 w-full h-12 rounded-2xl border border-gray-300 bg-white/80 px-4 uppercase outline-none focus:border-black"
                     />
+                    <p className="mt-2 text-xs text-gray-500">
+                      Code preview: <span className="font-semibold tracking-wider">{joinCodeHint}</span>
+                    </p>
                   </div>
                 )}
 

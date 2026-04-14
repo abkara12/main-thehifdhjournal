@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "../lib/firebase";
 import { useRouter } from "next/navigation";
@@ -18,6 +18,8 @@ function friendlyLoginError(code?: string) {
       return "Please enter a valid email address.";
     case "auth/network-request-failed":
       return "Network error. Please check your internet connection and try again.";
+    case "auth/too-many-requests":
+      return "Too many failed attempts. Please try again a little later.";
     default:
       return "Login failed. Please try again.";
   }
@@ -36,16 +38,30 @@ export default function LoginPage() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErr(null);
+
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPassword = password;
+
+    if (!cleanEmail) {
+      setErr("Please enter your email address.");
+      return;
+    }
+
+    if (!cleanPassword) {
+      setErr("Please enter your password.");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const cleanEmail = email.trim().toLowerCase();
-      const cred = await signInWithEmailAndPassword(auth, cleanEmail, password);
+      const cred = await signInWithEmailAndPassword(auth, cleanEmail, cleanPassword);
 
       const meRef = doc(db, "users", cred.user.uid);
       const meSnap = await getDoc(meRef);
 
       if (!meSnap.exists()) {
+        await signOut(auth);
         setErr("Your account record could not be found. Please contact support.");
         setLoading(false);
         return;
@@ -60,6 +76,7 @@ export default function LoginPage() {
       };
 
       if (me.isActive === false) {
+        await signOut(auth);
         setErr("This account is inactive. Please contact the madrassah admin.");
         setLoading(false);
         return;
@@ -68,12 +85,20 @@ export default function LoginPage() {
       const role = me.role ?? "";
 
       if (role === "admin" || role === "teacher") {
+        if (!me.madrassahId) {
+          await signOut(auth);
+          setErr("This account is not linked to a madrassah yet.");
+          setLoading(false);
+          return;
+        }
+
         router.push("/admin");
         return;
       }
 
       if (role === "parent") {
         if (!me.linkedStudentId || !me.linkedMadrassahId) {
+          await signOut(auth);
           setErr("This parent account is not linked to a student yet.");
           setLoading(false);
           return;
@@ -83,6 +108,7 @@ export default function LoginPage() {
         return;
       }
 
+      await signOut(auth);
       setErr("This account role is not set correctly. Please contact support.");
     } catch (error: any) {
       setErr(friendlyLoginError(error?.code));
@@ -106,9 +132,16 @@ export default function LoginPage() {
         <div className="flex items-center justify-between">
           <Link href="/" className="inline-flex items-center gap-3">
             <div className="h-[80px] w-[85px] rounded-xl bg-white/100 backdrop-blur border border-gray-300 shadow-sm grid place-items-center">
-              <Image src="/logo4.png" alt="Hifdh Journal" width={58} height={58} className="rounded" />
+              <Image
+                src="/logo4.png"
+                alt="Hifdh Journal"
+                width={58}
+                height={58}
+                className="rounded"
+              />
             </div>
           </Link>
+
           <Link href="/signup" className="text-sm font-medium text-gray-700 hover:text-black">
             New here? <span className="text-[#B8963D]">Create an account</span>
           </Link>
@@ -122,7 +155,7 @@ export default function LoginPage() {
                 Sign in to continue
               </h1>
               <p className="mt-3 text-gray-700 leading-relaxed">
-                Admins, teachers, and parents can sign in to access their account.
+                Admins and teachers can sign in to access the madrassah dashboard.
               </p>
             </div>
 
@@ -141,11 +174,11 @@ export default function LoginPage() {
               <h2 className="text-2xl font-semibold tracking-tight">Sign In</h2>
               <p className="mt-2 text-sm text-gray-600">Use your email and password.</p>
 
-              {err && (
+              {err ? (
                 <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                   {err}
                 </div>
-              )}
+              ) : null}
 
               <form onSubmit={onSubmit} className="mt-6 grid gap-4">
                 <div>
@@ -155,6 +188,7 @@ export default function LoginPage() {
                     onChange={(e) => setEmail(e.target.value)}
                     type="email"
                     required
+                    autoComplete="email"
                     placeholder="email@example.com"
                     className="mt-2 w-full h-12 rounded-2xl border border-gray-300 bg-white/80 px-4 outline-none focus:ring-2 focus:ring-[#B8963D]/40"
                   />
@@ -168,6 +202,7 @@ export default function LoginPage() {
                       onChange={(e) => setPassword(e.target.value)}
                       type={showPassword ? "text" : "password"}
                       required
+                      autoComplete="current-password"
                       placeholder="Your password"
                       className="w-full h-12 rounded-2xl border border-gray-300 bg-white/80 px-4 pr-24 outline-none focus:ring-2 focus:ring-[#B8963D]/40"
                     />
@@ -182,6 +217,7 @@ export default function LoginPage() {
                 </div>
 
                 <button
+                  type="submit"
                   disabled={loading}
                   className="mt-2 h-12 rounded-2xl bg-black text-white font-semibold hover:bg-gray-900 transition-colors shadow-sm disabled:opacity-60"
                 >

@@ -133,6 +133,11 @@ const READING_OPTIONS = [
   { value: "Poor", label: "Poor" },
 ];
 
+type ExistingLogMeta = {
+  updatedByEmail?: string;
+  updatedAtText?: string;
+};
+
 /** -------------------- Page -------------------- */
 export default function AdminStudentPage() {
   const params = useParams<{ uid: string }>();
@@ -175,6 +180,10 @@ export default function AdminStudentPage() {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
+  const [hasExistingTodayLog, setHasExistingTodayLog] = useState(false);
+  const [editorMode, setEditorMode] = useState<"new" | "edit" | "overwrite" | null>(null);
+  const [existingLogMeta, setExistingLogMeta] = useState<ExistingLogMeta | null>(null);
+
   function resetFields() {
     setAttendance("present");
 
@@ -193,6 +202,26 @@ export default function AdminStudentPage() {
 
     setSabakDhorMistakes("");
     setDhorMistakes("");
+  }
+
+  function fillFieldsFromLog(data: any) {
+    setAttendance(data?.attendance === "absent" ? "absent" : "present");
+
+    setSabak(toText(data?.sabak));
+    setSabakDhor(toText(data?.sabakDhor));
+    setDhor(toText(data?.dhor));
+
+    setSabakReadQuality(toText(data?.sabakReadQuality || data?.sabakRead));
+    setSabakReadNotes(toText(data?.sabakReadNotes));
+
+    setSabakDhorReadQuality(toText(data?.sabakDhorReadQuality || data?.sabakDhorRead));
+    setSabakDhorReadNotes(toText(data?.sabakDhorReadNotes));
+
+    setDhorReadQuality(toText(data?.dhorReadQuality || data?.dhorRead));
+    setDhorReadNotes(toText(data?.dhorReadNotes));
+
+    setSabakDhorMistakes(toText(data?.sabakDhorMistakes));
+    setDhorMistakes(toText(data?.dhorMistakes));
   }
 
   const dateKey = useMemo(() => getDateKeySA(), []);
@@ -248,6 +277,9 @@ export default function AdminStudentPage() {
       setMsg(null);
       setPageErr(null);
       setStudentExists(false);
+      setHasExistingTodayLog(false);
+      setEditorMode(null);
+      setExistingLogMeta(null);
 
       try {
         const sDoc = await getDoc(doc(db, "madrassahs", madrassahId, "students", studentId));
@@ -269,6 +301,29 @@ export default function AdminStudentPage() {
 
         const dur = data.weeklyGoalDurationDays;
         setWeeklyGoalDurationDays(typeof dur === "number" ? dur : dur ? Number(dur) : null);
+
+        const logRef = doc(db, "madrassahs", madrassahId, "students", studentId, "logs", dateKey);
+        const logSnap = await getDoc(logRef);
+
+        if (logSnap.exists()) {
+          const logData = logSnap.data() as any;
+
+          setHasExistingTodayLog(true);
+          setEditorMode(null);
+
+          const updatedAtValue = logData?.updatedAt?.toDate?.();
+          setExistingLogMeta({
+            updatedByEmail: toText(logData?.updatedByEmail),
+            updatedAtText: updatedAtValue
+              ? updatedAtValue.toLocaleString("en-ZA", {
+                  timeZone: "Africa/Johannesburg",
+                })
+              : "",
+          });
+        } else {
+          setHasExistingTodayLog(false);
+          setEditorMode("new");
+        }
       } catch (e: any) {
         setStudentName("Student");
         setPageErr(e?.message ?? "Could not load the student.");
@@ -276,7 +331,36 @@ export default function AdminStudentPage() {
     }
 
     loadStudent();
-  }, [studentId, madrassahId]);
+  }, [studentId, madrassahId, dateKey]);
+
+  async function openEditTodayLog() {
+    if (!madrassahId || !studentId) return;
+
+    try {
+      setPageErr(null);
+
+      const logRef = doc(db, "madrassahs", madrassahId, "students", studentId, "logs", dateKey);
+      const logSnap = await getDoc(logRef);
+
+      if (!logSnap.exists()) {
+        setHasExistingTodayLog(false);
+        setEditorMode("new");
+        resetFields();
+        return;
+      }
+
+      fillFieldsFromLog(logSnap.data());
+      setEditorMode("edit");
+    } catch (e: any) {
+      setPageErr(e?.message ?? "Could not load today’s saved log.");
+    }
+  }
+
+  function openOverwriteTodayLog() {
+    resetFields();
+    setMarkGoalCompleted(false);
+    setEditorMode("overwrite");
+  }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -296,10 +380,31 @@ export default function AdminStudentPage() {
       return;
     }
 
+    if (hasExistingTodayLog && !editorMode) {
+      setMsg("Error: Choose Edit or Overwrite for today’s saved log first.");
+      return;
+    }
+
     setSaving(true);
     setMsg(null);
 
     try {
+      const cleanSabak = sabak.trim();
+      const cleanSabakDhor = sabakDhor.trim();
+      const cleanDhor = dhor.trim();
+
+      const cleanSabakReadQuality = sabakReadQuality.trim();
+      const cleanSabakReadNotes = sabakReadNotes.trim();
+
+      const cleanSabakDhorReadQuality = sabakDhorReadQuality.trim();
+      const cleanSabakDhorReadNotes = sabakDhorReadNotes.trim();
+
+      const cleanDhorReadQuality = dhorReadQuality.trim();
+      const cleanDhorReadNotes = dhorReadNotes.trim();
+
+      const cleanSabakDhorMistakes = sabakDhorMistakes.replace(/[^\d]/g, "");
+      const cleanDhorMistakes = dhorMistakes.replace(/[^\d]/g, "");
+
       let nextGoal = weeklyGoal.trim();
       let nextWeekKey = weeklyGoalWeekKey;
       let nextStartKey = weeklyGoalStartDateKey;
@@ -337,24 +442,24 @@ export default function AdminStudentPage() {
 
           attendance,
 
-          sabak,
-          sabakDhor,
-          dhor,
+          sabak: cleanSabak,
+          sabakDhor: cleanSabakDhor,
+          dhor: cleanDhor,
 
-          sabakRead: sabakReadQuality,
-          sabakDhorRead: sabakDhorReadQuality,
-          dhorRead: dhorReadQuality,
+          sabakRead: cleanSabakReadQuality,
+          sabakDhorRead: cleanSabakDhorReadQuality,
+          dhorRead: cleanDhorReadQuality,
 
-          sabakReadQuality,
-          sabakDhorReadQuality,
-          dhorReadQuality,
+          sabakReadQuality: cleanSabakReadQuality,
+          sabakDhorReadQuality: cleanSabakDhorReadQuality,
+          dhorReadQuality: cleanDhorReadQuality,
 
-          sabakReadNotes,
-          sabakDhorReadNotes,
-          dhorReadNotes,
+          sabakReadNotes: cleanSabakReadNotes,
+          sabakDhorReadNotes: cleanSabakDhorReadNotes,
+          dhorReadNotes: cleanDhorReadNotes,
 
-          sabakDhorMistakes,
-          dhorMistakes,
+          sabakDhorMistakes: cleanSabakDhorMistakes,
+          dhorMistakes: cleanDhorMistakes,
 
           weeklyGoal: nextGoal,
           weeklyGoalWeekKey: nextWeekKey || null,
@@ -379,20 +484,20 @@ export default function AdminStudentPage() {
           weeklyGoalCompletedDateKey: nextCompletedKey || null,
           weeklyGoalDurationDays: nextDuration,
 
-          currentSabak: sabak,
-          currentSabakDhor: sabakDhor,
-          currentDhor: dhor,
+          currentSabak: cleanSabak,
+          currentSabakDhor: cleanSabakDhor,
+          currentDhor: cleanDhor,
 
-          currentSabakReadQuality: sabakReadQuality,
-          currentSabakDhorReadQuality: sabakDhorReadQuality,
-          currentDhorReadQuality: dhorReadQuality,
+          currentSabakReadQuality: cleanSabakReadQuality,
+          currentSabakDhorReadQuality: cleanSabakDhorReadQuality,
+          currentDhorReadQuality: cleanDhorReadQuality,
 
-          currentSabakReadNotes: sabakReadNotes,
-          currentSabakDhorReadNotes: sabakDhorReadNotes,
-          currentDhorReadNotes: dhorReadNotes,
+          currentSabakReadNotes: cleanSabakReadNotes,
+          currentSabakDhorReadNotes: cleanSabakDhorReadNotes,
+          currentDhorReadNotes: cleanDhorReadNotes,
 
-          currentSabakDhorMistakes: sabakDhorMistakes,
-          currentDhorMistakes: dhorMistakes,
+          currentSabakDhorMistakes: cleanSabakDhorMistakes,
+          currentDhorMistakes: cleanDhorMistakes,
 
           updatedAt: serverTimestamp(),
           lastUpdatedBy: me.uid,
@@ -411,6 +516,14 @@ export default function AdminStudentPage() {
 
       resetFields();
       setMarkGoalCompleted(false);
+      setHasExistingTodayLog(true);
+      setEditorMode(null);
+      setExistingLogMeta({
+        updatedByEmail: me.email ?? "",
+        updatedAtText: new Date().toLocaleString("en-ZA", {
+          timeZone: "Africa/Johannesburg",
+        }),
+      });
     } catch (err: any) {
       setMsg(err?.message ? `Error: ${err.message}` : "Error saving.");
     } finally {
@@ -540,212 +653,287 @@ export default function AdminStudentPage() {
           </div>
         ) : null}
 
-        <form onSubmit={handleSave} className="mt-6 grid gap-5">
-          <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur p-5 sm:p-6">
-            <div className="text-sm font-semibold text-gray-900">Attendance</div>
+        {hasExistingTodayLog && !editorMode ? (
+          <div className="mt-6 rounded-3xl border border-amber-200 bg-amber-50 p-5 sm:p-6">
+            <div className="text-sm font-semibold text-amber-900">
+              Today’s log has already been saved for this student.
+            </div>
 
-            <div className="mt-4 flex gap-3">
+            <div className="mt-2 text-sm text-amber-800 leading-relaxed">
+              To prevent accidental overwriting, choose whether you want to edit the saved log or intentionally start fresh.
+            </div>
+
+            {existingLogMeta?.updatedByEmail || existingLogMeta?.updatedAtText ? (
+              <div className="mt-4 rounded-2xl border border-amber-200 bg-white/70 px-4 py-3 text-sm text-gray-700">
+                {existingLogMeta?.updatedByEmail ? (
+                  <div>
+                    Last updated by:{" "}
+                    <span className="font-semibold">{existingLogMeta.updatedByEmail}</span>
+                  </div>
+                ) : null}
+                {existingLogMeta?.updatedAtText ? (
+                  <div className="mt-1">
+                    Saved at:{" "}
+                    <span className="font-semibold">{existingLogMeta.updatedAtText}</span>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+
+            <div className="mt-5 flex flex-col sm:flex-row gap-3">
               <button
                 type="button"
-                onClick={() => setAttendance("present")}
-                className={`px-4 py-2 rounded-xl border ${
-                  attendance === "present"
-                    ? "bg-emerald-100 border-emerald-400 text-emerald-700"
-                    : "bg-white border-gray-300"
-                }`}
+                onClick={openEditTodayLog}
+                className="inline-flex items-center justify-center h-12 px-6 rounded-2xl bg-black text-white font-semibold hover:bg-gray-900"
               >
-                Present
+                Edit today’s log
               </button>
 
               <button
                 type="button"
-                onClick={() => setAttendance("absent")}
-                className={`px-4 py-2 rounded-xl border ${
-                  attendance === "absent"
-                    ? "bg-red-100 border-red-400 text-red-700"
-                    : "bg-white border-gray-300"
-                }`}
+                onClick={openOverwriteTodayLog}
+                className="inline-flex items-center justify-center h-12 px-6 rounded-2xl border border-gray-300 bg-white text-gray-900 font-semibold hover:bg-gray-50"
               >
-                Absent
+                Overwrite with blank form
               </button>
             </div>
           </div>
+        ) : null}
 
-          <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur p-5 sm:p-6">
-            <div className="text-sm font-semibold text-gray-900">Sabak</div>
-            <div className="mt-4 grid gap-4">
-              <Field
-                label="Sabak amount"
-                value={sabak}
-                setValue={setSabak}
-                hint="Example: 2 pages / 1 ruku / 5 lines"
-              />
+        {editorMode ? (
+          <form onSubmit={handleSave} className="mt-6 grid gap-5">
+            {editorMode === "edit" ? (
+              <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+                You are editing today’s saved log.
+              </div>
+            ) : editorMode === "overwrite" ? (
+              <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                You are starting fresh for today. Saving will overwrite today’s existing log with the values below.
+              </div>
+            ) : null}
 
-              <div className="grid sm:grid-cols-2 gap-4">
-                <SelectField
-                  label="How did the student read Sabak?"
-                  value={sabakReadQuality}
-                  setValue={setSabakReadQuality}
-                  options={READING_OPTIONS}
-                />
-                <Field
-                  label="Sabak reading notes (optional)"
-                  value={sabakReadNotes}
-                  setValue={setSabakReadNotes}
-                  hint="Short notes: fluency, tajweed, stops, etc."
-                />
+            <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur p-5 sm:p-6">
+              <div className="text-sm font-semibold text-gray-900">Attendance</div>
+
+              <div className="mt-4 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setAttendance("present")}
+                  className={`px-4 py-2 rounded-xl border ${
+                    attendance === "present"
+                      ? "bg-emerald-100 border-emerald-400 text-emerald-700"
+                      : "bg-white border-gray-300"
+                  }`}
+                >
+                  Present
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setAttendance("absent")}
+                  className={`px-4 py-2 rounded-xl border ${
+                    attendance === "absent"
+                      ? "bg-red-100 border-red-400 text-red-700"
+                      : "bg-white border-gray-300"
+                  }`}
+                >
+                  Absent
+                </button>
               </div>
             </div>
-          </div>
 
-          <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur p-5 sm:p-6">
-            <div className="text-sm font-semibold text-gray-900">Sabak Dhor</div>
-            <div className="mt-4 grid gap-4">
-              <Field
-                label="Sabak Dhor amount"
-                value={sabakDhor}
-                setValue={setSabakDhor}
-                hint="Revision for current sabak"
-              />
-
-              <div className="grid sm:grid-cols-2 gap-4">
-                <SelectField
-                  label="How did the student read Sabak Dhor?"
-                  value={sabakDhorReadQuality}
-                  setValue={setSabakDhorReadQuality}
-                  options={READING_OPTIONS}
-                />
+            <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur p-5 sm:p-6">
+              <div className="text-sm font-semibold text-gray-900">Sabak</div>
+              <div className="mt-4 grid gap-4">
                 <Field
-                  label="Sabak Dhor reading notes (optional)"
-                  value={sabakDhorReadNotes}
-                  setValue={setSabakDhorReadNotes}
-                  hint="Short notes"
+                  label="Sabak amount"
+                  value={sabak}
+                  setValue={setSabak}
+                  hint="Example: 2 pages / 1 ruku / 5 lines"
                 />
-              </div>
 
-              <Field
-                label="Sabak Dhor mistakes"
-                value={sabakDhorMistakes}
-                setValue={setSabakDhorMistakes}
-                hint="Number"
-              />
-            </div>
-          </div>
-
-          <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur p-5 sm:p-6">
-            <div className="text-sm font-semibold text-gray-900">Dhor</div>
-            <div className="mt-4 grid gap-4">
-              <Field
-                label="Dhor amount"
-                value={dhor}
-                setValue={setDhor}
-                hint="Older revision"
-              />
-
-              <div className="grid sm:grid-cols-2 gap-4">
-                <SelectField
-                  label="How did the student read Dhor?"
-                  value={dhorReadQuality}
-                  setValue={setDhorReadQuality}
-                  options={READING_OPTIONS}
-                />
-                <Field
-                  label="Dhor reading notes (optional)"
-                  value={dhorReadNotes}
-                  setValue={setDhorReadNotes}
-                  hint="Short notes"
-                />
-              </div>
-
-              <Field
-                label="Dhor mistakes"
-                value={dhorMistakes}
-                setValue={setDhorMistakes}
-                hint="Number"
-              />
-            </div>
-          </div>
-
-          <div className="rounded-3xl border border-gray-200 bg-white/70 p-5 sm:p-6">
-            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
-              <div>
-                <div className="text-sm font-semibold text-[#5B726D]">Weekly Goal</div>
-                <div className="mt-1 text-sm text-gray-700">
-                  Set once per week. When finished, tick “Completed” to calculate duration.
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <SelectField
+                    label="How did the student read Sabak?"
+                    value={sabakReadQuality}
+                    setValue={setSabakReadQuality}
+                    options={READING_OPTIONS}
+                  />
+                  <Field
+                    label="Sabak reading notes (optional)"
+                    value={sabakReadNotes}
+                    setValue={setSabakReadNotes}
+                    hint="Short notes: fluency, tajweed, stops, etc."
+                  />
                 </div>
               </div>
+            </div>
 
-              <div className="text-xs text-gray-600">
-                Week: <span className="font-semibold">{currentWeekKey}</span>
+            <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur p-5 sm:p-6">
+              <div className="text-sm font-semibold text-gray-900">Sabak Dhor</div>
+              <div className="mt-4 grid gap-4">
+                <Field
+                  label="Sabak Dhor amount"
+                  value={sabakDhor}
+                  setValue={setSabakDhor}
+                  hint="Revision for current sabak"
+                />
+
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <SelectField
+                    label="How did the student read Sabak Dhor?"
+                    value={sabakDhorReadQuality}
+                    setValue={setSabakDhorReadQuality}
+                    options={READING_OPTIONS}
+                  />
+                  <Field
+                    label="Sabak Dhor reading notes (optional)"
+                    value={sabakDhorReadNotes}
+                    setValue={setSabakDhorReadNotes}
+                    hint="Short notes"
+                  />
+                </div>
+
+                <Field
+                  label="Sabak Dhor mistakes"
+                  value={sabakDhorMistakes}
+                  setValue={setSabakDhorMistakes}
+                  hint="Number"
+                />
               </div>
             </div>
 
-            <div className="mt-4 grid gap-4">
-              <label className="grid gap-2">
-                <div className="flex items-end justify-between gap-4">
-                  <span className="text-sm font-semibold text-gray-900">Weekly Sabak Goal</span>
-                  <span className="text-xs text-gray-500">
-                    {goalLocked ? "Locked until completed" : "Set a new goal"}
-                  </span>
+            <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur p-5 sm:p-6">
+              <div className="text-sm font-semibold text-gray-900">Dhor</div>
+              <div className="mt-4 grid gap-4">
+                <Field
+                  label="Dhor amount"
+                  value={dhor}
+                  setValue={setDhor}
+                  hint="Older revision"
+                />
+
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <SelectField
+                    label="How did the student read Dhor?"
+                    value={dhorReadQuality}
+                    setValue={setDhorReadQuality}
+                    options={READING_OPTIONS}
+                  />
+                  <Field
+                    label="Dhor reading notes (optional)"
+                    value={dhorReadNotes}
+                    setValue={setDhorReadNotes}
+                    hint="Short notes"
+                  />
                 </div>
 
-                <input
-                  value={weeklyGoal}
-                  onChange={(e) => setWeeklyGoal(e.target.value)}
-                  disabled={goalLocked}
-                  className="h-12 rounded-2xl border border-gray-200 bg-white/80 px-4 outline-none focus:ring-2 focus:ring-[#A46B72]/30 disabled:opacity-60"
-                  placeholder="Example: 10 pages"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  After typing a new goal, press <span className="font-semibold">Enter</span> or click Save to activate it.
-                </p>
-              </label>
-
-              <div className="grid gap-2 sm:grid-cols-3">
-                <MiniInfo label="Started" value={weeklyGoalStartDateKey || "—"} />
-                <MiniInfo label="Completed" value={weeklyGoalCompletedDateKey || "—"} />
-                <MiniInfo
-                  label="Duration"
-                  value={weeklyGoalDurationDays ? `${weeklyGoalDurationDays} day(s)` : "—"}
+                <Field
+                  label="Dhor mistakes"
+                  value={dhorMistakes}
+                  setValue={setDhorMistakes}
+                  hint="Number"
                 />
               </div>
+            </div>
 
-              <label className="flex items-center justify-between gap-4 rounded-2xl border border-gray-300 bg-white/70 px-4 py-4">
+            <div className="rounded-3xl border border-gray-200 bg-white/70 p-5 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
                 <div>
-                  <div className="text-sm font-semibold text-gray-900">Weekly Goal Completed</div>
-                  <div className="mt-1 text-xs text-gray-600">
-                    Tick only when the student has finished their weekly goal.
+                  <div className="text-sm font-semibold text-[#5B726D]">Weekly Goal</div>
+                  <div className="mt-1 text-sm text-gray-700">
+                    Set once per week. When finished, tick “Completed” to calculate duration.
                   </div>
                 </div>
 
-                <input
-                  type="checkbox"
-                  checked={goalAlreadyCompleted ? true : markGoalCompleted}
-                  disabled={!weeklyGoal.trim() || goalAlreadyCompleted}
-                  onChange={(e) => setMarkGoalCompleted(e.target.checked)}
-                  className="h-6 w-6 accent-black disabled:opacity-50"
-                />
-              </label>
-            </div>
-          </div>
+                <div className="text-xs text-gray-600">
+                  Week: <span className="font-semibold">{currentWeekKey}</span>
+                </div>
+              </div>
 
-          <div className="pt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <button
-              disabled={saving}
-              className="h-12 w-full sm:w-auto px-7 rounded-2xl bg-black text-white font-semibold hover:bg-gray-900 disabled:opacity-60 shadow-sm"
-            >
-              {saving ? "Saving..." : "Save"}
-            </button>
+              <div className="mt-4 grid gap-4">
+                <label className="grid gap-2">
+                  <div className="flex items-end justify-between gap-4">
+                    <span className="text-sm font-semibold text-gray-900">Weekly Sabak Goal</span>
+                    <span className="text-xs text-gray-500">
+                      {goalLocked ? "Locked until completed" : "Set a new goal"}
+                    </span>
+                  </div>
 
-            <div
-              className={`text-sm font-medium ${
-                msg?.startsWith("Error") ? "text-red-600" : "text-gray-700"
-              }`}
-            >
-              {msg ?? ""}
+                  <input
+                    value={weeklyGoal}
+                    onChange={(e) => setWeeklyGoal(e.target.value)}
+                    disabled={goalLocked}
+                    className="h-12 rounded-2xl border border-gray-200 bg-white/80 px-4 outline-none focus:ring-2 focus:ring-[#A46B72]/30 disabled:opacity-60"
+                    placeholder="Example: 10 pages"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    After typing a new goal, press <span className="font-semibold">Enter</span> or click Save to activate it.
+                  </p>
+                </label>
+
+                <div className="grid gap-2 sm:grid-cols-3">
+                  <MiniInfo label="Started" value={weeklyGoalStartDateKey || "—"} />
+                  <MiniInfo label="Completed" value={weeklyGoalCompletedDateKey || "—"} />
+                  <MiniInfo
+                    label="Duration"
+                    value={weeklyGoalDurationDays ? `${weeklyGoalDurationDays} day(s)` : "—"}
+                  />
+                </div>
+
+                <label className="flex items-center justify-between gap-4 rounded-2xl border border-gray-300 bg-white/70 px-4 py-4">
+                  <div>
+                    <div className="text-sm font-semibold text-gray-900">Weekly Goal Completed</div>
+                    <div className="mt-1 text-xs text-gray-600">
+                      Tick only when the student has finished their weekly goal.
+                    </div>
+                  </div>
+
+                  <input
+                    type="checkbox"
+                    checked={goalAlreadyCompleted ? true : markGoalCompleted}
+                    disabled={!weeklyGoal.trim() || goalAlreadyCompleted}
+                    onChange={(e) => setMarkGoalCompleted(e.target.checked)}
+                    className="h-6 w-6 accent-black disabled:opacity-50"
+                  />
+                </label>
+              </div>
             </div>
-          </div>
-        </form>
+
+            <div className="pt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                <button
+                  disabled={saving}
+                  className="h-12 w-full sm:w-auto px-7 rounded-2xl bg-black text-white font-semibold hover:bg-gray-900 disabled:opacity-60 shadow-sm"
+                >
+                  {saving ? "Saving..." : "Save"}
+                </button>
+
+                {hasExistingTodayLog ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      resetFields();
+                      setMarkGoalCompleted(false);
+                      setEditorMode(null);
+                    }}
+                    className="h-12 w-full sm:w-auto px-7 rounded-2xl border border-gray-300 bg-white font-semibold hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                ) : null}
+              </div>
+
+              <div
+                className={`text-sm font-medium ${
+                  msg?.startsWith("Error") ? "text-red-600" : "text-gray-700"
+                }`}
+              >
+                {msg ?? ""}
+              </div>
+            </div>
+          </form>
+        ) : null}
       </div>
     </Shell>
   );

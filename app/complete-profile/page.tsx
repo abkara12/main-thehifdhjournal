@@ -8,13 +8,28 @@ import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { auth, db } from "../lib/firebase";
 
+function normalizeName(value: string) {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function normalizePhone(value: string) {
+  return value.replace(/[^\d+]/g, "").trim();
+}
+
+function isValidPhone(value: string) {
+  const digits = value.replace(/\D/g, "");
+  return digits.length >= 10 && digits.length <= 15;
+}
+
 export default function CompleteProfilePage() {
   const router = useRouter();
 
   const [uid, setUid] = useState<string | null>(null);
+
   const [childName, setChildName] = useState("");
   const [parentName, setParentName] = useState("");
   const [parentPhone, setParentPhone] = useState("");
+
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -37,20 +52,49 @@ export default function CompleteProfilePage() {
           return;
         }
 
-        const data = snap.data() as any;
+        const data = snap.data() as {
+          role?: string;
+          isActive?: boolean;
+          childName?: string;
+          parentName?: string;
+          parentPhone?: string;
+          fullName?: string;
+          phone?: string;
+          profileCompleted?: boolean;
+          linkedStudentId?: string;
+          linkedMadrassahId?: string;
+        };
 
-        if (data.accountType === "ustad" || data.role === "admin" || data.role === "pending_admin") {
+        if (data.isActive === false) {
+          setErr("This account is inactive.");
+          setChecking(false);
+          return;
+        }
+
+        const role = data.role ?? "";
+
+        if (role === "admin" || role === "teacher") {
+          router.push("/admin");
+          return;
+        }
+
+        if (role !== "parent") {
           router.push("/");
           return;
         }
 
-        if (data.profileCompleted === true) {
-          router.push("/");
+        setChildName(data.childName || "");
+        setParentName(data.parentName || data.fullName || "");
+        setParentPhone(data.parentPhone || data.phone || "");
+
+        if (
+          data.profileCompleted === true &&
+          data.linkedStudentId &&
+          data.linkedMadrassahId
+        ) {
+          router.push("/overview");
           return;
         }
-
-        setParentName(data.username || "");
-        setParentPhone(data.phone || "");
       } catch {
         setErr("Could not load your profile details.");
       } finally {
@@ -66,22 +110,47 @@ export default function CompleteProfilePage() {
     if (!uid) return;
 
     setErr(null);
+
+    const cleanChildName = normalizeName(childName);
+    const cleanParentName = normalizeName(parentName);
+    const cleanParentPhone = normalizePhone(parentPhone);
+
+    if (!cleanChildName) {
+      setErr("Please enter the child's name.");
+      return;
+    }
+
+    if (!cleanParentName) {
+      setErr("Please enter the parent's name.");
+      return;
+    }
+
+    if (!cleanParentPhone) {
+      setErr("Please enter the parent's phone number.");
+      return;
+    }
+
+    if (!isValidPhone(cleanParentPhone)) {
+      setErr("Please enter a valid parent phone number.");
+      return;
+    }
+
     setLoading(true);
 
     try {
       await setDoc(
         doc(db, "users", uid),
         {
-          childName: childName.trim(),
-          parentName: parentName.trim(),
-          parentPhone: parentPhone.trim(),
+          childName: cleanChildName,
+          parentName: cleanParentName,
+          parentPhone: cleanParentPhone,
           profileCompleted: true,
           updatedAt: serverTimestamp(),
         },
         { merge: true }
       );
 
-      router.push("/");
+      router.push("/overview");
     } catch {
       setErr("Could not save profile. Please try again.");
     } finally {
@@ -142,7 +211,7 @@ export default function CompleteProfilePage() {
                 Complete your profile
               </h1>
               <p className="mt-3 text-gray-700 leading-relaxed">
-                Add the child and parent details to finish setting up your Hifdh Journal account.
+                Add the parent and child details so the profile is complete and weekly progress can be sent properly.
               </p>
 
               <div className="mt-6 grid grid-cols-2 gap-3">
@@ -175,11 +244,11 @@ export default function CompleteProfilePage() {
                 Please complete the details below before continuing.
               </p>
 
-              {err && (
+              {err ? (
                 <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                   {err}
                 </div>
-              )}
+              ) : null}
 
               <form onSubmit={onSubmit} className="mt-6 grid gap-4">
                 <div>
@@ -219,7 +288,7 @@ export default function CompleteProfilePage() {
                     onChange={(e) => setParentPhone(e.target.value)}
                     type="tel"
                     required
-                    placeholder="e.g. 082 123 4567"
+                    placeholder="e.g. 0821234567"
                     className="mt-2 w-full h-12 rounded-2xl border border-gray-300 bg-white/80 px-4 outline-none focus:ring-2 focus:ring-[#B8963D]/40"
                   />
                 </div>
@@ -232,7 +301,7 @@ export default function CompleteProfilePage() {
                 </button>
 
                 <div className="text-sm text-gray-600 text-center">
-                  This helps us enable weekly reports and complete the child profile properly.
+                  This helps you receive weekly progress updates properly.
                 </div>
               </form>
             </div>
