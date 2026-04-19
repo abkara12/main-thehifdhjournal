@@ -1,238 +1,162 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
-import { useState } from "react";
-import { signInWithEmailAndPassword, signOut } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
-import { auth, db } from "../lib/firebase";
+import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-
-function friendlyLoginError(code?: string) {
-  switch (code) {
-    case "auth/invalid-credential":
-    case "auth/wrong-password":
-    case "auth/user-not-found":
-      return "Incorrect email or password.";
-    case "auth/invalid-email":
-      return "Please enter a valid email address.";
-    case "auth/network-request-failed":
-      return "Network error. Please check your internet connection and try again.";
-    case "auth/too-many-requests":
-      return "Too many failed attempts. Please try again a little later.";
-    default:
-      return "Login failed. Please try again.";
-  }
-}
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "../lib/firebase";
+import { getUserProfileByUid } from "../lib/current-user";
 
 export default function LoginPage() {
   const router = useRouter();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
 
   const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
+  const [error, setError] = useState("");
 
-  async function onSubmit(e: React.FormEvent) {
+  async function handleLogin(e: FormEvent) {
     e.preventDefault();
-    setErr(null);
-
-    const cleanEmail = email.trim().toLowerCase();
-    const cleanPassword = password;
-
-    if (!cleanEmail) {
-      setErr("Please enter your email address.");
-      return;
-    }
-
-    if (!cleanPassword) {
-      setErr("Please enter your password.");
-      return;
-    }
-
+    setError("");
     setLoading(true);
 
     try {
-      const cred = await signInWithEmailAndPassword(auth, cleanEmail, cleanPassword);
+      const cred = await signInWithEmailAndPassword(
+        auth,
+        email.trim().toLowerCase(),
+        password
+      );
 
-      const meRef = doc(db, "users", cred.user.uid);
-      const meSnap = await getDoc(meRef);
+      const profile = await getUserProfileByUid(cred.user.uid);
 
-      if (!meSnap.exists()) {
-        await signOut(auth);
-        setErr("Your account record could not be found. Please contact support.");
-        setLoading(false);
-        return;
+      if (!profile) {
+        throw new Error("Account not found.");
       }
 
-      const me = meSnap.data() as {
-        role?: string;
-        madrassahId?: string;
-        linkedStudentId?: string;
-        linkedMadrassahId?: string;
-        isActive?: boolean;
-      };
-
-      if (me.isActive === false) {
-        await signOut(auth);
-        setErr("This account is inactive. Please contact the madrassah admin.");
-        setLoading(false);
-        return;
+      if (!profile.isActive) {
+        throw new Error("Account is inactive.");
       }
 
-      const role = me.role ?? "";
-
-      if (role === "admin" || role === "teacher") {
-        if (!me.madrassahId) {
-          await signOut(auth);
-          setErr("This account is not linked to a madrassah yet.");
-          setLoading(false);
-          return;
-        }
-
-        router.push("/admin");
-        return;
+      if (!["admin", "teacher", "super_admin"].includes(profile.role)) {
+        throw new Error("Access denied.");
       }
 
-      if (role === "parent") {
-        if (!me.linkedStudentId || !me.linkedMadrassahId) {
-          await signOut(auth);
-          setErr("This parent account is not linked to a student yet.");
-          setLoading(false);
-          return;
-        }
-
-        router.push("/overview");
-        return;
-      }
-
-      await signOut(auth);
-      setErr("This account role is not set correctly. Please contact support.");
-    } catch (error: any) {
-      setErr(friendlyLoginError(error?.code));
+      router.push("/dashboard");
+    } catch (err: any) {
+      setError(err?.message || "Login failed.");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <main className="min-h-screen text-gray-900">
-      <div className="pointer-events-none fixed inset-0 -z-10">
-        <div className="absolute inset-0 bg-[#F8F6F1]" />
-        <div className="absolute -top-72 -right-40 h-[900px] w-[900px] rounded-full bg-[#1F3F3F]/25 blur-3xl" />
-        <div className="absolute bottom-[-25%] left-[-15%] h-[1000px] w-[1000px] rounded-full bg-[#B8963D]/20 blur-3xl" />
-        <div className="absolute inset-0 bg-[radial-gradient(1000px_circle_at_70%_20%,rgba(184,150,61,0.15),transparent_60%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(900px_circle_at_50%_10%,transparent_50%,rgba(0,0,0,0.08))]" />
-        <div className="absolute inset-0 opacity-[0.035] mix-blend-multiply bg-[url('/noise.png')]" />
-      </div>
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_28%),linear-gradient(180deg,#050505_0%,#0b0b0b_48%,#050505_100%)] text-white">
+      <div className="mx-auto flex min-h-screen max-w-7xl items-center px-4 py-10 sm:px-6 lg:px-8">
+        <div className="grid w-full gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
+          <section className="hidden lg:block">
+            <p className="text-[11px] uppercase tracking-[0.34em] text-white/40">
+              The Hifdh Journal
+            </p>
 
-      <div className="max-w-6xl mx-auto px-6 sm:px-10 py-10">
-        <div className="flex items-center justify-between">
-          <Link href="/" className="inline-flex items-center gap-3">
-            <div className="h-[80px] w-[85px] rounded-xl bg-white/100 backdrop-blur border border-gray-300 shadow-sm grid place-items-center">
-              <Image
-                src="/logo4.png"
-                alt="Hifdh Journal"
-                width={58}
-                height={58}
-                className="rounded"
-              />
+            <h1 className="mt-5 max-w-2xl bg-[linear-gradient(135deg,#fbf4e8_0%,#d8b67e_42%,#ffffff_100%)] bg-clip-text text-[3.3rem] font-semibold leading-[1.02] tracking-[-0.06em] text-transparent">
+              Premium progress
+              <span className="mt-1 block">tracking for</span>
+              <span className="mt-1 block">serious madrassahs.</span>
+            </h1>
+
+            <p className="mt-6 max-w-xl text-[1rem] leading-8 text-white/62">
+              Log daily hifdh progress, monitor weekly goals, manage staff cleanly,
+              and prepare refined parent reports from one elegant system.
+            </p>
+
+            <div className="mt-8 flex flex-wrap gap-3">
+              <div className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-white/68">
+                Staff-only access
+              </div>
+              <div className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-white/68">
+                Multi-madrassah platform
+              </div>
+              <div className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-white/68">
+                Weekly report workflow
+              </div>
             </div>
-          </Link>
+          </section>
 
-          <Link href="/signup" className="text-sm font-medium text-gray-700 hover:text-black">
-            New here? <span className="text-[#B8963D]">Create an account</span>
-          </Link>
-        </div>
+          <section>
+            <div className="mx-auto w-full max-w-md rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.07),rgba(255,255,255,0.03))] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.34)] backdrop-blur-2xl sm:p-8">
+              <div className="mb-6">
+                <p className="text-[11px] uppercase tracking-[0.3em] text-white/40">
+                  Staff Login
+                </p>
+                <h2 className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-white">
+                  Welcome back
+                </h2>
+                <p className="mt-2 text-sm leading-7 text-white/58">
+                  Sign in to continue managing students, reports, and madrassah operations.
+                </p>
+              </div>
 
-        <div className="mt-10 grid lg:grid-cols-12 gap-8 items-stretch">
-          <div className="lg:col-span-6">
-            <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur-xl p-8 shadow-lg">
-              <p className="uppercase tracking-widest text-xs text-[#B8963D]">Hifdh Journal</p>
-              <h1 className="mt-3 text-4xl font-bold tracking-tight leading-tight">
-                Sign in to continue
-              </h1>
-              <p className="mt-3 text-gray-700 leading-relaxed">
-                Admins and teachers can sign in to access the madrassah dashboard.
-              </p>
-            </div>
+              <form onSubmit={handleLogin} className="space-y-4">
+                {error ? (
+                  <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-200">
+                    {error}
+                  </div>
+                ) : null}
 
-            <div className="mt-6 rounded-3xl bg-black text-white p-7 shadow-xl relative overflow-hidden">
-              <div className="absolute -right-24 -top-24 h-56 w-56 rounded-full bg-[#B8963D]/25 blur-2xl" />
-              <p className="text-white/70 text-sm italic leading-relaxed">
-                “And We have certainly made the Qur’an easy for remembrance, so is there any who
-                will remember?”
-              </p>
-              <p className="mt-4 text-white/70 text-sm">Surah Al-Qamar • 54:17</p>
-            </div>
-          </div>
-
-          <div className="lg:col-span-6">
-            <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur p-8 shadow-lg">
-              <h2 className="text-2xl font-semibold tracking-tight">Sign In</h2>
-              <p className="mt-2 text-sm text-gray-600">Use your email and password.</p>
-
-              {err ? (
-                <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                  {err}
-                </div>
-              ) : null}
-
-              <form onSubmit={onSubmit} className="mt-6 grid gap-4">
                 <div>
-                  <label className="text-sm font-medium text-gray-800">Email</label>
+                  <label className="mb-2 block text-sm text-white/60">Email</label>
                   <input
+                    type="email"
+                    placeholder="Enter your email"
+                    className="w-full rounded-2xl border border-white/10 bg-black/10 p-4 text-white outline-none placeholder:text-white/35"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    type="email"
                     required
-                    autoComplete="email"
-                    placeholder="email@example.com"
-                    className="mt-2 w-full h-12 rounded-2xl border border-gray-300 bg-white/80 px-4 outline-none focus:ring-2 focus:ring-[#B8963D]/40"
                   />
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium text-gray-800">Password</label>
-                  <div className="mt-2 relative">
-                    <input
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      type={showPassword ? "text" : "password"}
-                      required
-                      autoComplete="current-password"
-                      placeholder="Your password"
-                      className="w-full h-12 rounded-2xl border border-gray-300 bg-white/80 px-4 pr-24 outline-none focus:ring-2 focus:ring-[#B8963D]/40"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword((v) => !v)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 h-9 px-3 rounded-xl border border-gray-300 bg-white/70 text-sm font-medium hover:bg-white"
-                    >
-                      {showPassword ? "Hide" : "Show"}
-                    </button>
-                  </div>
+                  <label className="mb-2 block text-sm text-white/60">Password</label>
+                  <input
+                    type="password"
+                    placeholder="Enter your password"
+                    className="w-full rounded-2xl border border-white/10 bg-black/10 p-4 text-white outline-none placeholder:text-white/35"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
                 </div>
 
                 <button
-                  type="submit"
                   disabled={loading}
-                  className="mt-2 h-12 rounded-2xl bg-black text-white font-semibold hover:bg-gray-900 transition-colors shadow-sm disabled:opacity-60"
+                  className="w-full rounded-full bg-[linear-gradient(135deg,#fbf4e8_0%,#d8b67e_45%,#ffffff_100%)] px-6 py-3.5 text-sm font-semibold text-black shadow-[0_12px_30px_rgba(216,182,126,0.18)] disabled:opacity-60"
                 >
-                  {loading ? "Signing in..." : "Sign In"}
+                  {loading ? "Logging in..." : "Login"}
                 </button>
               </form>
 
-              <div className="mt-6 text-center text-sm text-gray-700">
-                Don’t have an account?{" "}
-                <Link href="/signup" className="font-semibold text-[#B8963D] hover:underline">
-                  Sign Up
+              <div className="mt-6 grid gap-3">
+                <Link
+                  href="/signup"
+                  className="rounded-full border border-white/10 bg-white/[0.03] px-5 py-3 text-center text-sm font-medium text-white/72 transition hover:bg-white/[0.08] hover:text-white"
+                >
+                  Create Madrassah
+                </Link>
+
+                <Link
+                  href="/join"
+                  className="rounded-full border border-white/10 bg-white/[0.03] px-5 py-3 text-center text-sm font-medium text-white/72 transition hover:bg-white/[0.08] hover:text-white"
+                >
+                  Join as Teacher
                 </Link>
               </div>
+
+              <div className="mt-6 rounded-2xl border border-white/10 bg-black/10 p-4 text-sm text-white/52">
+                Access is reserved for approved admin, teacher, and super admin accounts.
+              </div>
             </div>
-          </div>
+          </section>
         </div>
       </div>
     </main>
