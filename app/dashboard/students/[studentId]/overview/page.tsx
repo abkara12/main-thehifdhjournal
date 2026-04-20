@@ -127,7 +127,7 @@ function SectionCard({
       {subtitle ? (
         <p className="mt-2 text-sm leading-7 text-[#5f5f5f]">{subtitle}</p>
       ) : null}
-      <div className="mt-5">{children}</div>
+      <div className="mt-5 min-w-0">{children}</div>
     </section>
   );
 }
@@ -171,55 +171,97 @@ function SnapshotCard({
     </div>
   );
 }
-function LogCard({ row }: { row: LogRow }) {
-  return (
-    <div className="min-w-0 overflow-hidden rounded-[28px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(255,255,255,0.68))] p-4 shadow-[0_10px_30px_rgba(0,0,0,0.06)] backdrop-blur-xl sm:p-5">
-      <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-3">
-            <h3 className="break-words text-lg font-semibold tracking-[-0.03em] text-[#171717]">
-              {getDayName(row.dateKey)} {row.dateKey || "—"}
-            </h3>
-            <PremiumBadge>{row.attendance || "—"}</PremiumBadge>
-          </div>
 
+function AttendanceBadge({ value }: { value?: string }) {
+  const isPresent = value === "present";
+  const isAbsent = value === "absent";
+
+  return (
+    <span
+      className={`inline-flex rounded-full border px-3 py-1 text-xs font-medium ${
+        isPresent
+          ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+          : isAbsent
+          ? "border-red-200 bg-red-50 text-red-700"
+          : "border-gray-300 bg-white/80 text-[#5f5f5f]"
+      }`}
+    >
+      {value || "—"}
+    </span>
+  );
+}
+
+function compactQuality(row: LogRow) {
+  return [
+    row.sabakReadQuality || row.sabakRead || "",
+    row.sabakDhorReadQuality || row.sabakDhorRead || "",
+    row.dhorReadQuality || row.dhorRead || "",
+  ]
+    .filter(Boolean)
+    .join(" / ");
+}
+
+function compactMistakes(row: LogRow) {
+  const parts = [];
+  if (toText(row.sabakDhorMistakes).trim()) parts.push(`SD: ${row.sabakDhorMistakes}`);
+  if (toText(row.dhorMistakes).trim()) parts.push(`D: ${row.dhorMistakes}`);
+  return parts.join(" • ");
+}
+
+function MobileLogCard({ row }: { row: LogRow }) {
+  return (
+    <div className="rounded-[24px] border border-gray-300 bg-white/84 p-4 shadow-sm backdrop-blur-xl">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-[#171717]">
+            {getDayName(row.dateKey)} {row.dateKey || "—"}
+          </p>
           {row.updatedByEmail ? (
-            <p className="mt-2 break-words text-sm text-[#7a7a7a]">
-              Updated by: {row.updatedByEmail}
+            <p className="mt-1 break-words text-xs text-[#7a7a7a]">
+              {row.updatedByEmail}
             </p>
           ) : null}
         </div>
 
-        {row.weeklyGoal ? (
-          <div className="min-w-0 text-sm text-[#6b6b6b] lg:text-right">
-            <span className="break-words">Goal: {row.weeklyGoal}</span>
-          </div>
-        ) : null}
+        <AttendanceBadge value={row.attendance} />
       </div>
 
-      <div className="mt-5 grid min-w-0 gap-4 md:grid-cols-3">
-        <SnapshotCard
-          title="Sabak"
-          value={row.sabak || ""}
-          quality={row.sabakReadQuality || row.sabakRead || ""}
-          notes={row.sabakReadNotes || ""}
-        />
+      <div className="mt-4 grid gap-3 text-sm">
+        <div className="rounded-2xl border border-gray-300 bg-white/80 p-3">
+          <p className="text-[#7a7a7a]">Sabak</p>
+          <p className="mt-1 font-medium text-[#171717]">{row.sabak || "—"}</p>
+        </div>
 
-        <SnapshotCard
-          title="Sabak Dhor"
-          value={row.sabakDhor || ""}
-          quality={row.sabakDhorReadQuality || row.sabakDhorRead || ""}
-          notes={row.sabakDhorReadNotes || ""}
-          mistakes={row.sabakDhorMistakes || ""}
-        />
+        <div className="rounded-2xl border border-gray-300 bg-white/80 p-3">
+          <p className="text-[#7a7a7a]">Sabak Dhor</p>
+          <p className="mt-1 font-medium text-[#171717]">{row.sabakDhor || "—"}</p>
+        </div>
 
-        <SnapshotCard
-          title="Dhor"
-          value={row.dhor || ""}
-          quality={row.dhorReadQuality || row.dhorRead || ""}
-          notes={row.dhorReadNotes || ""}
-          mistakes={row.dhorMistakes || ""}
-        />
+        <div className="rounded-2xl border border-gray-300 bg-white/80 p-3">
+          <p className="text-[#7a7a7a]">Dhor</p>
+          <p className="mt-1 font-medium text-[#171717]">{row.dhor || "—"}</p>
+        </div>
+
+        <div className="rounded-2xl border border-gray-300 bg-white/80 p-3">
+          <p className="text-[#7a7a7a]">Quality</p>
+          <p className="mt-1 break-words font-medium text-[#171717]">
+            {compactQuality(row) || "—"}
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-gray-300 bg-white/80 p-3">
+          <p className="text-[#7a7a7a]">Mistakes</p>
+          <p className="mt-1 break-words font-medium text-[#171717]">
+            {compactMistakes(row) || "—"}
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-gray-300 bg-white/80 p-3">
+          <p className="text-[#7a7a7a]">Weekly Goal</p>
+          <p className="mt-1 break-words font-medium text-[#171717]">
+            {row.weeklyGoal || "—"}
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -562,14 +604,14 @@ export default function StudentOverviewPage() {
                 subtitle="Search through the full history and review how this student has been progressing over time."
               >
                 <div className="mb-5 min-w-0">
-  <input
-    type="text"
-    placeholder="Search logs by date, attendance, notes, mistakes, goals, or teacher email..."
-    className="w-full min-w-0 rounded-2xl border border-gray-300 bg-white/88 p-4 text-[#171717] outline-none placeholder:text-[#8a8a8a] transition focus:border-[#B8963D] focus:bg-white"
-    value={search}
-    onChange={(e) => setSearch(e.target.value)}
-  />
-</div>
+                  <input
+                    type="text"
+                    placeholder="Search logs by date, attendance, notes, mistakes, goals, or teacher email..."
+                    className="w-full min-w-0 rounded-2xl border border-gray-300 bg-white/88 p-4 text-[#171717] outline-none placeholder:text-[#8a8a8a] transition focus:border-[#B8963D] focus:bg-white"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
+                </div>
 
                 {!rows.length ? (
                   <div className="rounded-2xl border border-gray-300 bg-white/82 p-6 text-center text-[#666666]">
@@ -580,11 +622,108 @@ export default function StudentOverviewPage() {
                     No logs matched your search.
                   </div>
                 ) : (
-                  <div className="grid gap-4">
-                    {filteredRows.map((row) => (
-                      <LogCard key={row.id} row={row} />
-                    ))}
-                  </div>
+                  <>
+                    <div className="hidden overflow-hidden rounded-[24px] border border-gray-300 bg-white/86 shadow-sm lg:block">
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full border-collapse">
+                          <thead>
+                            <tr className="border-b border-gray-300 bg-[#f6f2ea]">
+                              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">
+                                Date
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">
+                                Attendance
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">
+                                Sabak
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">
+                                Sabak Dhor
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">
+                                Dhor
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">
+                                Quality
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">
+                                Mistakes
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">
+                                Weekly Goal
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">
+                                Updated By
+                              </th>
+                            </tr>
+                          </thead>
+
+                          <tbody>
+                            {filteredRows.map((row, index) => (
+                              <tr
+                                key={row.id}
+                                className={`border-b border-gray-200 last:border-b-0 ${
+                                  index % 2 === 0 ? "bg-white/70" : "bg-[#faf8f3]"
+                                }`}
+                              >
+                                <td className="px-4 py-4 align-top text-sm text-[#171717]">
+                                  <div className="font-medium">
+                                    {getDayName(row.dateKey)} {row.dateKey || "—"}
+                                  </div>
+                                </td>
+
+                                <td className="px-4 py-4 align-top">
+                                  <AttendanceBadge value={row.attendance} />
+                                </td>
+
+                                <td className="px-4 py-4 align-top text-sm text-[#171717]">
+                                  {row.sabak || "—"}
+                                </td>
+
+                                <td className="px-4 py-4 align-top text-sm text-[#171717]">
+                                  {row.sabakDhor || "—"}
+                                </td>
+
+                                <td className="px-4 py-4 align-top text-sm text-[#171717]">
+                                  {row.dhor || "—"}
+                                </td>
+
+                                <td className="px-4 py-4 align-top text-sm text-[#5f5f5f]">
+                                  <div className="max-w-[180px] break-words">
+                                    {compactQuality(row) || "—"}
+                                  </div>
+                                </td>
+
+                                <td className="px-4 py-4 align-top text-sm text-[#5f5f5f]">
+                                  <div className="max-w-[180px] break-words">
+                                    {compactMistakes(row) || "—"}
+                                  </div>
+                                </td>
+
+                                <td className="px-4 py-4 align-top text-sm text-[#5f5f5f]">
+                                  <div className="max-w-[200px] break-words">
+                                    {row.weeklyGoal || "—"}
+                                  </div>
+                                </td>
+
+                                <td className="px-4 py-4 align-top text-sm text-[#7a7a7a]">
+                                  <div className="max-w-[180px] break-words">
+                                    {row.updatedByEmail || "—"}
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-4 lg:hidden">
+                      {filteredRows.map((row) => (
+                        <MobileLogCard key={row.id} row={row} />
+                      ))}
+                    </div>
+                  </>
                 )}
               </SectionCard>
             </div>
