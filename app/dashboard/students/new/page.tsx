@@ -102,7 +102,7 @@ export default function NewStudentPage() {
           weeklyGoalStartDateKey: "",
           weeklyGoalCompletedDateKey: "",
           weeklyGoalDurationDays: null,
-            updatedByUid: firebaseUser?.uid ?? "",
+          updatedByUid: firebaseUser?.uid ?? "",
           updatedByEmail: profile.email,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
@@ -124,79 +124,205 @@ export default function NewStudentPage() {
   }
 
   if (loading) {
-    return <main className="min-h-screen grid place-items-center">Loading...</main>;
+    return (
+      <main className="min-h-screen bg-transparent text-[#171717]">
+        <div className="pointer-events-none fixed inset-0 -z-10">
+          <div className="absolute inset-0 bg-[#F8F6F1]" />
+          <div className="absolute -top-72 -right-40 h-[900px] w-[900px] rounded-full bg-[#1F3F3F]/25 blur-3xl" />
+          <div className="absolute bottom-[-25%] left-[-15%] h-[1000px] w-[1000px] rounded-full bg-[#B8963D]/20 blur-3xl" />
+          <div className="absolute inset-0 bg-[radial-gradient(1000px_circle_at_70%_20%,rgba(184,150,61,0.15),transparent_60%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(900px_circle_at_50%_10%,transparent_50%,rgba(0,0,0,0.08))]" />
+          <div className="absolute inset-0 opacity-[0.03] mix-blend-multiply bg-[url('/noise.png')]" />
+        </div>
+
+        <div className="grid min-h-screen place-items-center px-6">
+          <div className="rounded-2xl border border-gray-300 bg-white/75 px-6 py-4 text-sm text-[#5f5f5f] shadow-sm backdrop-blur-xl">
+            Loading...
+          </div>
+        </div>
+      </main>
+    );
   }
 
   if (!profile) {
     return (
-      <main className="min-h-screen grid place-items-center px-6">
-        <div>{error || "Could not load this page."}</div>
+      <main className="min-h-screen bg-transparent text-[#171717]">
+        <div className="pointer-events-none fixed inset-0 -z-10">
+          <div className="absolute inset-0 bg-[#F8F6F1]" />
+          <div className="absolute -top-72 -right-40 h-[900px] w-[900px] rounded-full bg-[#1F3F3F]/25 blur-3xl" />
+          <div className="absolute bottom-[-25%] left-[-15%] h-[1000px] w-[1000px] rounded-full bg-[#B8963D]/20 blur-3xl" />
+          <div className="absolute inset-0 bg-[radial-gradient(1000px_circle_at_70%_20%,rgba(184,150,61,0.15),transparent_60%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(900px_circle_at_50%_10%,transparent_50%,rgba(0,0,0,0.08))]" />
+          <div className="absolute inset-0 opacity-[0.03] mix-blend-multiply bg-[url('/noise.png')]" />
+        </div>
+
+        <div className="grid min-h-screen place-items-center px-6">
+          <div className="rounded-2xl border border-red-300 bg-red-50 px-6 py-4 text-sm text-red-700 shadow-sm">
+            {error || "Could not load this page."}
+          </div>
+        </div>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen px-6 py-10">
-      <div className="mx-auto max-w-3xl rounded-3xl border border-white/10 bg-white/5 p-8 backdrop-blur">
-        <h1 className="text-3xl font-semibold">Add Student</h1>
-        <p className="mt-3 text-white/65">
-          Create a new student record for {profile.madrassahName || "your madrassah"}.
-        </p>
+    <main className="min-h-screen bg-transparent px-4 py-6 text-[#171717] sm:px-6 sm:py-8 lg:px-8">
+      <div className="pointer-events-none fixed inset-0 -z-10">
+        <div className="absolute inset-0 bg-[#F8F6F1]" />
+        <div className="absolute -top-72 -right-40 h-[900px] w-[900px] rounded-full bg-[#1F3F3F]/25 blur-3xl" />
+        <div className="absolute bottom-[-25%] left-[-15%] h-[1000px] w-[1000px] rounded-full bg-[#B8963D]/20 blur-3xl" />
+        <div className="absolute inset-0 bg-[radial-gradient(1000px_circle_at_70%_20%,rgba(184,150,61,0.15),transparent_60%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(900px_circle_at_50%_10%,transparent_50%,rgba(0,0,0,0.08))]" />
+        <div className="absolute inset-0 opacity-[0.03] mix-blend-multiply bg-[url('/noise.png')]" />
+      </div>
 
-        <form onSubmit={handleSubmit} className="mt-8 space-y-4">
-          {formError ? <p className="text-sm text-red-300">{formError}</p> : null}
-          {successMsg ? <p className="text-sm text-green-300">{successMsg}</p> : null}
-
-          <input
-            type="text"
-            placeholder="Student full name"
-            className="w-full rounded-xl bg-white/10 p-3 outline-none"
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-          />
-
-          <input
-            type="text"
-            placeholder="Parent name"
-            className="w-full rounded-xl bg-white/10 p-3 outline-none"
-            value={parentName}
-            onChange={(e) => setParentName(e.target.value)}
-          />
-
-          <input
-            type="text"
-            placeholder="Parent phone"
-            className="w-full rounded-xl bg-white/10 p-3 outline-none"
-            value={parentPhone}
-            onChange={(e) => setParentPhone(e.target.value)}
-          />
-
-          <input
-            type="email"
-            placeholder="Parent email (optional)"
-            className="w-full rounded-xl bg-white/10 p-3 outline-none"
-            value={parentEmail}
-            onChange={(e) => setParentEmail(e.target.value)}
-          />
-
-          <div className="flex flex-wrap gap-3 pt-2">
-            <button
-              type="submit"
-              disabled={!canSubmit}
-              className="rounded-xl bg-white px-6 py-3 font-medium text-black disabled:opacity-60"
-            >
-              {saving ? "Saving..." : "Add Student"}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => router.push("/dashboard/students")}
-              className="rounded-xl border border-white/15 bg-white/5 px-6 py-3 font-medium"
-            >
-              Back
-            </button>
+      <div className="mx-auto max-w-4xl">
+        <div className="rounded-[32px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.82),rgba(255,255,255,0.62))] shadow-[0_24px_80px_rgba(0,0,0,0.08)] backdrop-blur-2xl overflow-hidden">
+          <div className="border-b border-gray-300 px-5 py-5 sm:px-8 sm:py-7">
+            <p className="text-[11px] uppercase tracking-[0.3em] text-[#8d7440]">
+              Student Management
+            </p>
+            <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-[#171717] sm:text-4xl">
+              Add Student
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-[#5f5f5f] sm:text-base">
+              Create a new student record for{" "}
+              {profile.madrassahName || "your madrassah"} with a clean,
+              organised setup ready for progress tracking and parent reporting.
+            </p>
           </div>
-        </form>
+
+          <div className="grid gap-6 px-5 py-5 sm:px-8 sm:py-8 lg:grid-cols-[1.05fr_0.95fr]">
+            <div>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {formError ? (
+                  <div className="rounded-2xl border border-red-300 bg-red-50 p-4 text-sm text-red-700">
+                    {formError}
+                  </div>
+                ) : null}
+
+                {successMsg ? (
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">
+                    {successMsg}
+                  </div>
+                ) : null}
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-[#5f5f5f]">
+                    Student Full Name
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter student full name"
+                    className="w-full rounded-2xl border border-gray-300 bg-white/85 p-4 text-[#171717] outline-none placeholder:text-[#8a8a8a] transition focus:border-[#B8963D] focus:bg-white"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-[#5f5f5f]">
+                    Parent Name
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter parent name"
+                    className="w-full rounded-2xl border border-gray-300 bg-white/85 p-4 text-[#171717] outline-none placeholder:text-[#8a8a8a] transition focus:border-[#B8963D] focus:bg-white"
+                    value={parentName}
+                    onChange={(e) => setParentName(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-[#5f5f5f]">
+                    Parent Phone
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Enter parent phone number"
+                    className="w-full rounded-2xl border border-gray-300 bg-white/85 p-4 text-[#171717] outline-none placeholder:text-[#8a8a8a] transition focus:border-[#B8963D] focus:bg-white"
+                    value={parentPhone}
+                    onChange={(e) => setParentPhone(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-[#5f5f5f]">
+                    Parent Email
+                  </label>
+                  <input
+                    type="email"
+                    placeholder="Enter parent email (optional)"
+                    className="w-full rounded-2xl border border-gray-300 bg-white/85 p-4 text-[#171717] outline-none placeholder:text-[#8a8a8a] transition focus:border-[#B8963D] focus:bg-white"
+                    value={parentEmail}
+                    onChange={(e) => setParentEmail(e.target.value)}
+                  />
+                </div>
+
+                <div className="flex flex-col gap-3 pt-2 sm:flex-row">
+                  <button
+                    type="submit"
+                    disabled={!canSubmit}
+                    className="rounded-full bg-black px-6 py-3.5 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(0,0,0,0.12)] transition hover:bg-[#1d1d1d] disabled:opacity-60"
+                  >
+                    {saving ? "Saving..." : "Add Student"}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => router.push("/dashboard/students")}
+                    className="rounded-full border border-gray-300 bg-white/72 px-6 py-3.5 text-sm font-medium text-[#5b5b5b] transition hover:bg-white hover:text-[#171717]"
+                  >
+                    Back
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            <div className="space-y-4">
+              <div className="rounded-[28px] border border-gray-300 bg-white/72 p-5 shadow-sm backdrop-blur-xl">
+                <p className="text-[11px] uppercase tracking-[0.24em] text-[#B8963D]">
+                  New Student Record
+                </p>
+                <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-[#171717]">
+                  Clean setup from the start
+                </h2>
+                <p className="mt-3 text-sm leading-7 text-[#5f5f5f]">
+                  Add the student’s details correctly so the system can begin
+                  tracking progress, revision, and weekly goals in a structured way.
+                </p>
+              </div>
+
+              <div className="rounded-[28px] border border-gray-300 bg-white/72 p-5 shadow-sm backdrop-blur-xl">
+                <p className="text-[11px] uppercase tracking-[0.24em] text-[#B8963D]">
+                  Included
+                </p>
+                <div className="mt-3 grid gap-3">
+                  {[
+                    "Student profile creation",
+                    "Parent contact details",
+                    "Ready for daily logs",
+                    "Ready for weekly goals",
+                  ].map((item) => (
+                    <div
+                      key={item}
+                      className="rounded-2xl border border-gray-300 bg-white/70 px-4 py-3 text-sm text-[#5b5b5b]"
+                    >
+                      {item}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-[28px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.8),rgba(255,255,255,0.62))] p-5 shadow-sm backdrop-blur-xl">
+                <p className="text-sm leading-7 text-[#5f5f5f]">
+                  Once saved, the system immediately opens the student profile so
+                  you can continue with setup and begin logging progress.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </main>
   );
