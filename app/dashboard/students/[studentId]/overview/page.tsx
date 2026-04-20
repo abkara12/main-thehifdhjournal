@@ -146,34 +146,38 @@ function SnapshotCard({
   mistakes?: string;
 }) {
   return (
-    <div className="rounded-[26px] border border-gray-300 bg-white/82 p-5 shadow-sm backdrop-blur-xl">
+    <div className="min-w-0 overflow-hidden rounded-[26px] border border-gray-300 bg-white/82 p-4 shadow-sm backdrop-blur-xl sm:p-5">
       <p className="text-sm text-[#7a7a7a]">{title}</p>
-      <p className="mt-2 text-lg font-semibold tracking-[-0.03em] text-[#171717]">
+
+      <p className="mt-2 break-words text-lg font-semibold tracking-[-0.03em] text-[#171717]">
         {value || "—"}
       </p>
 
-      <div className="mt-3">
+      <div className="mt-3 min-w-0">
         <PremiumBadge>{quality || "No quality"}</PremiumBadge>
       </div>
 
       {notes ? (
-        <p className="mt-4 text-sm leading-6 text-[#5f5f5f]">{notes}</p>
+        <p className="mt-4 break-words text-sm leading-6 text-[#5f5f5f]">
+          {notes}
+        </p>
       ) : null}
 
       {mistakes ? (
-        <p className="mt-4 text-sm text-[#6b6b6b]">Mistakes: {mistakes}</p>
+        <p className="mt-4 break-words text-sm text-[#6b6b6b]">
+          Mistakes: {mistakes}
+        </p>
       ) : null}
     </div>
   );
 }
-
 function LogCard({ row }: { row: LogRow }) {
   return (
-    <div className="rounded-[28px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(255,255,255,0.68))] p-5 shadow-[0_10px_30px_rgba(0,0,0,0.06)] backdrop-blur-xl">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+    <div className="min-w-0 overflow-hidden rounded-[28px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(255,255,255,0.68))] p-4 shadow-[0_10px_30px_rgba(0,0,0,0.06)] backdrop-blur-xl sm:p-5">
+      <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-3">
-            <h3 className="text-lg font-semibold tracking-[-0.03em] text-[#171717]">
+            <h3 className="break-words text-lg font-semibold tracking-[-0.03em] text-[#171717]">
               {getDayName(row.dateKey)} {row.dateKey || "—"}
             </h3>
             <PremiumBadge>{row.attendance || "—"}</PremiumBadge>
@@ -187,11 +191,13 @@ function LogCard({ row }: { row: LogRow }) {
         </div>
 
         {row.weeklyGoal ? (
-          <div className="text-sm text-[#6b6b6b]">Goal: {row.weeklyGoal}</div>
+          <div className="min-w-0 text-sm text-[#6b6b6b] lg:text-right">
+            <span className="break-words">Goal: {row.weeklyGoal}</span>
+          </div>
         ) : null}
       </div>
 
-      <div className="mt-5 grid gap-4 md:grid-cols-3">
+      <div className="mt-5 grid min-w-0 gap-4 md:grid-cols-3">
         <SnapshotCard
           title="Sabak"
           value={row.sabak || ""}
@@ -450,7 +456,7 @@ export default function StudentOverviewPage() {
             />
           </div>
 
-          <div className="mt-8 grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+          <div className="mt-8 grid min-w-0 gap-6 xl:grid-cols-[0.9fr_1.1fr]">
             <div className="space-y-6">
               <SectionCard
                 title="Parent Details"
@@ -555,15 +561,15 @@ export default function StudentOverviewPage() {
                 title="Log History"
                 subtitle="Search through the full history and review how this student has been progressing over time."
               >
-                <div className="mb-5">
-                  <input
-                    type="text"
-                    placeholder="Search logs by date, attendance, notes, mistakes, goals, or teacher email..."
-                    className="w-full rounded-2xl border border-gray-300 bg-white/88 p-4 text-[#171717] outline-none placeholder:text-[#8a8a8a] transition focus:border-[#B8963D] focus:bg-white"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                  />
-                </div>
+                <div className="mb-5 min-w-0">
+  <input
+    type="text"
+    placeholder="Search logs by date, attendance, notes, mistakes, goals, or teacher email..."
+    className="w-full min-w-0 rounded-2xl border border-gray-300 bg-white/88 p-4 text-[#171717] outline-none placeholder:text-[#8a8a8a] transition focus:border-[#B8963D] focus:bg-white"
+    value={search}
+    onChange={(e) => setSearch(e.target.value)}
+  />
+</div>
 
                 {!rows.length ? (
                   <div className="rounded-2xl border border-gray-300 bg-white/82 p-6 text-center text-[#666666]">

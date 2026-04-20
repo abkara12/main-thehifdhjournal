@@ -75,12 +75,16 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-[30px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] p-6 shadow-[0_12px_40px_rgba(0,0,0,0.2)]">
-      <h2 className="text-xl font-semibold tracking-[-0.03em] text-white">{title}</h2>
+    <section className="min-w-0 overflow-hidden rounded-[30px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.82),rgba(255,255,255,0.64))] p-4 shadow-[0_12px_40px_rgba(0,0,0,0.06)] backdrop-blur-xl sm:p-6">
+      <h2 className="break-words text-xl font-semibold tracking-[-0.03em] text-[#171717]">
+        {title}
+      </h2>
       {subtitle ? (
-        <p className="mt-2 text-sm leading-7 text-white/58">{subtitle}</p>
+        <p className="mt-2 break-words text-sm leading-7 text-[#5f5f5f]">
+          {subtitle}
+        </p>
       ) : null}
-      <div className="mt-5">{children}</div>
+      <div className="mt-5 min-w-0">{children}</div>
     </section>
   );
 }
