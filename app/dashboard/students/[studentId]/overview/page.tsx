@@ -122,10 +122,10 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-[30px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] p-6 shadow-[0_12px_40px_rgba(0,0,0,0.2)]">
-      <h2 className="text-xl font-semibold tracking-[-0.03em] text-white">{title}</h2>
+    <section className="rounded-[30px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.82),rgba(255,255,255,0.64))] p-6 shadow-[0_12px_40px_rgba(0,0,0,0.06)] backdrop-blur-xl">
+      <h2 className="text-xl font-semibold tracking-[-0.03em] text-[#171717]">{title}</h2>
       {subtitle ? (
-        <p className="mt-2 text-sm leading-7 text-white/58">{subtitle}</p>
+        <p className="mt-2 text-sm leading-7 text-[#5f5f5f]">{subtitle}</p>
       ) : null}
       <div className="mt-5">{children}</div>
     </section>
@@ -146,19 +146,22 @@ function SnapshotCard({
   mistakes?: string;
 }) {
   return (
-    <div className="rounded-[26px] border border-white/10 bg-black/10 p-5">
-      <p className="text-sm text-white/45">{title}</p>
-      <p className="mt-2 text-lg font-semibold tracking-[-0.03em] text-white">
+    <div className="rounded-[26px] border border-gray-300 bg-white/82 p-5 shadow-sm backdrop-blur-xl">
+      <p className="text-sm text-[#7a7a7a]">{title}</p>
+      <p className="mt-2 text-lg font-semibold tracking-[-0.03em] text-[#171717]">
         {value || "—"}
       </p>
+
       <div className="mt-3">
         <PremiumBadge>{quality || "No quality"}</PremiumBadge>
       </div>
+
       {notes ? (
-        <p className="mt-4 text-sm leading-6 text-white/58">{notes}</p>
+        <p className="mt-4 text-sm leading-6 text-[#5f5f5f]">{notes}</p>
       ) : null}
+
       {mistakes ? (
-        <p className="mt-4 text-sm text-white/52">Mistakes: {mistakes}</p>
+        <p className="mt-4 text-sm text-[#6b6b6b]">Mistakes: {mistakes}</p>
       ) : null}
     </div>
   );
@@ -166,23 +169,25 @@ function SnapshotCard({
 
 function LogCard({ row }: { row: LogRow }) {
   return (
-    <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.018))] p-5 shadow-[0_10px_30px_rgba(0,0,0,0.16)]">
+    <div className="rounded-[28px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(255,255,255,0.68))] p-5 shadow-[0_10px_30px_rgba(0,0,0,0.06)] backdrop-blur-xl">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div>
+        <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-3">
-            <h3 className="text-lg font-semibold tracking-[-0.03em] text-white">
+            <h3 className="text-lg font-semibold tracking-[-0.03em] text-[#171717]">
               {getDayName(row.dateKey)} {row.dateKey || "—"}
             </h3>
             <PremiumBadge>{row.attendance || "—"}</PremiumBadge>
           </div>
 
           {row.updatedByEmail ? (
-            <p className="mt-2 text-sm text-white/45">Updated by: {row.updatedByEmail}</p>
+            <p className="mt-2 break-words text-sm text-[#7a7a7a]">
+              Updated by: {row.updatedByEmail}
+            </p>
           ) : null}
         </div>
 
         {row.weeklyGoal ? (
-          <div className="text-sm text-white/52">Goal: {row.weeklyGoal}</div>
+          <div className="text-sm text-[#6b6b6b]">Goal: {row.weeklyGoal}</div>
         ) : null}
       </div>
 
@@ -372,7 +377,7 @@ export default function StudentOverviewPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen grid place-items-center bg-black text-white">
+      <main className="min-h-screen grid place-items-center bg-[#F8F6F1] text-[#171717]">
         Loading...
       </main>
     );
@@ -380,8 +385,8 @@ export default function StudentOverviewPage() {
 
   if (!profile) {
     return (
-      <main className="min-h-screen grid place-items-center bg-black px-6 text-white">
-        <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-6 py-4 text-sm text-red-200">
+      <main className="min-h-screen grid place-items-center bg-[#F8F6F1] px-6 text-[#171717]">
+        <div className="rounded-2xl border border-red-300 bg-red-50 px-6 py-4 text-sm text-red-700">
           {error || "Could not load overview page."}
         </div>
       </main>
@@ -394,30 +399,30 @@ export default function StudentOverviewPage() {
       subtitle="Review the full progress story, current standing, attendance, and weekly goal performance in one premium overview."
       eyebrow="Student Intelligence View"
       rightSlot={
-        <>
+        <div className="flex w-full flex-col gap-3 rounded-[24px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.78),rgba(255,255,255,0.60))] p-3 shadow-[0_12px_36px_rgba(0,0,0,0.06)] backdrop-blur-xl sm:p-4 lg:min-w-[260px] lg:max-w-[340px]">
           <Link
             href={`/dashboard/students/${studentId}`}
-            className="rounded-full border border-white/10 bg-white/[0.03] px-5 py-3 text-sm font-medium text-white/75 transition hover:bg-white/[0.08]"
+            className="w-full rounded-full border border-gray-300 bg-white/72 px-5 py-3 text-center text-sm font-medium text-[#5b5b5b] transition hover:bg-white hover:text-[#171717]"
           >
             Back to Student Record
           </Link>
           <Link
             href="/dashboard/students"
-            className="rounded-full bg-[linear-gradient(135deg,#fbf4e8_0%,#d8b67e_45%,#ffffff_100%)] px-5 py-3 text-sm font-semibold text-black shadow-[0_12px_30px_rgba(216,182,126,0.18)]"
+            className="w-full rounded-full bg-black px-5 py-3 text-center text-sm font-semibold text-white shadow-[0_12px_30px_rgba(0,0,0,0.12)] transition hover:bg-[#1d1d1d]"
           >
             Back to Students
           </Link>
-        </>
+        </div>
       }
     >
       {pageErr ? (
-        <div className="mb-6 rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-200">
+        <div className="mb-6 rounded-2xl border border-red-300 bg-red-50 p-4 text-sm text-red-700">
           {pageErr}
         </div>
       ) : null}
 
       {loadingRows ? (
-        <div className="rounded-[28px] border border-white/10 bg-white/[0.03] p-8 text-center text-white/60">
+        <div className="rounded-[28px] border border-gray-300 bg-white/74 p-8 text-center text-[#666666] shadow-sm backdrop-blur-xl">
           Loading overview...
         </div>
       ) : !studentExists || !studentMeta ? null : (
@@ -452,17 +457,23 @@ export default function StudentOverviewPage() {
                 subtitle="Keep parent communication context visible at a glance."
               >
                 <div className="grid gap-4">
-                  <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
-                    <p className="text-sm text-white/45">Parent Name</p>
-                    <p className="mt-2 font-medium text-white">{studentMeta.parentName || "—"}</p>
+                  <div className="rounded-2xl border border-gray-300 bg-white/82 p-4">
+                    <p className="text-sm text-[#7a7a7a]">Parent Name</p>
+                    <p className="mt-2 font-medium text-[#171717]">
+                      {studentMeta.parentName || "—"}
+                    </p>
                   </div>
-                  <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
-                    <p className="text-sm text-white/45">Phone</p>
-                    <p className="mt-2 font-medium text-white">{studentMeta.parentPhone || "—"}</p>
+                  <div className="rounded-2xl border border-gray-300 bg-white/82 p-4">
+                    <p className="text-sm text-[#7a7a7a]">Phone</p>
+                    <p className="mt-2 font-medium text-[#171717]">
+                      {studentMeta.parentPhone || "—"}
+                    </p>
                   </div>
-                  <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
-                    <p className="text-sm text-white/45">Email</p>
-                    <p className="mt-2 font-medium text-white">{studentMeta.parentEmail || "—"}</p>
+                  <div className="rounded-2xl border border-gray-300 bg-white/82 p-4">
+                    <p className="text-sm text-[#7a7a7a]">Email</p>
+                    <p className="mt-2 break-words font-medium text-[#171717]">
+                      {studentMeta.parentEmail || "—"}
+                    </p>
                   </div>
                 </div>
               </SectionCard>
@@ -472,30 +483,32 @@ export default function StudentOverviewPage() {
                 subtitle="Monitor the current goal and whether it is still running or already complete."
               >
                 <div className="space-y-4">
-                  <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
-                    <p className="text-sm text-white/45">Goal</p>
-                    <p className="mt-2 font-medium text-white">{studentMeta.weeklyGoal || "—"}</p>
+                  <div className="rounded-2xl border border-gray-300 bg-white/82 p-4">
+                    <p className="text-sm text-[#7a7a7a]">Goal</p>
+                    <p className="mt-2 font-medium text-[#171717]">
+                      {studentMeta.weeklyGoal || "—"}
+                    </p>
                   </div>
 
                   <div className="grid gap-4 md:grid-cols-2">
-                    <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
-                      <p className="text-sm text-white/45">Started</p>
-                      <p className="mt-2 font-medium text-white">
+                    <div className="rounded-2xl border border-gray-300 bg-white/82 p-4">
+                      <p className="text-sm text-[#7a7a7a]">Started</p>
+                      <p className="mt-2 font-medium text-[#171717]">
                         {studentMeta.weeklyGoalStartDateKey || "—"}
                       </p>
                     </div>
 
-                    <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
-                      <p className="text-sm text-white/45">Completed</p>
-                      <p className="mt-2 font-medium text-white">
+                    <div className="rounded-2xl border border-gray-300 bg-white/82 p-4">
+                      <p className="text-sm text-[#7a7a7a]">Completed</p>
+                      <p className="mt-2 font-medium text-[#171717]">
                         {studentMeta.weeklyGoalCompletedDateKey || "—"}
                       </p>
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
-                    <p className="text-sm text-white/45">Duration</p>
-                    <p className="mt-2 font-medium text-white">
+                  <div className="rounded-2xl border border-gray-300 bg-white/82 p-4">
+                    <p className="text-sm text-[#7a7a7a]">Duration</p>
+                    <p className="mt-2 font-medium text-[#171717]">
                       {studentMeta.weeklyGoalDurationDays
                         ? `${studentMeta.weeklyGoalDurationDays} day(s)`
                         : studentMeta.weeklyGoalStartDateKey && !studentMeta.weeklyGoalCompletedDateKey
@@ -546,18 +559,18 @@ export default function StudentOverviewPage() {
                   <input
                     type="text"
                     placeholder="Search logs by date, attendance, notes, mistakes, goals, or teacher email..."
-                    className="w-full rounded-2xl border border-white/10 bg-black/10 p-4 text-white outline-none placeholder:text-white/35"
+                    className="w-full rounded-2xl border border-gray-300 bg-white/88 p-4 text-[#171717] outline-none placeholder:text-[#8a8a8a] transition focus:border-[#B8963D] focus:bg-white"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                   />
                 </div>
 
                 {!rows.length ? (
-                  <div className="rounded-2xl border border-white/10 bg-black/10 p-6 text-center text-white/58">
+                  <div className="rounded-2xl border border-gray-300 bg-white/82 p-6 text-center text-[#666666]">
                     No logs have been recorded for this student yet.
                   </div>
                 ) : filteredRows.length === 0 ? (
-                  <div className="rounded-2xl border border-white/10 bg-black/10 p-6 text-center text-white/58">
+                  <div className="rounded-2xl border border-gray-300 bg-white/82 p-6 text-center text-[#666666]">
                     No logs matched your search.
                   </div>
                 ) : (
