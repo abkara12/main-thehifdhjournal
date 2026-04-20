@@ -37,74 +37,61 @@ export function DashboardShell({
   const pathname = usePathname();
 
   return (
-    <main className="min-h-screen bg-transparent text-[#171717]">
-      <div className="pointer-events-none fixed inset-0 -z-10">
-        <div className="absolute inset-0 bg-[#F8F6F1]" />
-        <div className="absolute -top-72 -right-40 h-[900px] w-[900px] rounded-full bg-[#1F3F3F]/25 blur-3xl" />
-        <div className="absolute bottom-[-25%] left-[-15%] h-[1000px] w-[1000px] rounded-full bg-[#B8963D]/20 blur-3xl" />
-        <div className="absolute inset-0 bg-[radial-gradient(1000px_circle_at_70%_20%,rgba(184,150,61,0.15),transparent_60%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(900px_circle_at_50%_10%,transparent_50%,rgba(0,0,0,0.08))]" />
-        <div className="absolute inset-0 opacity-[0.03] mix-blend-multiply bg-[url('/noise.png')]" />
-      </div>
-
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.08),transparent_30%),linear-gradient(180deg,#050505_0%,#0b0b0b_45%,#050505_100%)] text-white">
       <div className="mx-auto max-w-7xl px-4 pb-10 pt-4 sm:px-6 lg:px-8">
-        <div className="mb-6">
-          <div className="overflow-hidden rounded-[28px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.82),rgba(255,255,255,0.62))] shadow-[0_18px_60px_rgba(0,0,0,0.08)] backdrop-blur-2xl">
-            <div className="flex flex-col gap-4 border-b border-gray-300 px-4 py-4 sm:px-5 sm:py-5 lg:flex-row lg:items-start lg:justify-between">
-              <div className="min-w-0 flex-1">
-                <p className="text-[11px] uppercase tracking-[0.32em] text-[#8d7440]">
+        <div className="sticky top-4 z-30 mb-6">
+          <div className="overflow-hidden rounded-[28px] border border-white/10 bg-black/40 shadow-[0_18px_60px_rgba(0,0,0,0.35)] backdrop-blur-2xl">
+            <div className="flex flex-col gap-4 border-b border-white/10 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.32em] text-white/40">
                   The Hifdh Journal
                 </p>
-
-                <h1 className="mt-2 text-[1.75rem] font-semibold tracking-[-0.04em] text-[#171717] sm:text-[2rem]">
+                <h1 className="mt-2 bg-[linear-gradient(135deg,#fbf4e8_0%,#d8b67e_42%,#ffffff_100%)] bg-clip-text text-2xl font-semibold tracking-[-0.04em] text-transparent sm:text-3xl">
                   {title}
                 </h1>
-
                 {subtitle ? (
-                  <p className="mt-2 max-w-2xl text-sm leading-7 text-[#5f5f5f]">
+                  <p className="mt-2 max-w-2xl text-sm leading-7 text-white/60">
                     {subtitle}
                   </p>
                 ) : null}
               </div>
 
               {rightSlot ? (
-                <div className="w-full shrink-0 lg:w-auto lg:max-w-[360px]">
+                <div className="flex shrink-0 flex-wrap items-center gap-3">
                   {rightSlot}
                 </div>
               ) : null}
             </div>
 
-            <div className="px-3 py-3 sm:px-4">
-              <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap sm:overflow-visible">
-                {NAV_ITEMS.map((item) => {
-                  const active =
-                    pathname === item.href ||
-                    (item.href !== "/dashboard" && pathname.startsWith(item.href));
+            <div className="flex flex-wrap gap-2 px-3 py-3">
+              {NAV_ITEMS.map((item) => {
+                const active =
+                  pathname === item.href ||
+                  (item.href !== "/dashboard" && pathname.startsWith(item.href));
 
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={cx(
-                        "shrink-0 rounded-full border px-4 py-2.5 text-sm font-medium transition",
-                        active
-                          ? "border-[#B8963D]/25 bg-black text-white shadow-[0_10px_30px_rgba(0,0,0,0.12)]"
-                          : "border-gray-300 bg-white/72 text-[#5e5e5e] hover:bg-white hover:text-[#171717]"
-                      )}
-                    >
-                      {item.label}
-                    </Link>
-                  );
-                })}
-              </div>
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cx(
+                      "rounded-full border px-4 py-2 text-sm font-medium transition",
+                      active
+                        ? "border-[#d8b67e]/30 bg-[linear-gradient(135deg,rgba(251,244,232,0.18),rgba(216,182,126,0.22),rgba(255,255,255,0.08))] text-white shadow-[0_10px_30px_rgba(216,182,126,0.12)]"
+                        : "border-white/10 bg-white/[0.03] text-white/65 hover:bg-white/[0.08] hover:text-white"
+                    )}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              })}
             </div>
           </div>
         </div>
 
         <section className="mb-6">
-          <div className="rounded-[32px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.78),rgba(255,255,255,0.58))] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.08)] backdrop-blur-xl sm:p-8">
+          <div className="rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.03))] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.28)] backdrop-blur-xl sm:p-8">
             {eyebrow ? (
-              <p className="text-[11px] uppercase tracking-[0.3em] text-[#8d7440]">
+              <p className="text-[11px] uppercase tracking-[0.3em] text-white/40">
                 {eyebrow}
               </p>
             ) : null}
@@ -126,15 +113,15 @@ export function PremiumStatCard({
   subtext?: string;
 }) {
   return (
-    <div className="rounded-[28px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.78),rgba(255,255,255,0.56))] p-5 shadow-[0_12px_40px_rgba(0,0,0,0.06)] backdrop-blur-xl">
-      <p className="text-[11px] uppercase tracking-[0.22em] text-[#8d7440]">
+    <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.025))] p-5 shadow-[0_12px_40px_rgba(0,0,0,0.2)] backdrop-blur-xl">
+      <p className="text-[11px] uppercase tracking-[0.22em] text-white/42">
         {label}
       </p>
-      <p className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-[#171717]">
+      <p className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-white">
         {value}
       </p>
       {subtext ? (
-        <p className="mt-2 text-sm leading-6 text-[#5f5f5f]">{subtext}</p>
+        <p className="mt-2 text-sm leading-6 text-white/58">{subtext}</p>
       ) : null}
     </div>
   );
@@ -152,13 +139,13 @@ export function PremiumActionCard({
   return (
     <Link
       href={href}
-      className="group rounded-[28px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.78),rgba(255,255,255,0.56))] p-6 shadow-[0_12px_40px_rgba(0,0,0,0.06)] transition hover:-translate-y-[1px] hover:bg-white/90"
+      className="group rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.025))] p-6 shadow-[0_12px_40px_rgba(0,0,0,0.2)] transition hover:-translate-y-[1px] hover:bg-white/[0.08]"
     >
-      <h3 className="text-lg font-semibold tracking-[-0.03em] text-[#171717]">
+      <h3 className="text-lg font-semibold tracking-[-0.03em] text-white">
         {title}
       </h3>
-      <p className="mt-2 text-sm leading-7 text-[#5f5f5f]">{text}</p>
-      <p className="mt-5 text-sm font-medium text-[#8d7440] transition group-hover:translate-x-1">
+      <p className="mt-2 text-sm leading-7 text-white/60">{text}</p>
+      <p className="mt-5 text-sm font-medium text-[#e7cf9c] transition group-hover:translate-x-1">
         Open →
       </p>
     </Link>
@@ -171,7 +158,7 @@ export function PremiumBadge({
   children: ReactNode;
 }) {
   return (
-    <span className="inline-flex rounded-full border border-[#B8963D]/25 bg-[#B8963D]/10 px-4 py-2 text-xs font-medium text-[#7b6128]">
+    <span className="rounded-full border border-[#d8b67e]/20 bg-[linear-gradient(135deg,rgba(251,244,232,0.12),rgba(216,182,126,0.14),rgba(255,255,255,0.03))] px-4 py-2 text-xs font-medium text-[#f3e5c5]">
       {children}
     </span>
   );
