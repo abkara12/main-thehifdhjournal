@@ -2,19 +2,29 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useMemo, useState } from "react";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "../lib/firebase";
+import { getUserProfileByUid } from "../lib/current-user";
 
 type NavItem = {
   label: string;
   href: string;
 };
 
-const NAV_ITEMS: NavItem[] = [
+type StaffRole = "admin" | "teacher" | "super_admin" | "";
+
+const ADMIN_NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", href: "/dashboard" },
   { label: "Students", href: "/dashboard/students" },
   { label: "Reports", href: "/dashboard/reports" },
   { label: "Settings", href: "/dashboard/settings" },
   { label: "Teachers", href: "/dashboard/teachers" },
+];
+
+const TEACHER_NAV_ITEMS: NavItem[] = [
+  { label: "Dashboard", href: "/dashboard" },
+  { label: "Students", href: "/dashboard/students" },
 ];
 
 function cx(...classes: Array<string | false | null | undefined>) {
@@ -35,10 +45,43 @@ export function DashboardShell({
   children: ReactNode;
 }) {
   const pathname = usePathname();
+  const [role, setRole] = useState<StaffRole>("");
+  const [roleLoading, setRoleLoading] = useState(true);
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        setRole("");
+        setRoleLoading(false);
+        return;
+      }
+
+      try {
+        const profile = await getUserProfileByUid(user.uid);
+        const nextRole =
+          profile?.role === "admin" ||
+          profile?.role === "teacher" ||
+          profile?.role === "super_admin"
+            ? profile.role
+            : "";
+        setRole(nextRole);
+      } catch {
+        setRole("");
+      } finally {
+        setRoleLoading(false);
+      }
+    });
+
+    return () => unsub();
+  }, []);
+
+  const navItems = useMemo(() => {
+    if (role === "teacher") return TEACHER_NAV_ITEMS;
+    return ADMIN_NAV_ITEMS;
+  }, [role]);
 
   return (
     <main className="min-h-screen bg-transparent text-[#171717]">
-      {/* Background */}
       <div className="pointer-events-none fixed inset-0 -z-10">
         <div className="absolute inset-0 bg-[#F8F6F1]" />
         <div className="absolute -top-72 -right-40 h-[900px] w-[900px] rounded-full bg-[#1F3F3F]/25 blur-3xl" />
@@ -49,7 +92,6 @@ export function DashboardShell({
       </div>
 
       <div className="mx-auto max-w-7xl px-4 pb-10 pt-4 sm:px-6 lg:px-8">
-        {/* HEADER (NOT STICKY ANYMORE) */}
         <div className="mb-6">
           <div className="overflow-hidden rounded-[28px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.82),rgba(255,255,255,0.62))] shadow-[0_18px_60px_rgba(0,0,0,0.08)] backdrop-blur-2xl">
             <div className="flex flex-col gap-4 border-b border-gray-300 px-4 py-4 sm:px-5 sm:py-5 lg:flex-row lg:items-start lg:justify-between">
@@ -76,35 +118,34 @@ export function DashboardShell({
               )}
             </div>
 
-            {/* FIXED NAV (NO HORIZONTAL SCROLL, NO HIDING) */}
             <div className="px-3 py-3 sm:px-4">
               <div className="flex flex-wrap gap-2">
-                {NAV_ITEMS.map((item) => {
-                  const active =
-                    pathname === item.href ||
-                    (item.href !== "/dashboard" && pathname.startsWith(item.href));
+                {!roleLoading &&
+                  navItems.map((item) => {
+                    const active =
+                      pathname === item.href ||
+                      (item.href !== "/dashboard" && pathname.startsWith(item.href));
 
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={cx(
-                        "rounded-full border px-4 py-2.5 text-sm font-medium transition",
-                        active
-                          ? "border-[#B8963D]/25 bg-black text-white shadow-[0_10px_30px_rgba(0,0,0,0.12)]"
-                          : "border-gray-300 bg-white/72 text-[#5e5e5e] hover:bg-white hover:text-[#171717]"
-                      )}
-                    >
-                      {item.label}
-                    </Link>
-                  );
-                })}
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className={cx(
+                          "rounded-full border px-4 py-2.5 text-sm font-medium transition",
+                          active
+                            ? "border-[#B8963D]/25 bg-black text-white shadow-[0_10px_30px_rgba(0,0,0,0.12)]"
+                            : "border-gray-300 bg-white/72 text-[#5e5e5e] hover:bg-white hover:text-[#171717]"
+                        )}
+                      >
+                        {item.label}
+                      </Link>
+                    );
+                  })}
               </div>
             </div>
           </div>
         </div>
 
-        {/* CONTENT */}
         <section className="mb-6">
           <div className="rounded-[32px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.78),rgba(255,255,255,0.58))] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.08)] backdrop-blur-xl sm:p-8">
             {eyebrow && (
@@ -119,8 +160,6 @@ export function DashboardShell({
     </main>
   );
 }
-
-/* ---------------- STATS ---------------- */
 
 export function PremiumStatCard({
   label,
@@ -146,8 +185,6 @@ export function PremiumStatCard({
   );
 }
 
-/* ---------------- ACTION CARDS ---------------- */
-
 export function PremiumActionCard({
   title,
   text,
@@ -172,8 +209,6 @@ export function PremiumActionCard({
     </Link>
   );
 }
-
-/* ---------------- BADGE ---------------- */
 
 export function PremiumBadge({
   children,
