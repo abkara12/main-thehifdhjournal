@@ -52,10 +52,12 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-[30px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] p-6 shadow-[0_12px_40px_rgba(0,0,0,0.2)]">
-      <h2 className="text-xl font-semibold tracking-[-0.03em] text-white">{title}</h2>
+    <section className="rounded-[30px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.82),rgba(255,255,255,0.64))] p-6 shadow-[0_12px_40px_rgba(0,0,0,0.06)] backdrop-blur-xl">
+      <h2 className="text-xl font-semibold tracking-[-0.03em] text-[#171717]">
+        {title}
+      </h2>
       {subtitle ? (
-        <p className="mt-2 text-sm leading-7 text-white/58">{subtitle}</p>
+        <p className="mt-2 text-sm leading-7 text-[#5f5f5f]">{subtitle}</p>
       ) : null}
       <div className="mt-5">{children}</div>
     </section>
@@ -63,14 +65,14 @@ function SectionCard({
 }
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <label className="mb-2 block text-sm text-white/60">{children}</label>;
+  return <label className="mb-2 block text-sm font-medium text-[#5f5f5f]">{children}</label>;
 }
 
 function PremiumInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
       {...props}
-      className={`w-full rounded-2xl border border-white/10 bg-black/10 p-4 text-white outline-none placeholder:text-white/35 ${props.className || ""}`}
+      className={`w-full rounded-2xl border border-gray-300 bg-white/88 p-4 text-[#171717] outline-none placeholder:text-[#8a8a8a] transition focus:border-[#B8963D] focus:bg-white ${props.className || ""}`}
     />
   );
 }
@@ -79,7 +81,7 @@ function PremiumTextarea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement
   return (
     <textarea
       {...props}
-      className={`w-full rounded-2xl border border-white/10 bg-black/10 p-4 text-white outline-none placeholder:text-white/35 ${props.className || ""}`}
+      className={`w-full rounded-2xl border border-gray-300 bg-white/88 p-4 text-[#171717] outline-none placeholder:text-[#8a8a8a] transition focus:border-[#B8963D] focus:bg-white ${props.className || ""}`}
     />
   );
 }
@@ -88,7 +90,7 @@ function PremiumSelect(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <select
       {...props}
-      className={`w-full rounded-2xl border border-white/10 bg-black/10 p-4 text-white outline-none ${props.className || ""}`}
+      className={`w-full rounded-2xl border border-gray-300 bg-white/88 p-4 text-[#171717] outline-none transition focus:border-[#B8963D] focus:bg-white ${props.className || ""}`}
     />
   );
 }
@@ -402,7 +404,7 @@ export default function StudentDetailPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen grid place-items-center bg-black text-white">
+      <main className="min-h-screen grid place-items-center bg-[#F8F6F1] text-[#171717]">
         Loading...
       </main>
     );
@@ -410,8 +412,8 @@ export default function StudentDetailPage() {
 
   if (!profile) {
     return (
-      <main className="min-h-screen grid place-items-center bg-black px-6 text-white">
-        <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-6 py-4 text-sm text-red-200">
+      <main className="min-h-screen grid place-items-center bg-[#F8F6F1] px-6 text-[#171717]">
+        <div className="rounded-2xl border border-red-300 bg-red-50 px-6 py-4 text-sm text-red-700">
           {error || "Could not load this page."}
         </div>
       </main>
@@ -424,30 +426,30 @@ export default function StudentDetailPage() {
       subtitle="Record attendance, progress quality, notes, mistakes, and weekly goal status with a clean premium workflow."
       eyebrow="Daily Progress Logging"
       rightSlot={
-        <>
+        <div className="flex w-full flex-col gap-3 rounded-[24px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.78),rgba(255,255,255,0.60))] p-3 shadow-[0_12px_36px_rgba(0,0,0,0.06)] backdrop-blur-xl sm:p-4 lg:min-w-[260px] lg:max-w-[340px]">
           <Link
             href="/dashboard/students"
-            className="rounded-full border border-white/10 bg-white/[0.03] px-5 py-3 text-sm font-medium text-white/75 transition hover:bg-white/[0.08]"
+            className="w-full rounded-full border border-gray-300 bg-white/72 px-5 py-3 text-center text-sm font-medium text-[#5b5b5b] transition hover:bg-white hover:text-[#171717]"
           >
             Back to Students
           </Link>
           <Link
             href={`/dashboard/students/${studentId}/overview`}
-            className="rounded-full bg-[linear-gradient(135deg,#fbf4e8_0%,#d8b67e_45%,#ffffff_100%)] px-5 py-3 text-sm font-semibold text-black shadow-[0_12px_30px_rgba(216,182,126,0.18)]"
+            className="w-full rounded-full bg-black px-5 py-3 text-center text-sm font-semibold text-white shadow-[0_12px_30px_rgba(0,0,0,0.12)] transition hover:bg-[#1d1d1d]"
           >
             Open Overview
           </Link>
-        </>
+        </div>
       }
     >
       {pageErr ? (
-        <div className="mb-6 rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-200">
+        <div className="mb-6 rounded-2xl border border-red-300 bg-red-50 p-4 text-sm text-red-700">
           {pageErr}
         </div>
       ) : null}
 
       {msg ? (
-        <div className="mb-6 rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm text-white/80">
+        <div className="mb-6 rounded-2xl border border-gray-300 bg-white/78 p-4 text-sm text-[#4f4f4f] shadow-sm backdrop-blur-xl">
           {msg}
         </div>
       ) : null}
@@ -476,12 +478,14 @@ export default function StudentDetailPage() {
       </div>
 
       {hasExistingTodayLog ? (
-        <div className="mt-8 rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] p-5 shadow-[0_12px_40px_rgba(0,0,0,0.2)]">
+        <div className="mt-8 rounded-[28px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.82),rgba(255,255,255,0.64))] p-5 shadow-[0_12px_40px_rgba(0,0,0,0.06)] backdrop-blur-xl">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <p className="text-base font-semibold text-white">Today already has a saved log.</p>
+              <p className="text-base font-semibold text-[#171717]">
+                Today already has a saved log.
+              </p>
               {existingLogMeta?.updatedByEmail ? (
-                <p className="mt-2 text-sm text-white/58">
+                <p className="mt-2 text-sm text-[#5f5f5f]">
                   Last updated by {existingLogMeta.updatedByEmail}
                   {existingLogMeta.updatedAtText ? ` • ${existingLogMeta.updatedAtText}` : ""}
                 </p>
@@ -494,8 +498,8 @@ export default function StudentDetailPage() {
                 onClick={() => setEditorMode("edit")}
                 className={`rounded-full border px-4 py-3 text-sm font-medium transition ${
                   editorMode === "edit"
-                    ? "border-[#d8b67e]/30 bg-[linear-gradient(135deg,rgba(251,244,232,0.18),rgba(216,182,126,0.22),rgba(255,255,255,0.08))] text-white"
-                    : "border-white/10 bg-white/[0.03] text-white/65 hover:bg-white/[0.08] hover:text-white"
+                    ? "border-[#B8963D]/25 bg-black text-white shadow-[0_10px_30px_rgba(0,0,0,0.10)]"
+                    : "border-gray-300 bg-white/72 text-[#5e5e5e] hover:bg-white hover:text-[#171717]"
                 }`}
               >
                 Edit Today’s Log
@@ -506,8 +510,8 @@ export default function StudentDetailPage() {
                 onClick={() => setEditorMode("overwrite")}
                 className={`rounded-full border px-4 py-3 text-sm font-medium transition ${
                   editorMode === "overwrite"
-                    ? "border-[#d8b67e]/30 bg-[linear-gradient(135deg,rgba(251,244,232,0.18),rgba(216,182,126,0.22),rgba(255,255,255,0.08))] text-white"
-                    : "border-white/10 bg-white/[0.03] text-white/65 hover:bg-white/[0.08] hover:text-white"
+                    ? "border-[#B8963D]/25 bg-black text-white shadow-[0_10px_30px_rgba(0,0,0,0.10)]"
+                    : "border-gray-300 bg-white/72 text-[#5e5e5e] hover:bg-white hover:text-[#171717]"
                 }`}
               >
                 Overwrite Today’s Log
@@ -528,8 +532,8 @@ export default function StudentDetailPage() {
               onClick={() => setAttendance("present")}
               className={`rounded-full px-5 py-3 text-sm font-medium transition ${
                 attendance === "present"
-                  ? "bg-[linear-gradient(135deg,#fbf4e8_0%,#d8b67e_45%,#ffffff_100%)] text-black shadow-[0_12px_30px_rgba(216,182,126,0.18)]"
-                  : "border border-white/10 bg-white/[0.03] text-white/70 hover:bg-white/[0.08]"
+                  ? "bg-black text-white shadow-[0_12px_30px_rgba(0,0,0,0.12)]"
+                  : "border border-gray-300 bg-white/72 text-[#5e5e5e] hover:bg-white hover:text-[#171717]"
               }`}
             >
               Present
@@ -540,8 +544,8 @@ export default function StudentDetailPage() {
               onClick={() => setAttendance("absent")}
               className={`rounded-full px-5 py-3 text-sm font-medium transition ${
                 attendance === "absent"
-                  ? "bg-[linear-gradient(135deg,#fbf4e8_0%,#d8b67e_45%,#ffffff_100%)] text-black shadow-[0_12px_30px_rgba(216,182,126,0.18)]"
-                  : "border border-white/10 bg-white/[0.03] text-white/70 hover:bg-white/[0.08]"
+                  ? "bg-black text-white shadow-[0_12px_30px_rgba(0,0,0,0.12)]"
+                  : "border border-gray-300 bg-white/72 text-[#5e5e5e] hover:bg-white hover:text-[#171717]"
               }`}
             >
               Absent
@@ -567,7 +571,7 @@ export default function StudentDetailPage() {
                 onChange={(e) => setSabakReadQuality(e.target.value)}
               >
                 {READING_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value} className="bg-neutral-950">
+                  <option key={opt.value} value={opt.value}>
                     {opt.label}
                   </option>
                 ))}
@@ -604,7 +608,7 @@ export default function StudentDetailPage() {
                 onChange={(e) => setSabakDhorReadQuality(e.target.value)}
               >
                 {READING_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value} className="bg-neutral-950">
+                  <option key={opt.value} value={opt.value}>
                     {opt.label}
                   </option>
                 ))}
@@ -650,7 +654,7 @@ export default function StudentDetailPage() {
                 onChange={(e) => setDhorReadQuality(e.target.value)}
               >
                 {READING_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value} className="bg-neutral-950">
+                  <option key={opt.value} value={opt.value}>
                     {opt.label}
                   </option>
                 ))}
@@ -695,7 +699,7 @@ export default function StudentDetailPage() {
               />
             </div>
 
-            <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/10 px-4 py-4 text-sm text-white/75">
+            <label className="flex items-center gap-3 rounded-2xl border border-gray-300 bg-white/80 px-4 py-4 text-sm text-[#5f5f5f]">
               <input
                 type="checkbox"
                 checked={markGoalCompleted}
@@ -705,7 +709,7 @@ export default function StudentDetailPage() {
             </label>
 
             {weeklyGoalStartDateKey ? (
-              <div className="rounded-2xl border border-white/10 bg-black/10 p-4 text-sm text-white/58">
+              <div className="rounded-2xl border border-gray-300 bg-white/80 p-4 text-sm text-[#5f5f5f]">
                 Goal started: {weeklyGoalStartDateKey}
                 {weeklyGoalCompletedDateKey ? ` • Completed: ${weeklyGoalCompletedDateKey}` : ""}
                 {weeklyGoalDurationDays ? ` • Duration: ${weeklyGoalDurationDays} day(s)` : ""}
@@ -719,14 +723,14 @@ export default function StudentDetailPage() {
             type="button"
             onClick={handleSave}
             disabled={saving || (hasExistingTodayLog && editorMode === null)}
-            className="rounded-full bg-[linear-gradient(135deg,#fbf4e8_0%,#d8b67e_45%,#ffffff_100%)] px-6 py-3 text-sm font-semibold text-black shadow-[0_12px_30px_rgba(216,182,126,0.18)] disabled:opacity-60"
+            className="rounded-full bg-black px-6 py-3 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(0,0,0,0.12)] transition hover:bg-[#1d1d1d] disabled:opacity-60"
           >
             {saving ? "Saving..." : "Save Today’s Log"}
           </button>
 
           <Link
             href={`/dashboard/students/${studentId}/overview`}
-            className="rounded-full border border-white/10 bg-white/[0.03] px-6 py-3 text-sm font-medium text-white/75 transition hover:bg-white/[0.08]"
+            className="rounded-full border border-gray-300 bg-white/72 px-6 py-3 text-sm font-medium text-[#5b5b5b] transition hover:bg-white hover:text-[#171717]"
           >
             View Full Overview
           </Link>
