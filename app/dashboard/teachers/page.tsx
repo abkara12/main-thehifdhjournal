@@ -33,8 +33,8 @@ type ConfigDoc = {
 function RoleBadge({ role }: { role: "admin" | "teacher" }) {
   const styles =
     role === "admin"
-      ? "border-amber-400/20 bg-amber-400/10 text-amber-200"
-      : "border-white/10 bg-white/5 text-white/75";
+      ? "border-[#B8963D]/25 bg-[#B8963D]/10 text-[#7b6128]"
+      : "border-gray-300 bg-white/80 text-[#5e5e5e]";
 
   return (
     <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-medium ${styles}`}>
@@ -45,13 +45,28 @@ function RoleBadge({ role }: { role: "admin" | "teacher" }) {
 
 function StatusBadge({ active }: { active: boolean }) {
   const styles = active
-    ? "border-green-500/20 bg-green-500/10 text-green-200"
-    : "border-red-500/20 bg-red-500/10 text-red-200";
+    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+    : "border-red-200 bg-red-50 text-red-700";
 
   return (
     <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-medium ${styles}`}>
       {active ? "Active" : "Inactive"}
     </span>
+  );
+}
+
+function StatCard({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | number;
+}) {
+  return (
+    <div className="rounded-[26px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.82),rgba(255,255,255,0.64))] p-5 shadow-[0_12px_40px_rgba(0,0,0,0.06)] backdrop-blur-xl">
+      <p className="text-[11px] uppercase tracking-[0.18em] text-[#8d7440]">{label}</p>
+      <p className="mt-3 text-2xl font-semibold tracking-[-0.03em] text-[#171717]">{value}</p>
+    </div>
   );
 }
 
@@ -197,9 +212,20 @@ export default function TeachersPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen grid place-items-center">
-        <div className="rounded-2xl border border-white/10 bg-white/5 px-6 py-4 backdrop-blur">
-          Loading...
+      <main className="min-h-screen bg-transparent text-[#171717]">
+        <div className="pointer-events-none fixed inset-0 -z-10">
+          <div className="absolute inset-0 bg-[#F8F6F1]" />
+          <div className="absolute -top-72 -right-40 h-[900px] w-[900px] rounded-full bg-[#1F3F3F]/25 blur-3xl" />
+          <div className="absolute bottom-[-25%] left-[-15%] h-[1000px] w-[1000px] rounded-full bg-[#B8963D]/20 blur-3xl" />
+          <div className="absolute inset-0 bg-[radial-gradient(1000px_circle_at_70%_20%,rgba(184,150,61,0.15),transparent_60%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(900px_circle_at_50%_10%,transparent_50%,rgba(0,0,0,0.08))]" />
+          <div className="absolute inset-0 opacity-[0.03] mix-blend-multiply bg-[url('/noise.png')]" />
+        </div>
+
+        <div className="grid min-h-screen place-items-center px-6">
+          <div className="rounded-2xl border border-gray-300 bg-white/75 px-6 py-4 text-sm text-[#5f5f5f] shadow-sm backdrop-blur-xl">
+            Loading...
+          </div>
         </div>
       </main>
     );
@@ -207,72 +233,85 @@ export default function TeachersPage() {
 
   if (!profile) {
     return (
-      <main className="min-h-screen grid place-items-center px-6">
-        <div>{error || "Could not load teachers page."}</div>
+      <main className="min-h-screen bg-transparent text-[#171717]">
+        <div className="pointer-events-none fixed inset-0 -z-10">
+          <div className="absolute inset-0 bg-[#F8F6F1]" />
+          <div className="absolute -top-72 -right-40 h-[900px] w-[900px] rounded-full bg-[#1F3F3F]/25 blur-3xl" />
+          <div className="absolute bottom-[-25%] left-[-15%] h-[1000px] w-[1000px] rounded-full bg-[#B8963D]/20 blur-3xl" />
+          <div className="absolute inset-0 bg-[radial-gradient(1000px_circle_at_70%_20%,rgba(184,150,61,0.15),transparent_60%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(900px_circle_at_50%_10%,transparent_50%,rgba(0,0,0,0.08))]" />
+          <div className="absolute inset-0 opacity-[0.03] mix-blend-multiply bg-[url('/noise.png')]" />
+        </div>
+
+        <div className="grid min-h-screen place-items-center px-6">
+          <div className="rounded-2xl border border-red-300 bg-red-50 px-6 py-4 text-sm text-red-700 shadow-sm">
+            {error || "Could not load teachers page."}
+          </div>
+        </div>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen px-6 py-10">
-      <div className="mx-auto max-w-7xl">
-        <div className="rounded-3xl border border-white/10 bg-white/5 p-8 backdrop-blur">
-          <p className="text-xs uppercase tracking-[0.2em] text-white/45">
+    <main className="min-h-screen bg-transparent px-4 py-6 text-[#171717] sm:px-6 sm:py-8 lg:px-8">
+      <div className="pointer-events-none fixed inset-0 -z-10">
+        <div className="absolute inset-0 bg-[#F8F6F1]" />
+        <div className="absolute -top-72 -right-40 h-[900px] w-[900px] rounded-full bg-[#1F3F3F]/25 blur-3xl" />
+        <div className="absolute bottom-[-25%] left-[-15%] h-[1000px] w-[1000px] rounded-full bg-[#B8963D]/20 blur-3xl" />
+        <div className="absolute inset-0 bg-[radial-gradient(1000px_circle_at_70%_20%,rgba(184,150,61,0.15),transparent_60%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(900px_circle_at_50%_10%,transparent_50%,rgba(0,0,0,0.08))]" />
+        <div className="absolute inset-0 opacity-[0.03] mix-blend-multiply bg-[url('/noise.png')]" />
+      </div>
+
+      <div className="mx-auto max-w-7xl space-y-6">
+        <div className="rounded-[32px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.82),rgba(255,255,255,0.62))] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.08)] backdrop-blur-2xl sm:p-8">
+          <p className="text-[11px] uppercase tracking-[0.3em] text-[#8d7440]">
             Dashboard → Teachers
           </p>
-          <h1 className="mt-3 text-3xl font-semibold sm:text-4xl">
+          <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-[#171717] sm:text-4xl">
             Teacher Management
           </h1>
-          <p className="mt-3 max-w-3xl text-sm leading-7 text-white/60 sm:text-base">
+          <p className="mt-3 max-w-3xl text-sm leading-7 text-[#5f5f5f] sm:text-base">
             View staff, manage teacher access, and keep your madrassah team
             organized as the system grows.
           </p>
 
           <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
-              <p className="text-xs uppercase tracking-[0.18em] text-white/45">Total Staff</p>
-              <p className="mt-3 text-2xl font-semibold">{staff.length}</p>
-            </div>
-
-            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
-              <p className="text-xs uppercase tracking-[0.18em] text-white/45">Admins</p>
-              <p className="mt-3 text-2xl font-semibold">{adminCount}</p>
-            </div>
-
-            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
-              <p className="text-xs uppercase tracking-[0.18em] text-white/45">Teachers</p>
-              <p className="mt-3 text-2xl font-semibold">{teacherCount}</p>
-            </div>
-
-            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
-              <p className="text-xs uppercase tracking-[0.18em] text-white/45">Active Staff</p>
-              <p className="mt-3 text-2xl font-semibold">{activeCount}</p>
-            </div>
+            <StatCard label="Total Staff" value={staff.length} />
+            <StatCard label="Admins" value={adminCount} />
+            <StatCard label="Teachers" value={teacherCount} />
+            <StatCard label="Active Staff" value={activeCount} />
           </div>
         </div>
 
         {pageError ? (
-          <div className="mt-6 rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-200">
+          <div className="rounded-2xl border border-red-300 bg-red-50 p-4 text-sm text-red-700 shadow-sm">
             {pageError}
           </div>
         ) : null}
 
         {actionMsg ? (
-          <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/80">
+          <div className="rounded-2xl border border-gray-300 bg-white/78 p-4 text-sm text-[#4f4f4f] shadow-sm backdrop-blur-xl">
             {actionMsg}
           </div>
         ) : null}
 
-        <div className="mt-6 grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
-          <section className="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur">
-            <h2 className="text-xl font-semibold">Teacher Join Code</h2>
-            <p className="mt-2 text-sm leading-7 text-white/60">
+        <div className="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
+          <section className="rounded-[32px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.82),rgba(255,255,255,0.62))] p-6 shadow-[0_18px_60px_rgba(0,0,0,0.06)] backdrop-blur-2xl">
+            <p className="text-[11px] uppercase tracking-[0.24em] text-[#8d7440]">
+              Teacher Access
+            </p>
+            <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-[#171717]">
+              Teacher Join Code
+            </h2>
+            <p className="mt-2 text-sm leading-7 text-[#5f5f5f]">
               Share this code with teachers so they can join this madrassah from
               the join page.
             </p>
 
-            <div className="mt-5 rounded-2xl border border-white/10 bg-black/10 p-4">
-              <p className="font-mono text-2xl font-semibold tracking-[0.22em]">
+            <div className="mt-5 rounded-[24px] border border-gray-300 bg-white/82 p-5 shadow-sm">
+              <p className="text-sm text-[#7a7a7a]">Join Code</p>
+              <p className="mt-3 break-all font-mono text-2xl font-semibold tracking-[0.22em] text-[#171717]">
                 {joinCode || "—"}
               </p>
             </div>
@@ -281,17 +320,22 @@ export default function TeachersPage() {
               type="button"
               onClick={handleCopyJoinCode}
               disabled={!joinCode}
-              className="mt-4 rounded-xl bg-white px-5 py-3 text-sm font-medium text-black disabled:opacity-60"
+              className="mt-4 w-full rounded-full bg-black px-5 py-3 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(0,0,0,0.12)] transition hover:bg-[#1d1d1d] disabled:opacity-60 sm:w-auto"
             >
               Copy Join Code
             </button>
           </section>
 
-          <section className="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur">
+          <section className="rounded-[32px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.82),rgba(255,255,255,0.62))] p-6 shadow-[0_18px_60px_rgba(0,0,0,0.06)] backdrop-blur-2xl">
             <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
               <div>
-                <h2 className="text-xl font-semibold">Staff Directory</h2>
-                <p className="mt-2 text-sm leading-7 text-white/60">
+                <p className="text-[11px] uppercase tracking-[0.24em] text-[#8d7440]">
+                  Staff Access
+                </p>
+                <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-[#171717]">
+                  Staff Directory
+                </h2>
+                <p className="mt-2 text-sm leading-7 text-[#5f5f5f]">
                   Search staff and control whether teachers can access the system.
                 </p>
               </div>
@@ -300,7 +344,7 @@ export default function TeachersPage() {
                 <input
                   type="text"
                   placeholder="Search by name, email, phone, role, status..."
-                  className="w-full rounded-2xl bg-white/10 p-4 outline-none"
+                  className="w-full rounded-2xl border border-gray-300 bg-white/88 p-4 text-[#171717] outline-none placeholder:text-[#8a8a8a] transition focus:border-[#B8963D] focus:bg-white"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
@@ -309,9 +353,11 @@ export default function TeachersPage() {
 
             <div className="mt-6">
               {loadingData ? (
-                <p className="text-white/70">Loading staff...</p>
+                <div className="rounded-2xl border border-gray-300 bg-white/82 p-6 text-center text-[#666666]">
+                  Loading staff...
+                </div>
               ) : filteredStaff.length === 0 ? (
-                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-center text-white/60">
+                <div className="rounded-2xl border border-gray-300 bg-white/82 p-6 text-center text-[#666666]">
                   {staff.length === 0
                     ? "No staff records found yet."
                     : "No staff matched your search."}
@@ -325,22 +371,22 @@ export default function TeachersPage() {
                     return (
                       <div
                         key={person.id}
-                        className="rounded-2xl border border-white/10 bg-white/[0.03] p-5"
+                        className="rounded-[26px] border border-gray-300 bg-white/82 p-5 shadow-sm backdrop-blur-xl"
                       >
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                          <div>
+                          <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-3">
-                              <h3 className="text-xl font-semibold">
+                              <h3 className="text-xl font-semibold tracking-[-0.03em] text-[#171717]">
                                 {person.fullName || "Unnamed Staff"}
                               </h3>
                               <RoleBadge role={person.role} />
                               <StatusBadge active={person.isActive} />
                             </div>
 
-                            <div className="mt-3 space-y-1 text-sm text-white/60">
-                              <p>Email: {person.email || "—"}</p>
+                            <div className="mt-3 space-y-1 text-sm text-[#5f5f5f]">
+                              <p className="break-all">Email: {person.email || "—"}</p>
                               <p>Phone: {person.phone || "—"}</p>
-                              <p className="font-mono text-xs text-white/45">
+                              <p className="break-all font-mono text-xs text-[#8a8a8a]">
                                 User ID: {person.userId || "—"}
                               </p>
                             </div>
@@ -352,11 +398,11 @@ export default function TeachersPage() {
                                 type="button"
                                 onClick={() => handleToggleTeacher(person)}
                                 disabled={isBusy}
-                                className={`rounded-xl px-5 py-3 text-sm font-medium ${
+                                className={`rounded-full px-5 py-3 text-sm font-medium transition disabled:opacity-60 ${
                                   person.isActive
-                                    ? "border border-red-500/20 bg-red-500/10 text-red-200"
-                                    : "bg-white text-black"
-                                } disabled:opacity-60`}
+                                    ? "border border-red-200 bg-red-50 text-red-700"
+                                    : "bg-black text-white shadow-[0_12px_30px_rgba(0,0,0,0.12)] hover:bg-[#1d1d1d]"
+                                }`}
                               >
                                 {isBusy
                                   ? "Saving..."
@@ -365,7 +411,7 @@ export default function TeachersPage() {
                                   : "Activate"}
                               </button>
                             ) : (
-                              <div className="rounded-xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-medium text-white/55">
+                              <div className="rounded-full border border-gray-300 bg-white/80 px-5 py-3 text-sm font-medium text-[#6b6b6b]">
                                 Admin protected
                               </div>
                             )}
