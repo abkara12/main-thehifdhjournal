@@ -208,6 +208,14 @@ function compactMistakes(row: LogRow) {
   return parts.join(" • ");
 }
 
+function compactNotes(row: LogRow) {
+  const parts = [];
+  if (toText(row.sabakReadNotes).trim()) parts.push(`S: ${row.sabakReadNotes}`);
+  if (toText(row.sabakDhorReadNotes).trim()) parts.push(`SD: ${row.sabakDhorReadNotes}`);
+  if (toText(row.dhorReadNotes).trim()) parts.push(`D: ${row.dhorReadNotes}`);
+  return parts.join(" • ");
+}
+
 function MobileLogCard({ row }: { row: LogRow }) {
   return (
     <div className="rounded-[24px] border border-gray-300 bg-white/84 p-4 shadow-sm backdrop-blur-xl">
@@ -246,6 +254,13 @@ function MobileLogCard({ row }: { row: LogRow }) {
           <p className="text-[#7a7a7a]">Quality</p>
           <p className="mt-1 break-words font-medium text-[#171717]">
             {compactQuality(row) || "—"}
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-gray-300 bg-white/80 p-3">
+          <p className="text-[#7a7a7a]">Notes</p>
+          <p className="mt-1 break-words font-medium text-[#171717]">
+            {compactNotes(row) || "—"}
           </p>
         </div>
 
@@ -647,6 +662,9 @@ export default function StudentOverviewPage() {
                                 Quality
                               </th>
                               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">
+                                Notes
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">
                                 Mistakes
                               </th>
                               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">
@@ -691,6 +709,12 @@ export default function StudentOverviewPage() {
                                 <td className="px-4 py-4 align-top text-sm text-[#5f5f5f]">
                                   <div className="max-w-[180px] break-words">
                                     {compactQuality(row) || "—"}
+                                  </div>
+                                </td>
+
+                                <td className="px-4 py-4 align-top text-sm text-[#5f5f5f]">
+                                  <div className="max-w-[260px] break-words whitespace-pre-wrap">
+                                    {compactNotes(row) || "—"}
                                   </div>
                                 </td>
 
