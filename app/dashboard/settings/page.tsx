@@ -51,16 +51,16 @@ function InfoCard({
   mono?: boolean;
 }) {
   return (
-    <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.025))] p-5 shadow-[0_12px_40px_rgba(0,0,0,0.2)]">
-      <p className="text-[11px] uppercase tracking-[0.2em] text-white/45">{label}</p>
+    <div className="rounded-[28px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.82),rgba(255,255,255,0.64))] p-5 shadow-[0_12px_40px_rgba(0,0,0,0.06)] backdrop-blur-xl">
+      <p className="text-[11px] uppercase tracking-[0.2em] text-[#8d7440]">{label}</p>
       <p
-        className={`mt-3 text-lg font-medium text-white ${
-          mono ? "break-all font-mono text-sm" : ""
+        className={`mt-3 font-medium text-[#171717] ${
+          mono ? "break-all font-mono text-sm" : "text-lg"
         }`}
       >
         {value || "—"}
       </p>
-      {subtext ? <p className="mt-2 text-sm text-white/55">{subtext}</p> : null}
+      {subtext ? <p className="mt-2 text-sm text-[#5f5f5f]">{subtext}</p> : null}
     </div>
   );
 }
@@ -211,7 +211,7 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen grid place-items-center bg-black text-white">
+      <main className="min-h-screen grid place-items-center bg-[#F8F6F1] text-[#171717]">
         Loading...
       </main>
     );
@@ -219,8 +219,8 @@ export default function SettingsPage() {
 
   if (!profile) {
     return (
-      <main className="min-h-screen grid place-items-center bg-black px-6 text-white">
-        <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-6 py-4 text-sm text-red-200">
+      <main className="min-h-screen grid place-items-center bg-[#F8F6F1] px-6 text-[#171717]">
+        <div className="rounded-2xl border border-red-300 bg-red-50 px-6 py-4 text-sm text-red-700">
           {error || "Could not load settings page."}
         </div>
       </main>
@@ -233,26 +233,28 @@ export default function SettingsPage() {
       subtitle="Manage the core identity, private configuration, and internal reference details of your madrassah."
       eyebrow="Settings & Configuration"
       rightSlot={
-        <>
-          <PremiumBadge>{profile.madrassahName || "Madrassah"}</PremiumBadge>
-          <PremiumBadge>{profile.role}</PremiumBadge>
-        </>
+        <div className="flex w-full flex-col gap-3 rounded-[24px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.78),rgba(255,255,255,0.60))] p-3 shadow-[0_12px_36px_rgba(0,0,0,0.06)] backdrop-blur-xl sm:p-4 lg:min-w-[250px] lg:max-w-[320px]">
+          <div className="flex flex-wrap gap-2">
+            <PremiumBadge>{profile.madrassahName || "Madrassah"}</PremiumBadge>
+            <PremiumBadge>{profile.role}</PremiumBadge>
+          </div>
+        </div>
       }
     >
       {pageError ? (
-        <div className="mb-6 rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-200">
+        <div className="mb-6 rounded-2xl border border-red-300 bg-red-50 p-4 text-sm text-red-700">
           {pageError}
         </div>
       ) : null}
 
       {msg ? (
-        <div className="mb-6 rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm text-white/80">
+        <div className="mb-6 rounded-2xl border border-gray-300 bg-white/78 p-4 text-sm text-[#4f4f4f] shadow-sm backdrop-blur-xl">
           {msg}
         </div>
       ) : null}
 
       {loadingData ? (
-        <div className="rounded-[28px] border border-white/10 bg-white/[0.03] p-8 text-center text-white/60">
+        <div className="rounded-[28px] border border-gray-300 bg-white/74 p-8 text-center text-[#666666] shadow-sm backdrop-blur-xl">
           Loading settings...
         </div>
       ) : !madrassah ? null : (
@@ -314,7 +316,7 @@ export default function SettingsPage() {
             >
               <form onSubmit={handleSave} className="space-y-4">
                 <div>
-                  <label className="mb-2 block text-sm text-white/60">
+                  <label className="mb-2 block text-sm font-medium text-[#5f5f5f]">
                     Madrassah Name
                   </label>
                   <input
@@ -322,18 +324,18 @@ export default function SettingsPage() {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Enter madrassah name"
-                    className="w-full rounded-2xl border border-white/10 bg-black/10 p-4 text-white outline-none placeholder:text-white/35"
+                    className="w-full rounded-2xl border border-gray-300 bg-white/88 p-4 text-[#171717] outline-none placeholder:text-[#8a8a8a] transition focus:border-[#B8963D] focus:bg-white"
                   />
                 </div>
 
-                <div className="rounded-2xl border border-white/10 bg-black/10 p-4 text-sm text-white/58">
+                <div className="rounded-2xl border border-gray-300 bg-white/82 p-4 text-sm text-[#5f5f5f]">
                   The slug will automatically update when you save this new name.
                 </div>
 
                 <button
                   type="submit"
                   disabled={!canSave}
-                  className="rounded-full bg-[linear-gradient(135deg,#fbf4e8_0%,#d8b67e_45%,#ffffff_100%)] px-6 py-3 text-sm font-semibold text-black shadow-[0_12px_30px_rgba(216,182,126,0.18)] disabled:opacity-60"
+                  className="rounded-full bg-black px-6 py-3 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(0,0,0,0.12)] transition hover:bg-[#1d1d1d] disabled:opacity-60"
                 >
                   {saving ? "Saving..." : "Save Changes"}
                 </button>
@@ -345,28 +347,28 @@ export default function SettingsPage() {
               subtitle="Quick operational context for admins managing this madrassah."
             >
               <div className="grid gap-4">
-                <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
-                  <p className="text-sm text-white/45">Your Role</p>
-                  <p className="mt-2 font-medium text-white">{profile.role}</p>
+                <div className="rounded-2xl border border-gray-300 bg-white/82 p-4">
+                  <p className="text-sm text-[#7a7a7a]">Your Role</p>
+                  <p className="mt-2 font-medium text-[#171717]">{profile.role}</p>
                 </div>
 
-                <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
-                  <p className="text-sm text-white/45">Madrassah Status</p>
-                  <p className="mt-2 font-medium text-white">
+                <div className="rounded-2xl border border-gray-300 bg-white/82 p-4">
+                  <p className="text-sm text-[#7a7a7a]">Madrassah Status</p>
+                  <p className="mt-2 font-medium text-[#171717]">
                     {madrassah.isActive ? "Active" : "Inactive"}
                   </p>
                 </div>
 
-                <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
-                  <p className="text-sm text-white/45">Join Code</p>
-                  <p className="mt-2 font-mono text-sm text-white">
+                <div className="rounded-2xl border border-gray-300 bg-white/82 p-4">
+                  <p className="text-sm text-[#7a7a7a]">Join Code</p>
+                  <p className="mt-2 break-all font-mono text-sm text-[#171717]">
                     {config?.joinCode || "—"}
                   </p>
                 </div>
 
-                <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
-                  <p className="text-sm text-white/45">Report Access Key</p>
-                  <p className="mt-2 break-all font-mono text-sm text-white">
+                <div className="rounded-2xl border border-gray-300 bg-white/82 p-4">
+                  <p className="text-sm text-[#7a7a7a]">Report Access Key</p>
+                  <p className="mt-2 break-all font-mono text-sm text-[#171717]">
                     {config?.reportAccessKey || "—"}
                   </p>
                 </div>
