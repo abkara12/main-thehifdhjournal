@@ -32,8 +32,8 @@ type StaffRow = {
 function RoleBadge({ role }: { role: "admin" | "teacher" }) {
   const styles =
     role === "admin"
-      ? "border-amber-400/20 bg-amber-400/10 text-amber-200"
-      : "border-white/10 bg-white/5 text-white/75";
+      ? "border-[#B8963D]/25 bg-[#B8963D]/10 text-[#7b6128]"
+      : "border-gray-300 bg-white/75 text-[#5e5e5e]";
 
   return (
     <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-medium ${styles}`}>
@@ -44,8 +44,8 @@ function RoleBadge({ role }: { role: "admin" | "teacher" }) {
 
 function StatusBadge({ active }: { active: boolean }) {
   const styles = active
-    ? "border-green-500/20 bg-green-500/10 text-green-200"
-    : "border-red-500/20 bg-red-500/10 text-red-200";
+    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+    : "border-red-200 bg-red-50 text-red-700";
 
   return (
     <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-medium ${styles}`}>
@@ -66,40 +66,42 @@ function StaffCard({
   const canToggle = person.role === "teacher";
 
   return (
-    <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.025))] p-5 shadow-[0_12px_40px_rgba(0,0,0,0.2)]">
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-        <div>
-          <div className="flex flex-wrap items-center gap-3">
-            <h3 className="text-xl font-semibold tracking-[-0.03em] text-white">
+    <div className="rounded-[28px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.78),rgba(255,255,255,0.56))] p-5 shadow-[0_12px_40px_rgba(0,0,0,0.08)] backdrop-blur-xl sm:p-6">
+      <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+            <h3 className="text-lg font-semibold tracking-[-0.03em] text-[#171717] sm:text-xl">
               {person.fullName || "Unnamed Staff"}
             </h3>
             <RoleBadge role={person.role} />
             <StatusBadge active={person.isActive} />
           </div>
 
-          <div className="mt-3 space-y-1 text-sm text-white/60">
-            <p>Email: {person.email || "—"}</p>
+          <div className="mt-3 space-y-1 text-sm text-[#5f5f5f]">
+            <p className="break-all">Email: {person.email || "—"}</p>
             <p>Phone: {person.phone || "—"}</p>
-            <p className="font-mono text-xs text-white/40">User ID: {person.userId || "—"}</p>
+            <p className="break-all font-mono text-xs text-[#8a8a8a]">
+              User ID: {person.userId || "—"}
+            </p>
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-3">
+        <div className="flex w-full flex-wrap gap-3 xl:w-auto xl:justify-end">
           {canToggle ? (
             <button
               type="button"
               onClick={onToggle}
               disabled={isBusy}
-              className={`rounded-full px-5 py-3 text-sm font-medium transition ${
+              className={`min-h-[46px] rounded-full px-5 py-3 text-sm font-medium transition disabled:opacity-60 ${
                 person.isActive
-                  ? "border border-red-500/20 bg-red-500/10 text-red-200"
-                  : "bg-[linear-gradient(135deg,#fbf4e8_0%,#d8b67e_45%,#ffffff_100%)] text-black shadow-[0_12px_30px_rgba(216,182,126,0.18)]"
-              } disabled:opacity-60`}
+                  ? "border border-red-200 bg-red-50 text-red-700"
+                  : "bg-black text-white shadow-[0_12px_30px_rgba(0,0,0,0.12)] hover:bg-[#1d1d1d]"
+              }`}
             >
               {isBusy ? "Saving..." : person.isActive ? "Deactivate" : "Activate"}
             </button>
           ) : (
-            <div className="rounded-full border border-white/10 bg-white/[0.03] px-5 py-3 text-sm font-medium text-white/55">
+            <div className="rounded-full border border-gray-300 bg-white/75 px-5 py-3 text-sm font-medium text-[#6b6b6b]">
               Admin Protected
             </div>
           )}
@@ -249,7 +251,7 @@ export default function TeachersPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen grid place-items-center bg-black text-white">
+      <main className="grid min-h-screen place-items-center bg-[#F8F6F1] text-[#171717]">
         Loading...
       </main>
     );
@@ -257,8 +259,8 @@ export default function TeachersPage() {
 
   if (!profile) {
     return (
-      <main className="min-h-screen grid place-items-center bg-black px-6 text-white">
-        <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-6 py-4 text-sm text-red-200">
+      <main className="grid min-h-screen place-items-center bg-[#F8F6F1] px-6 text-[#171717]">
+        <div className="rounded-2xl border border-red-300 bg-red-50 px-6 py-4 text-sm text-red-700">
           {error || "Could not load teachers page."}
         </div>
       </main>
@@ -271,27 +273,34 @@ export default function TeachersPage() {
       subtitle="Manage staff access, monitor teacher status, and keep the madrassah team organized with confidence."
       eyebrow="Staff & Access Control"
       rightSlot={
-        <>
-          {joinCode ? <PremiumBadge>Join Code: {joinCode}</PremiumBadge> : null}
-          <button
-            type="button"
-            onClick={handleCopyJoinCode}
-            disabled={!joinCode}
-            className="rounded-full bg-[linear-gradient(135deg,#fbf4e8_0%,#d8b67e_45%,#ffffff_100%)] px-5 py-3 text-sm font-semibold text-black shadow-[0_12px_30px_rgba(216,182,126,0.18)] disabled:opacity-60"
-          >
-            Copy Join Code
-          </button>
-        </>
+        <div className="w-full lg:w-auto">
+          <div className="flex w-full flex-col gap-3 rounded-[24px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.76),rgba(255,255,255,0.56))] p-3 shadow-[0_12px_36px_rgba(0,0,0,0.06)] backdrop-blur-xl sm:p-4 lg:min-w-[250px] lg:max-w-[320px]">
+            {joinCode ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <PremiumBadge>Join Code: {joinCode}</PremiumBadge>
+              </div>
+            ) : null}
+
+            <button
+              type="button"
+              onClick={handleCopyJoinCode}
+              disabled={!joinCode}
+              className="w-full rounded-full bg-black px-5 py-3 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(0,0,0,0.12)] transition hover:bg-[#1d1d1d] disabled:opacity-60"
+            >
+              Copy Join Code
+            </button>
+          </div>
+        </div>
       }
     >
       {pageError ? (
-        <div className="mb-6 rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-200">
+        <div className="mb-6 rounded-2xl border border-red-300 bg-red-50 p-4 text-sm text-red-700">
           {pageError}
         </div>
       ) : null}
 
       {actionMsg ? (
-        <div className="mb-6 rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm text-white/80">
+        <div className="mb-6 rounded-2xl border border-gray-300 bg-white/75 p-4 text-sm text-[#4f4f4f] shadow-sm backdrop-blur-xl">
           {actionMsg}
         </div>
       ) : null}
@@ -319,11 +328,11 @@ export default function TeachersPage() {
         />
       </div>
 
-      <div className="mt-8 rounded-[30px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] p-5 shadow-[0_12px_40px_rgba(0,0,0,0.2)]">
+      <div className="mt-8 rounded-[30px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.78),rgba(255,255,255,0.56))] p-4 shadow-[0_12px_40px_rgba(0,0,0,0.06)] backdrop-blur-xl sm:p-5">
         <input
           type="text"
           placeholder="Search by name, email, phone, role, or status..."
-          className="w-full rounded-2xl border border-white/10 bg-black/10 p-4 text-white outline-none placeholder:text-white/35"
+          className="w-full rounded-2xl border border-gray-300 bg-white/85 p-4 text-[#171717] outline-none placeholder:text-[#8a8a8a] transition focus:border-[#B8963D] focus:bg-white"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -331,11 +340,11 @@ export default function TeachersPage() {
 
       <div className="mt-8">
         {loadingData ? (
-          <div className="rounded-[28px] border border-white/10 bg-white/[0.03] p-8 text-center text-white/60">
+          <div className="rounded-[28px] border border-gray-300 bg-white/70 p-8 text-center text-[#666666] shadow-sm backdrop-blur-xl">
             Loading staff...
           </div>
         ) : filteredStaff.length === 0 ? (
-          <div className="rounded-[28px] border border-white/10 bg-white/[0.03] p-10 text-center text-white/60">
+          <div className="rounded-[28px] border border-gray-300 bg-white/70 p-10 text-center text-[#666666] shadow-sm backdrop-blur-xl">
             {staff.length === 0
               ? "No staff records found yet."
               : "No staff matched your search."}
