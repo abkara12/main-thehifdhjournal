@@ -27,42 +27,42 @@ function StudentCard({ student }: { student: StudentRow }) {
   return (
     <Link
       href={`/dashboard/students/${student.id}`}
-      className="group rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.025))] p-5 shadow-[0_12px_40px_rgba(0,0,0,0.2)] transition hover:-translate-y-[1px] hover:bg-white/[0.08]"
+      className="group rounded-[28px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(255,255,255,0.66))] p-5 shadow-[0_12px_40px_rgba(0,0,0,0.07)] backdrop-blur-xl transition hover:-translate-y-[1px] hover:bg-white/95"
     >
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-        <div>
+        <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-3">
-            <h2 className="text-xl font-semibold tracking-[-0.03em] text-white">
+            <h2 className="text-xl font-semibold tracking-[-0.03em] text-[#171717]">
               {student.fullName || "Unnamed Student"}
             </h2>
 
             <span
               className={`rounded-full border px-3 py-1 text-xs font-medium ${
                 student.isActive
-                  ? "border-green-500/20 bg-green-500/10 text-green-200"
-                  : "border-red-500/20 bg-red-500/10 text-red-200"
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                  : "border-red-200 bg-red-50 text-red-700"
               }`}
             >
               {student.isActive ? "Active" : "Inactive"}
             </span>
           </div>
 
-          <p className="mt-3 text-sm text-white/62">
+          <p className="mt-3 text-sm text-[#5f5f5f]">
             Parent: {student.parentName || "—"}
           </p>
-          <p className="mt-1 text-sm text-white/48">
+          <p className="mt-1 break-words text-sm text-[#7a7a7a]">
             {student.parentPhone || "—"}
             {student.parentEmail ? ` • ${student.parentEmail}` : ""}
           </p>
         </div>
 
-        <div className="grid gap-2 text-sm text-white/58 xl:text-right">
+        <div className="grid gap-2 text-sm text-[#5f5f5f] xl:text-right">
           <p>Weekly Goal: {student.weeklyGoal || "—"}</p>
           <p>Last Log: {student.lastLogDateKey || "—"}</p>
         </div>
       </div>
 
-      <p className="mt-5 text-sm font-medium text-[#e7cf9c] transition group-hover:translate-x-1">
+      <p className="mt-5 text-sm font-medium text-[#8d7440] transition group-hover:translate-x-1">
         Open Student →
       </p>
     </Link>
@@ -158,7 +158,7 @@ export default function StudentsPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen grid place-items-center bg-black text-white">
+      <main className="grid min-h-screen place-items-center bg-[#F8F6F1] text-[#171717]">
         Loading...
       </main>
     );
@@ -166,8 +166,8 @@ export default function StudentsPage() {
 
   if (!profile) {
     return (
-      <main className="min-h-screen grid place-items-center bg-black px-6 text-white">
-        <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-6 py-4 text-sm text-red-200">
+      <main className="grid min-h-screen place-items-center bg-[#F8F6F1] px-6 text-[#171717]">
+        <div className="rounded-2xl border border-red-300 bg-red-50 px-6 py-4 text-sm text-red-700">
           {error || "Could not load students page."}
         </div>
       </main>
@@ -180,19 +180,22 @@ export default function StudentsPage() {
       subtitle="Search learners, review parent details, and move quickly into daily progress logging."
       eyebrow="Student Management"
       rightSlot={
-        <>
-          <PremiumBadge>{profile.madrassahName || "Madrassah"}</PremiumBadge>
+        <div className="flex w-full flex-col gap-3 rounded-[24px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.78),rgba(255,255,255,0.60))] p-3 shadow-[0_12px_36px_rgba(0,0,0,0.06)] backdrop-blur-xl sm:p-4 lg:min-w-[250px] lg:max-w-[320px]">
+          <div className="flex flex-wrap items-center gap-2">
+            <PremiumBadge>{profile.madrassahName || "Madrassah"}</PremiumBadge>
+          </div>
+
           <Link
             href="/dashboard/students/new"
-            className="rounded-full bg-[linear-gradient(135deg,#fbf4e8_0%,#d8b67e_45%,#ffffff_100%)] px-5 py-3 text-sm font-semibold text-black shadow-[0_12px_30px_rgba(216,182,126,0.18)]"
+            className="w-full rounded-full bg-black px-5 py-3 text-center text-sm font-semibold text-white shadow-[0_12px_30px_rgba(0,0,0,0.12)] transition hover:bg-[#1d1d1d]"
           >
             Add Student
           </Link>
-        </>
+        </div>
       }
     >
       {pageError ? (
-        <div className="mb-6 rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-200">
+        <div className="mb-6 rounded-2xl border border-red-300 bg-red-50 p-4 text-sm text-red-700">
           {pageError}
         </div>
       ) : null}
@@ -220,12 +223,12 @@ export default function StudentsPage() {
         />
       </div>
 
-      <div className="mt-8 rounded-[30px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] p-5 shadow-[0_12px_40px_rgba(0,0,0,0.2)]">
+      <div className="mt-8 rounded-[30px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.82),rgba(255,255,255,0.64))] p-5 shadow-[0_12px_40px_rgba(0,0,0,0.06)] backdrop-blur-xl">
         <div className="grid gap-4 lg:grid-cols-[1fr_auto]">
           <input
             type="text"
             placeholder="Search by student, parent, phone, email, or weekly goal..."
-            className="w-full rounded-2xl border border-white/10 bg-black/10 p-4 text-white outline-none placeholder:text-white/35"
+            className="w-full rounded-2xl border border-gray-300 bg-white/88 p-4 text-[#171717] outline-none placeholder:text-[#8a8a8a] transition focus:border-[#B8963D] focus:bg-white"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -240,8 +243,8 @@ export default function StudentsPage() {
                   onClick={() => setStatusFilter(option)}
                   className={`rounded-full border px-4 py-3 text-sm font-medium transition ${
                     active
-                      ? "border-[#d8b67e]/30 bg-[linear-gradient(135deg,rgba(251,244,232,0.18),rgba(216,182,126,0.22),rgba(255,255,255,0.08))] text-white"
-                      : "border-white/10 bg-white/[0.03] text-white/65 hover:bg-white/[0.08] hover:text-white"
+                      ? "border-[#B8963D]/25 bg-black text-white shadow-[0_10px_30px_rgba(0,0,0,0.10)]"
+                      : "border-gray-300 bg-white/72 text-[#5e5e5e] hover:bg-white hover:text-[#171717]"
                   }`}
                 >
                   {option === "all"
@@ -258,11 +261,11 @@ export default function StudentsPage() {
 
       <div className="mt-8">
         {loadingStudents ? (
-          <div className="rounded-[28px] border border-white/10 bg-white/[0.03] p-8 text-center text-white/60">
+          <div className="rounded-[28px] border border-gray-300 bg-white/74 p-8 text-center text-[#666666] shadow-sm backdrop-blur-xl">
             Loading students...
           </div>
         ) : filteredStudents.length === 0 ? (
-          <div className="rounded-[28px] border border-white/10 bg-white/[0.03] p-10 text-center text-white/60">
+          <div className="rounded-[28px] border border-gray-300 bg-white/74 p-10 text-center text-[#666666] shadow-sm backdrop-blur-xl">
             {students.length === 0
               ? "No students found yet."
               : "No students matched your search or filter."}
