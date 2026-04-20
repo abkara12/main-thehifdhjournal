@@ -23,7 +23,6 @@ const ADMIN_NAV_ITEMS: NavItem[] = [
 ];
 
 const TEACHER_NAV_ITEMS: NavItem[] = [
-  { label: "Dashboard", href: "/dashboard" },
   { label: "Students", href: "/dashboard/students" },
 ];
 
