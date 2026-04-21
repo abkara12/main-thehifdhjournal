@@ -269,26 +269,31 @@ export default function TeachersPage() {
 
   return (
     <DashboardShell
-      title="Teacher Management"
-      subtitle="Manage staff access, monitor teacher status, and keep the madrassah team organized with confidence."
-      eyebrow="Staff & Access Control"
+  title="Teacher Management"
+  eyebrow={profile?.madrassahName || "Your Madrassah"}
+  subtitle="Manage staff access, monitor teacher status, and keep the madrassah team organized with confidence."
       rightSlot={
         <div className="w-full lg:w-auto">
-          <div className="flex w-full flex-col gap-3 rounded-[24px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.76),rgba(255,255,255,0.56))] p-3 shadow-[0_12px_36px_rgba(0,0,0,0.06)] backdrop-blur-xl sm:p-4 lg:min-w-[250px] lg:max-w-[320px]">
-            {joinCode ? (
-              <div className="flex flex-wrap items-center gap-2">
-                <PremiumBadge>Join Code: {joinCode}</PremiumBadge>
-              </div>
+<div className="flex w-full flex-col items-center gap-4 text-center rounded-[24px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.76),rgba(255,255,255,0.56))] p-4 shadow-[0_12px_36px_rgba(0,0,0,0.06)] backdrop-blur-xl sm:items-start sm:text-left lg:min-w-[250px] lg:max-w-[320px]">            {joinCode ? (
+              <div className="flex flex-col items-center justify-center gap-2 text-center">
+  <span className="text-xs uppercase tracking-[0.2em] text-[#8a8a8a]">
+    Join Code
+  </span>
+
+  <div className="rounded-full border border-[#B8963D]/30 bg-[#B8963D]/10 px-6 py-2 text-lg font-semibold tracking-wider text-[#7b6128]">
+    {joinCode}
+  </div>
+</div>
             ) : null}
 
             <button
-              type="button"
-              onClick={handleCopyJoinCode}
-              disabled={!joinCode}
-              className="w-full rounded-full bg-black px-5 py-3 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(0,0,0,0.12)] transition hover:bg-[#1d1d1d] disabled:opacity-60"
-            >
-              Copy Join Code
-            </button>
+  type="button"
+  onClick={handleCopyJoinCode}
+  disabled={!joinCode}
+  className="w-full rounded-full bg-black px-5 py-3 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(0,0,0,0.12)] transition hover:bg-[#1d1d1d] disabled:opacity-60 sm:w-auto"
+>
+  Copy Join Code
+</button>
           </div>
         </div>
       }
@@ -320,11 +325,6 @@ export default function TeachersPage() {
           label="Teachers"
           value={String(teacherCount)}
           subtext="Teacher accounts in the system."
-        />
-        <PremiumStatCard
-          label="Active Staff"
-          value={String(activeCount)}
-          subtext="Currently active staff members."
         />
       </div>
 
