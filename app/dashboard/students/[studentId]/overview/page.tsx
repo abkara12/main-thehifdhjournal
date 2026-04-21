@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
+import { Fragment, useEffect, useMemo, useState } from "react";import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
   collection,
@@ -216,68 +215,102 @@ function compactNotes(row: LogRow) {
   return parts.join(" • ");
 }
 
-function MobileLogCard({ row }: { row: LogRow }) {
+function LogDetails({ row }: { row: LogRow }) {
   return (
-    <div className="rounded-[24px] border border-gray-300 bg-white/84 p-4 shadow-sm backdrop-blur-xl">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-sm font-semibold text-[#171717]">
-            {getDayName(row.dateKey)} {row.dateKey || "—"}
-          </p>
-          {row.updatedByEmail ? (
-            <p className="mt-1 break-words text-xs text-[#7a7a7a]">
-              {row.updatedByEmail}
+    <div className="grid gap-4 p-4 sm:p-5 lg:grid-cols-3">
+      <div className="rounded-2xl border border-gray-300 bg-white/82 p-4">
+        <p className="text-sm text-[#7a7a7a]">Sabak</p>
+        <p className="mt-2 font-medium text-[#171717]">{row.sabak || "—"}</p>
+        <p className="mt-3 text-sm text-[#7a7a7a]">Quality</p>
+        <p className="mt-1 text-sm text-[#171717]">{row.sabakReadQuality || row.sabakRead || "—"}</p>
+        <p className="mt-3 text-sm text-[#7a7a7a]">Notes</p>
+        <p className="mt-1 break-words text-sm text-[#5f5f5f]">{row.sabakReadNotes || "—"}</p>
+      </div>
+
+      <div className="rounded-2xl border border-gray-300 bg-white/82 p-4">
+        <p className="text-sm text-[#7a7a7a]">Sabak Dhor</p>
+        <p className="mt-2 font-medium text-[#171717]">{row.sabakDhor || "—"}</p>
+        <p className="mt-3 text-sm text-[#7a7a7a]">Quality</p>
+        <p className="mt-1 text-sm text-[#171717]">{row.sabakDhorReadQuality || row.sabakDhorRead || "—"}</p>
+        <p className="mt-3 text-sm text-[#7a7a7a]">Notes</p>
+        <p className="mt-1 break-words text-sm text-[#5f5f5f]">{row.sabakDhorReadNotes || "—"}</p>
+        <p className="mt-3 text-sm text-[#7a7a7a]">Mistakes</p>
+        <p className="mt-1 break-words text-sm text-[#5f5f5f]">{row.sabakDhorMistakes || "—"}</p>
+      </div>
+
+      <div className="rounded-2xl border border-gray-300 bg-white/82 p-4">
+        <p className="text-sm text-[#7a7a7a]">Dhor</p>
+        <p className="mt-2 font-medium text-[#171717]">{row.dhor || "—"}</p>
+        <p className="mt-3 text-sm text-[#7a7a7a]">Quality</p>
+        <p className="mt-1 text-sm text-[#171717]">{row.dhorReadQuality || row.dhorRead || "—"}</p>
+        <p className="mt-3 text-sm text-[#7a7a7a]">Notes</p>
+        <p className="mt-1 break-words text-sm text-[#5f5f5f]">{row.dhorReadNotes || "—"}</p>
+        <p className="mt-3 text-sm text-[#7a7a7a]">Mistakes</p>
+        <p className="mt-1 break-words text-sm text-[#5f5f5f]">{row.dhorMistakes || "—"}</p>
+      </div>
+
+      <div className="rounded-2xl border border-gray-300 bg-white/82 p-4 lg:col-span-3">
+        <div className="grid gap-4 md:grid-cols-2">
+          <div>
+            <p className="text-sm text-[#7a7a7a]">Weekly Goal</p>
+            <p className="mt-1 break-words text-sm text-[#171717]">{row.weeklyGoal || "—"}</p>
+          </div>
+          <div>
+            <p className="text-sm text-[#7a7a7a]">Updated By</p>
+            <p className="mt-1 break-words text-sm text-[#171717]">{row.updatedByEmail || "—"}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MobileLogCard({
+  row,
+  isOpen,
+  onToggle,
+}: {
+  row: LogRow;
+  isOpen: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <div className="overflow-hidden rounded-[24px] border border-gray-300 bg-white/84 shadow-sm backdrop-blur-xl">
+      <div className="p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-[#171717]">
+              {getDayName(row.dateKey)} {row.dateKey || "—"}
             </p>
-          ) : null}
+            <p className="mt-1 text-sm text-[#5f5f5f]">
+              {row.sabak || "—"} • {row.sabakDhor || "—"} • {row.dhor || "—"}
+            </p>
+          </div>
+
+          <AttendanceBadge value={row.attendance} />
         </div>
 
-        <AttendanceBadge value={row.attendance} />
-      </div>
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs uppercase tracking-[0.16em] text-[#8d7440]">Updated By</p>
+            <p className="mt-1 break-words text-xs text-[#7a7a7a]">{row.updatedByEmail || "—"}</p>
+          </div>
 
-      <div className="mt-4 grid gap-3 text-sm">
-        <div className="rounded-2xl border border-gray-300 bg-white/80 p-3">
-          <p className="text-[#7a7a7a]">Sabak</p>
-          <p className="mt-1 font-medium text-[#171717]">{row.sabak || "—"}</p>
-        </div>
-
-        <div className="rounded-2xl border border-gray-300 bg-white/80 p-3">
-          <p className="text-[#7a7a7a]">Sabak Dhor</p>
-          <p className="mt-1 font-medium text-[#171717]">{row.sabakDhor || "—"}</p>
-        </div>
-
-        <div className="rounded-2xl border border-gray-300 bg-white/80 p-3">
-          <p className="text-[#7a7a7a]">Dhor</p>
-          <p className="mt-1 font-medium text-[#171717]">{row.dhor || "—"}</p>
-        </div>
-
-        <div className="rounded-2xl border border-gray-300 bg-white/80 p-3">
-          <p className="text-[#7a7a7a]">Quality</p>
-          <p className="mt-1 break-words font-medium text-[#171717]">
-            {compactQuality(row) || "—"}
-          </p>
-        </div>
-
-        <div className="rounded-2xl border border-gray-300 bg-white/80 p-3">
-          <p className="text-[#7a7a7a]">Notes</p>
-          <p className="mt-1 break-words font-medium text-[#171717]">
-            {compactNotes(row) || "—"}
-          </p>
-        </div>
-
-        <div className="rounded-2xl border border-gray-300 bg-white/80 p-3">
-          <p className="text-[#7a7a7a]">Mistakes</p>
-          <p className="mt-1 break-words font-medium text-[#171717]">
-            {compactMistakes(row) || "—"}
-          </p>
-        </div>
-
-        <div className="rounded-2xl border border-gray-300 bg-white/80 p-3">
-          <p className="text-[#7a7a7a]">Weekly Goal</p>
-          <p className="mt-1 break-words font-medium text-[#171717]">
-            {row.weeklyGoal || "—"}
-          </p>
+          <button
+            type="button"
+            onClick={onToggle}
+            className="rounded-full border border-gray-300 bg-white/80 px-4 py-2 text-sm font-medium text-[#5b5b5b] transition hover:bg-white hover:text-[#171717]"
+          >
+            {isOpen ? "Hide Details" : "View Details"}
+          </button>
         </div>
       </div>
+
+      {isOpen ? (
+        <div className="border-t border-gray-300 bg-[#faf8f3]">
+          <LogDetails row={row} />
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -298,6 +331,7 @@ export default function StudentOverviewPage() {
   const [pageErr, setPageErr] = useState<string | null>(null);
 
   const [search, setSearch] = useState("");
+  const [openRowId, setOpenRowId] = useState<string | null>(null);
 
   async function loadStudentMetaAndLogs(currentMadrassahId: string, currentStudentId: string) {
     if (!currentMadrassahId || !currentStudentId) return;
@@ -659,84 +693,85 @@ export default function StudentOverviewPage() {
                                 Dhor
                               </th>
                               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">
-                                Quality
-                              </th>
-                              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">
-                                Notes
-                              </th>
-                              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">
-                                Mistakes
-                              </th>
-                              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">
-                                Weekly Goal
+                                Goal
                               </th>
                               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">
                                 Updated By
+                              </th>
+                              <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">
+                                Action
                               </th>
                             </tr>
                           </thead>
 
                           <tbody>
-                            {filteredRows.map((row, index) => (
-                              <tr
-                                key={row.id}
-                                className={`border-b border-gray-200 last:border-b-0 ${
-                                  index % 2 === 0 ? "bg-white/70" : "bg-[#faf8f3]"
-                                }`}
-                              >
-                                <td className="px-4 py-4 align-top text-sm text-[#171717]">
-                                  <div className="font-medium">
-                                    {getDayName(row.dateKey)} {row.dateKey || "—"}
-                                  </div>
-                                </td>
+                            {filteredRows.map((row, index) => {
+                              const isOpen = openRowId === row.id;
 
-                                <td className="px-4 py-4 align-top">
-                                  <AttendanceBadge value={row.attendance} />
-                                </td>
+                              return (
+                                <Fragment key={row.id}>
+                                  <tr
+                                    className={`border-b border-gray-200 ${
+                                      index % 2 === 0 ? "bg-white/70" : "bg-[#faf8f3]"
+                                    }`}
+                                  >
+                                    <td className="px-4 py-4 align-top text-sm text-[#171717]">
+                                      <div className="font-medium">
+                                        {getDayName(row.dateKey)} {row.dateKey || "—"}
+                                      </div>
+                                    </td>
 
-                                <td className="px-4 py-4 align-top text-sm text-[#171717]">
-                                  {row.sabak || "—"}
-                                </td>
+                                    <td className="px-4 py-4 align-top">
+                                      <AttendanceBadge value={row.attendance} />
+                                    </td>
 
-                                <td className="px-4 py-4 align-top text-sm text-[#171717]">
-                                  {row.sabakDhor || "—"}
-                                </td>
+                                    <td className="px-4 py-4 align-top text-sm text-[#171717]">
+                                      {row.sabak || "—"}
+                                    </td>
 
-                                <td className="px-4 py-4 align-top text-sm text-[#171717]">
-                                  {row.dhor || "—"}
-                                </td>
+                                    <td className="px-4 py-4 align-top text-sm text-[#171717]">
+                                      {row.sabakDhor || "—"}
+                                    </td>
 
-                                <td className="px-4 py-4 align-top text-sm text-[#5f5f5f]">
-                                  <div className="max-w-[180px] break-words">
-                                    {compactQuality(row) || "—"}
-                                  </div>
-                                </td>
+                                    <td className="px-4 py-4 align-top text-sm text-[#171717]">
+                                      {row.dhor || "—"}
+                                    </td>
 
-                                <td className="px-4 py-4 align-top text-sm text-[#5f5f5f]">
-                                  <div className="max-w-[260px] break-words whitespace-pre-wrap">
-                                    {compactNotes(row) || "—"}
-                                  </div>
-                                </td>
+                                    <td className="px-4 py-4 align-top text-sm text-[#5f5f5f]">
+                                      <div className="max-w-[160px] break-words">
+                                        {row.weeklyGoal || "—"}
+                                      </div>
+                                    </td>
 
-                                <td className="px-4 py-4 align-top text-sm text-[#5f5f5f]">
-                                  <div className="max-w-[180px] break-words">
-                                    {compactMistakes(row) || "—"}
-                                  </div>
-                                </td>
+                                    <td className="px-4 py-4 align-top text-sm text-[#7a7a7a]">
+                                      <div className="max-w-[180px] break-words">
+                                        {row.updatedByEmail || "—"}
+                                      </div>
+                                    </td>
 
-                                <td className="px-4 py-4 align-top text-sm text-[#5f5f5f]">
-                                  <div className="max-w-[200px] break-words">
-                                    {row.weeklyGoal || "—"}
-                                  </div>
-                                </td>
+                                    <td className="px-4 py-4 align-top text-right">
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setOpenRowId((prev) => (prev === row.id ? null : row.id))
+                                        }
+                                        className="rounded-full border border-gray-300 bg-white/80 px-4 py-2 text-sm font-medium text-[#5b5b5b] transition hover:bg-white hover:text-[#171717]"
+                                      >
+                                        {isOpen ? "Hide Details" : "View Details"}
+                                      </button>
+                                    </td>
+                                  </tr>
 
-                                <td className="px-4 py-4 align-top text-sm text-[#7a7a7a]">
-                                  <div className="max-w-[180px] break-words">
-                                    {row.updatedByEmail || "—"}
-                                  </div>
-                                </td>
-                              </tr>
-                            ))}
+                                  {isOpen ? (
+                                    <tr className="border-b border-gray-200 bg-[#fdfbf7] last:border-b-0">
+                                      <td colSpan={8} className="p-0">
+                                        <LogDetails row={row} />
+                                      </td>
+                                    </tr>
+                                  ) : null}
+                                </Fragment>
+                              );
+                            })}
                           </tbody>
                         </table>
                       </div>
@@ -744,7 +779,14 @@ export default function StudentOverviewPage() {
 
                     <div className="grid gap-4 lg:hidden">
                       {filteredRows.map((row) => (
-                        <MobileLogCard key={row.id} row={row} />
+                        <MobileLogCard
+                          key={row.id}
+                          row={row}
+                          isOpen={openRowId === row.id}
+                          onToggle={() =>
+                            setOpenRowId((prev) => (prev === row.id ? null : row.id))
+                          }
+                        />
                       ))}
                     </div>
                   </>
