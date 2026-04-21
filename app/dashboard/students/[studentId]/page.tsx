@@ -350,9 +350,16 @@ export default function StudentDetailPage() {
         weeklyGoalCompleted: Boolean(nextGoalCompletedDateKey),
 
         updatedBy: firebaseUser.uid,
-updatedByName: profile.fullName || "Staff",
-updatedByEmail: profile.email || firebaseUser.email || "",        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
+updatedByName:
+  profile.fullName ||
+  (profile as any).name ||
+  firebaseUser.displayName ||
+  profile.email ||
+  firebaseUser.email ||
+  "Staff",
+updatedByEmail: profile.email || firebaseUser.email || "",
+createdAt: serverTimestamp(),
+updatedAt: serverTimestamp(),
       };
 
       await setDoc(logRef, logPayload, { merge: true });
@@ -380,9 +387,16 @@ updatedByEmail: profile.email || firebaseUser.email || "",        createdAt: ser
         weeklyGoalDurationDays: nextGoalDurationDays,
 
         lastLogDateKey: dateKey,
-        updatedByUid: firebaseUser.uid,
-updatedByName: profile.fullName || "Staff",
-updatedByEmail: profile.email || firebaseUser.email || "",        updatedAt: serverTimestamp(),
+updatedByUid: firebaseUser.uid,
+updatedByName:
+  profile.fullName ||
+  (profile as any).name ||
+  firebaseUser.displayName ||
+  profile.email ||
+  firebaseUser.email ||
+  "Staff",
+updatedByEmail: profile.email || firebaseUser.email || "",
+updatedAt: serverTimestamp(),
       });
 
       setWeeklyGoal(nextGoal);
