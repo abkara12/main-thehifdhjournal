@@ -38,7 +38,7 @@ const READING_OPTIONS = [
 ];
 
 type ExistingLogMeta = {
-  updatedByEmail?: string;
+  updatedByName?: string;
   updatedAtText?: string;
 };
 
@@ -247,7 +247,7 @@ export default function StudentDetailPage() {
         fillFieldsFromLog(logData);
 
         setExistingLogMeta({
-          updatedByEmail: toText(logData.updatedByEmail),
+  updatedByName: toText(logData.updatedByName),
           updatedAtText: logData.updatedAt?.toDate
             ? logData.updatedAt.toDate().toLocaleString()
             : "",
@@ -350,8 +350,8 @@ export default function StudentDetailPage() {
         weeklyGoalCompleted: Boolean(nextGoalCompletedDateKey),
 
         updatedBy: firebaseUser.uid,
-        updatedByEmail: profile.email || firebaseUser.email || "",
-        createdAt: serverTimestamp(),
+updatedByName: profile.fullName || "Staff",
+updatedByEmail: profile.email || firebaseUser.email || "",        createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
 
@@ -381,8 +381,8 @@ export default function StudentDetailPage() {
 
         lastLogDateKey: dateKey,
         updatedByUid: firebaseUser.uid,
-        updatedByEmail: profile.email || firebaseUser.email || "",
-        updatedAt: serverTimestamp(),
+updatedByName: profile.fullName || "Staff",
+updatedByEmail: profile.email || firebaseUser.email || "",        updatedAt: serverTimestamp(),
       });
 
       setWeeklyGoal(nextGoal);
@@ -454,28 +454,7 @@ export default function StudentDetailPage() {
         </div>
       ) : null}
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <PremiumStatCard
-          label="Today"
-          value={dateKey}
-          subtext="Current South Africa date key."
-        />
-        <PremiumStatCard
-          label="Attendance"
-          value={attendance === "present" ? "Present" : "Absent"}
-          subtext="Current selected status."
-        />
-        <PremiumStatCard
-          label="Weekly Goal"
-          value={weeklyGoal ? "Set" : "Not Set"}
-          subtext={goalAlreadyCompleted ? "Completed" : goalLocked ? "Active" : "Open"}
-        />
-        <PremiumStatCard
-          label="Editor Mode"
-          value={editorMode ? editorMode.toUpperCase() : "—"}
-          subtext="How this log is currently being handled."
-        />
-      </div>
+      
 
       {hasExistingTodayLog ? (
         <div className="mt-8 rounded-[28px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.82),rgba(255,255,255,0.64))] p-5 shadow-[0_12px_40px_rgba(0,0,0,0.06)] backdrop-blur-xl">
@@ -484,9 +463,9 @@ export default function StudentDetailPage() {
               <p className="text-base font-semibold text-[#171717]">
                 Today already has a saved log.
               </p>
-              {existingLogMeta?.updatedByEmail ? (
-                <p className="mt-2 text-sm text-[#5f5f5f]">
-                  Last updated by {existingLogMeta.updatedByEmail}
+              {existingLogMeta?.updatedByName ? (
+  <p className="mt-2 text-sm text-[#5f5f5f]">
+    Last updated by {existingLogMeta.updatedByName}
                   {existingLogMeta.updatedAtText ? ` • ${existingLogMeta.updatedAtText}` : ""}
                 </p>
               ) : null}

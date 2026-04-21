@@ -134,7 +134,7 @@ const READING_OPTIONS = [
 ];
 
 type ExistingLogMeta = {
-  updatedByEmail?: string;
+  updatedByName?: string;
   updatedAtText?: string;
 };
 
@@ -149,6 +149,7 @@ export default function AdminStudentPage() {
   const [checking, setChecking] = useState(true);
   const [role, setRole] = useState<string | null>(null);
   const [madrassahId, setMadrassahId] = useState<string | null>(null);
+  const [myFullName, setMyFullName] = useState("");
 
   const [studentName, setStudentName] = useState("");
   const [studentExists, setStudentExists] = useState(false);
@@ -183,6 +184,10 @@ export default function AdminStudentPage() {
   const [hasExistingTodayLog, setHasExistingTodayLog] = useState(false);
   const [editorMode, setEditorMode] = useState<"new" | "edit" | "overwrite" | null>(null);
   const [existingLogMeta, setExistingLogMeta] = useState<ExistingLogMeta | null>(null);
+
+  function getUpdaterName() {
+    return myFullName || me?.displayName || me?.email || "Staff";
+  }
 
   function resetFields() {
     setAttendance("present");
@@ -248,6 +253,7 @@ export default function AdminStudentPage() {
       if (!u) {
         setRole(null);
         setMadrassahId(null);
+        setMyFullName("");
         setChecking(false);
         return;
       }
@@ -258,6 +264,13 @@ export default function AdminStudentPage() {
 
         setRole(myData?.role ?? null);
         setMadrassahId(myData?.madrassahId ?? null);
+        setMyFullName(
+          toText(myData?.fullName) ||
+            toText(myData?.name) ||
+            u.displayName ||
+            u.email ||
+            ""
+        );
       } catch (e: any) {
         setPageErr(e?.message ?? "Could not load your account.");
       } finally {
@@ -313,7 +326,10 @@ export default function AdminStudentPage() {
 
           const updatedAtValue = logData?.updatedAt?.toDate?.();
           setExistingLogMeta({
-            updatedByEmail: toText(logData?.updatedByEmail),
+            updatedByName:
+              toText(logData?.updatedByName) ||
+              toText(logData?.updatedByEmail) ||
+              "",
             updatedAtText: updatedAtValue
               ? updatedAtValue.toLocaleString("en-ZA", {
                   timeZone: "Africa/Johannesburg",
@@ -432,6 +448,7 @@ export default function AdminStudentPage() {
 
       const logRef = doc(db, "madrassahs", madrassahId, "students", studentId, "logs", dateKey);
       const existingLogSnap = await getDoc(logRef);
+      const updaterName = getUpdaterName();
 
       await setDoc(
         logRef,
@@ -469,6 +486,7 @@ export default function AdminStudentPage() {
           weeklyGoalCompleted: Boolean(nextCompletedKey),
 
           updatedBy: me.uid,
+          updatedByName: updaterName,
           updatedByEmail: me.email ?? "",
           updatedAt: serverTimestamp(),
         },
@@ -501,6 +519,7 @@ export default function AdminStudentPage() {
 
           updatedAt: serverTimestamp(),
           lastUpdatedBy: me.uid,
+          lastUpdatedByName: updaterName,
         },
         { merge: true }
       );
@@ -519,7 +538,7 @@ export default function AdminStudentPage() {
       setHasExistingTodayLog(true);
       setEditorMode(null);
       setExistingLogMeta({
-        updatedByEmail: me.email ?? "",
+        updatedByName: updaterName,
         updatedAtText: new Date().toLocaleString("en-ZA", {
           timeZone: "Africa/Johannesburg",
         }),
@@ -568,7 +587,7 @@ export default function AdminStudentPage() {
       <Shell title="Access denied" subtitle="This account cannot log work for students.">
         <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur p-6 sm:p-7 shadow-sm">
           <div className="text-sm text-gray-600">Signed in as</div>
-          <div className="mt-1 font-semibold">{me.email}</div>
+          <div className="mt-1 font-semibold">{myFullName || me.email}</div>
         </div>
       </Shell>
     );
@@ -663,12 +682,12 @@ export default function AdminStudentPage() {
               To prevent accidental overwriting, choose whether you want to edit the saved log or intentionally start fresh.
             </div>
 
-            {existingLogMeta?.updatedByEmail || existingLogMeta?.updatedAtText ? (
+            {existingLogMeta?.updatedByName || existingLogMeta?.updatedAtText ? (
               <div className="mt-4 rounded-2xl border border-amber-200 bg-white/70 px-4 py-3 text-sm text-gray-700">
-                {existingLogMeta?.updatedByEmail ? (
+                {existingLogMeta?.updatedByName ? (
                   <div>
                     Last updated by:{" "}
-                    <span className="font-semibold">{existingLogMeta.updatedByEmail}</span>
+                    <span className="font-semibold">{existingLogMeta.updatedByName}</span>
                   </div>
                 ) : null}
                 {existingLogMeta?.updatedAtText ? (
