@@ -7,6 +7,7 @@ import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "../lib/firebase";
 import { getUserProfileByUid } from "../lib/current-user";
 
+
 type NavItem = {
   label: string;
   href: string;
@@ -38,8 +39,8 @@ export function DashboardShell({
   children,
 }: {
   title: string;
-  subtitle?: string;
-  eyebrow?: string;
+eyebrow?: ReactNode;
+subtitle?: ReactNode;
   rightSlot?: ReactNode;
   children: ReactNode;
 }) {

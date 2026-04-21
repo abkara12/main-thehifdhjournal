@@ -132,13 +132,11 @@ export default function TeachersPage() {
     if (!term) return staff;
 
     return staff.filter((person) => {
-      const haystack = [
-        person.fullName,
-        person.email,
-        person.phone,
-        person.role,
-        person.isActive ? "active" : "inactive",
-      ]
+     const haystack = [
+  person.fullName,
+  person.role,
+  person.isActive ? "active" : "inactive",
+]
         .join(" ")
         .toLowerCase();
 
@@ -383,13 +381,9 @@ export default function TeachersPage() {
                               <StatusBadge active={person.isActive} />
                             </div>
 
-                            <div className="mt-3 space-y-1 text-sm text-[#5f5f5f]">
-                              <p className="break-all">Email: {person.email || "—"}</p>
-                              <p>Phone: {person.phone || "—"}</p>
-                              <p className="break-all font-mono text-xs text-[#8a8a8a]">
-                                User ID: {person.userId || "—"}
-                              </p>
-                            </div>
+                            <div className="mt-3 text-sm text-[#6a6a6a]">
+  {person.role === "admin" ? "Madrassah Admin" : "Teacher Account"}
+</div>
                           </div>
 
                           <div className="flex flex-wrap gap-3">
