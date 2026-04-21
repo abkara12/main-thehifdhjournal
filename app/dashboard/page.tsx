@@ -266,7 +266,7 @@ export default function TeachersPage() {
   title="Teacher Management"
 eyebrow={
   <div className="w-full text-center">
-    <div className="text-[1.2rem] sm:text-[1.4rem] font-semibold tracking-[-0.02em] text-[#171717]">
+    <div className="text-[1.2rem] sm:text-[1.5rem] font-semibold tracking-[-0.02em] bg-[linear-gradient(135deg,#d8b67e,#ffffff)] bg-clip-text text-transparent">
       {profile?.madrassahName || "Your Madrassah"}
     </div>
   </div>
