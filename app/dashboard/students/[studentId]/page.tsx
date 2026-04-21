@@ -423,8 +423,7 @@ updatedByEmail: profile.email || firebaseUser.email || "",        updatedAt: ser
   return (
     <DashboardShell
       title={studentName || "Student Record"}
-      subtitle="Record attendance, progress quality, notes, mistakes, and weekly goal status with a clean premium workflow."
-      eyebrow="Daily Progress Logging"
+subtitle="Capture today’s lesson clearly, with structured progress tracking and weekly goal updates."      eyebrow="Daily Progress Logging"
       rightSlot={
         <div className="flex w-full flex-col gap-3 rounded-[24px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.78),rgba(255,255,255,0.60))] p-3 shadow-[0_12px_36px_rgba(0,0,0,0.06)] backdrop-blur-xl sm:p-4 lg:min-w-[260px] lg:max-w-[340px]">
           <Link
@@ -532,7 +531,7 @@ updatedByEmail: profile.email || firebaseUser.email || "",        updatedAt: ser
           </div>
         </SectionCard>
 
-        <SectionCard title="Sabak" subtitle="Capture the new lesson and how it was read today.">
+        <SectionCard title="Sabak">
           <div className="grid gap-4">
             <div>
               <FieldLabel>Sabak</FieldLabel>
@@ -569,7 +568,7 @@ updatedByEmail: profile.email || firebaseUser.email || "",        updatedAt: ser
           </div>
         </SectionCard>
 
-        <SectionCard title="Sabak Dhor" subtitle="Capture revision quality and any mistakes needing attention.">
+        <SectionCard title="Sabak Dhor">
           <div className="grid gap-4">
             <div>
               <FieldLabel>Sabak Dhor</FieldLabel>
@@ -615,7 +614,7 @@ updatedByEmail: profile.email || firebaseUser.email || "",        updatedAt: ser
           </div>
         </SectionCard>
 
-        <SectionCard title="Dhor" subtitle="Capture older revision quality and supporting notes.">
+        <SectionCard title="Dhor" >
           <div className="grid gap-4">
             <div>
               <FieldLabel>Dhor</FieldLabel>

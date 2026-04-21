@@ -53,6 +53,16 @@ function getDayName(dateKey?: string) {
   return d.toLocaleDateString("en-US", { weekday: "short" });
 }
 
+function formatLongDate(dateKey?: string) {
+  if (!dateKey) return "";
+  const d = parseDateKey(dateKey);
+  return d.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
 function getMonthLabel(dateKey?: string) {
   if (!dateKey) return "";
   const d = parseDateKey(dateKey);
@@ -115,7 +125,8 @@ type LogRow = {
   weeklyGoalCompletedDateKey?: string;
   weeklyGoalDurationDays?: number | string;
 
-  updatedByEmail?: string;
+updatedByName?: string;
+updatedByEmail?: string;
 };
 
 type StudentMeta = {
@@ -338,8 +349,9 @@ export default function AdminStudentOverviewPage() {
         r.weeklyGoal,
         r.sabakDhorMistakes,
         r.dhorMistakes,
-        r.updatedByEmail,
-      ]
+        r.updatedByName,
+        r.updatedByEmail,     
+ ]
         .map((v) => toText(v).toLowerCase())
         .join(" ");
 

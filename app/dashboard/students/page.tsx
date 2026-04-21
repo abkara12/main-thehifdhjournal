@@ -46,10 +46,6 @@ function StudentCard({ student }: { student: StudentRow }) {
               {student.isActive ? "Active" : "Inactive"}
             </span>
           </div>
-
-          <p className="mt-3 text-sm text-[#6a6a6a]">
-            Parent: <span className="font-medium text-[#2f2f2f]">{student.parentName || "—"}</span>
-          </p>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2 xl:min-w-[280px]">
@@ -187,9 +183,8 @@ export default function StudentsPage() {
 
   return (
     <DashboardShell
-      title="Students"
-      subtitle="Search learners, review parent details, and move quickly into daily progress logging."
-eyebrow={
+      title="Student Progress"
+subtitle="Open a student, capture today’s lesson, and keep daily hifdh progress updated clearly and efficiently."eyebrow={
   <div className="w-full text-center space-y-2">
     <div className="text-[0.75rem] uppercase tracking-[0.35em] text-[#4f4d4d]">
       Student Management
@@ -243,29 +238,6 @@ eyebrow={
             onChange={(e) => setSearch(e.target.value)}
           />
 
-          <div className="flex flex-wrap gap-2">
-            {(["all", "active", "inactive"] as const).map((option) => {
-              const active = statusFilter === option;
-              return (
-                <button
-                  key={option}
-                  type="button"
-                  onClick={() => setStatusFilter(option)}
-                  className={`rounded-full border px-4 py-3 text-sm font-medium transition ${
-                    active
-                      ? "border-[#B8963D]/25 bg-black text-white shadow-[0_10px_30px_rgba(0,0,0,0.10)]"
-                      : "border-gray-300 bg-white/72 text-[#5e5e5e] hover:bg-white hover:text-[#171717]"
-                  }`}
-                >
-                  {option === "all"
-                    ? "All"
-                    : option === "active"
-                    ? "Active"
-                    : "Inactive"}
-                </button>
-              );
-            })}
-          </div>
         </div>
       </div>
 

@@ -36,6 +36,16 @@ function getDayName(dateKey?: string) {
   return d.toLocaleDateString("en-US", { weekday: "short" });
 }
 
+function formatLongDate(dateKey?: string) {
+  if (!dateKey) return "";
+  const d = parseDateKey(dateKey);
+  return d.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
 function getMonthLabel(dateKey?: string) {
   if (!dateKey) return "";
   const d = parseDateKey(dateKey);
@@ -77,7 +87,8 @@ type LogRow = {
   weeklyGoalStartDateKey?: string;
   weeklyGoalCompletedDateKey?: string;
   weeklyGoalDurationDays?: number | string;
-  updatedByEmail?: string;
+updatedByName?: string;
+updatedByEmail?: string;
 };
 
 type StudentMeta = {
@@ -192,8 +203,9 @@ function LogDetails({ row }: { row: LogRow }) {
           </div>
           <div>
             <p className="text-sm text-[#7a7a7a]">Updated By</p>
-            <p className="mt-1 break-words text-sm text-[#171717]">{row.updatedByEmail || "—"}</p>
-          </div>
+          <p className="mt-1 break-words text-sm text-[#171717]">
+            {row.updatedByName || row.updatedByEmail || "—"}
+          </p>          </div>
         </div>
       </div>
     </div>
@@ -215,11 +227,11 @@ function MobileLogCard({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-sm font-semibold text-[#171717]">
-              {getDayName(row.dateKey)} {row.dateKey || "—"}
-            </p>
+{getDayName(row.dateKey)} • {formatLongDate(row.dateKey) || "—"}     
+       </p>
             <p className="mt-1 text-sm text-[#5f5f5f]">
-              {row.sabak || "—"} • {row.sabakDhor || "—"} • {row.dhor || "—"}
-            </p>
+  S: {row.sabak || "—"} • SD: {row.sabakDhor || "—"} • D: {row.dhor || "—"}
+</p>
           </div>
 
           <AttendanceBadge value={row.attendance} />
@@ -228,8 +240,9 @@ function MobileLogCard({
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="text-xs uppercase tracking-[0.16em] text-[#8d7440]">Updated By</p>
-            <p className="mt-1 break-words text-xs text-[#7a7a7a]">{row.updatedByEmail || "—"}</p>
-          </div>
+        <p className="mt-1 break-words text-xs text-[#7a7a7a]">
+          {row.updatedByName || row.updatedByEmail || "—"}
+        </p>          </div>
 
           <button
             type="button"
@@ -398,8 +411,9 @@ export default function StudentOverviewPage() {
         r.weeklyGoal,
         r.sabakDhorMistakes,
         r.dhorMistakes,
-        r.updatedByEmail,
-      ]
+        r.updatedByName,
+        r.updatedByEmail,   
+          ]
         .map((v) => toText(v).toLowerCase())
         .join(" ");
 
@@ -428,8 +442,7 @@ export default function StudentOverviewPage() {
   return (
     <DashboardShell
       title={studentName || "Student Overview"}
-      subtitle="Review the full progress story, attendance, weekly goal performance, and full log history in one clean overview."
-      eyebrow="Student Intelligence View"
+subtitle="View progress history, track weekly goals, and review each day’s recorded work in one place."      eyebrow="Student Progress Overview"
       rightSlot={
         <div className="flex w-full flex-col gap-3 rounded-[24px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.78),rgba(255,255,255,0.60))] p-3 shadow-[0_12px_36px_rgba(0,0,0,0.06)] backdrop-blur-xl sm:p-4 lg:min-w-[260px] lg:max-w-[340px]">
           <Link
@@ -463,7 +476,6 @@ export default function StudentOverviewPage() {
             <PremiumStatCard
               label="Total Log Days"
               value={String(summary.totalDays)}
-              subtext="All recorded log entries for this student."
             />
             <PremiumStatCard
               label="Current Month Absents"
@@ -473,7 +485,6 @@ export default function StudentOverviewPage() {
             <PremiumStatCard
               label="Avg Sabak"
               value={summary.avgSabakLines ? `${summary.avgSabakLines.toFixed(1)} lines` : "—"}
-              subtext="Average across all logged days."
             />
           </div>
 
@@ -588,8 +599,8 @@ export default function StudentOverviewPage() {
                                 >
                                   <td className="px-4 py-4 align-top text-sm text-[#171717]">
                                     <div className="font-medium">
-                                      {getDayName(row.dateKey)} {row.dateKey || "—"}
-                                    </div>
+  {getDayName(row.dateKey)} • {formatLongDate(row.dateKey) || "—"}
+</div>
                                   </td>
 
                                   <td className="px-4 py-4 align-top">
@@ -616,8 +627,8 @@ export default function StudentOverviewPage() {
 
                                   <td className="px-4 py-4 align-top text-sm text-[#7a7a7a]">
                                     <div className="max-w-[180px] break-words">
-                                      {row.updatedByEmail || "—"}
-                                    </div>
+  {row.updatedByName || row.updatedByEmail || "—"}
+</div>
                                   </td>
 
                                   <td className="px-4 py-4 align-top text-right">

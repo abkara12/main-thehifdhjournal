@@ -63,6 +63,7 @@ export function getDayName(dateKey?: string) {
   return d.toLocaleDateString("en-US", { weekday: "short" });
 }
 
+
 export function diffDaysInclusive(startKey: string, endKey: string) {
   const a = parseDateKey(startKey);
   const b = parseDateKey(endKey);
