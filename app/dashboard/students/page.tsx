@@ -27,17 +27,17 @@ function StudentCard({ student }: { student: StudentRow }) {
   return (
     <Link
       href={`/dashboard/students/${student.id}`}
-      className="group rounded-[28px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(255,255,255,0.66))] p-5 shadow-[0_12px_40px_rgba(0,0,0,0.07)] backdrop-blur-xl transition hover:-translate-y-[1px] hover:bg-white/95"
+      className="group rounded-[28px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.84),rgba(255,255,255,0.66))] p-5 shadow-[0_12px_40px_rgba(0,0,0,0.07)] backdrop-blur-xl transition hover:-translate-y-[1px] hover:bg-white/95 sm:p-6"
     >
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+      <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-3">
-            <h2 className="text-xl font-semibold tracking-[-0.03em] text-[#171717]">
+            <h2 className="text-[1.1rem] font-semibold tracking-[-0.03em] text-[#171717] sm:text-[1.25rem]">
               {student.fullName || "Unnamed Student"}
             </h2>
 
             <span
-              className={`rounded-full border px-3 py-1 text-xs font-medium ${
+              className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] ${
                 student.isActive
                   ? "border-emerald-200 bg-emerald-50 text-emerald-700"
                   : "border-red-200 bg-red-50 text-red-700"
@@ -47,18 +47,29 @@ function StudentCard({ student }: { student: StudentRow }) {
             </span>
           </div>
 
-          <p className="mt-3 text-sm text-[#5f5f5f]">
-            Parent: {student.parentName || "—"}
-          </p>
-          <p className="mt-1 break-words text-sm text-[#7a7a7a]">
-            {student.parentPhone || "—"}
-            {student.parentEmail ? ` • ${student.parentEmail}` : ""}
+          <p className="mt-3 text-sm text-[#6a6a6a]">
+            Parent: <span className="font-medium text-[#2f2f2f]">{student.parentName || "—"}</span>
           </p>
         </div>
 
-        <div className="grid gap-2 text-sm text-[#5f5f5f] xl:text-right">
-          <p>Weekly Goal: {student.weeklyGoal || "—"}</p>
-          <p>Last Log: {student.lastLogDateKey || "—"}</p>
+        <div className="grid gap-3 sm:grid-cols-2 xl:min-w-[280px]">
+          <div className="rounded-2xl border border-gray-200 bg-white/75 px-4 py-3">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#9a9a9a]">
+              Weekly Goal
+            </p>
+            <p className="mt-1 text-sm font-medium text-[#2f2f2f]">
+              {student.weeklyGoal || "Not set"}
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-gray-200 bg-white/75 px-4 py-3">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#9a9a9a]">
+              Last Log
+            </p>
+            <p className="mt-1 text-sm font-medium text-[#2f2f2f]">
+              {student.lastLogDateKey || "No log yet"}
+            </p>
+          </div>
         </div>
       </div>
 
@@ -180,11 +191,11 @@ export default function StudentsPage() {
       subtitle="Search learners, review parent details, and move quickly into daily progress logging."
 eyebrow={
   <div className="w-full text-center space-y-2">
-    <div className="text-[0.75rem] uppercase tracking-[0.35em] text-[#a88423]">
+    <div className="text-[0.75rem] uppercase tracking-[0.35em] text-[#a1a1a1]">
       Student Management
     </div>
 
-    <div className="text-[1.4rem] sm:text-[1.8rem] font-semibold tracking-[-0.03em] text-[#171717]">
+    <div className="text-[1.4rem] sm:text-[1.8rem] font-semibold tracking-[-0.03em] text-[#a88423]">
       {profile?.madrassahName || "Your Madrassah"}
     </div>
   </div>
