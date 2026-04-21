@@ -43,6 +43,11 @@ export default function LoginPage() {
         throw new Error("Access denied.");
       }
 
+      if (profile.role === "super_admin") {
+        router.push("/super-admin");
+        return;
+      }
+
       router.push("/dashboard");
     } catch (err: any) {
       setError(err?.message || "Login failed.");
