@@ -220,18 +220,7 @@ export default function NewStudentPage() {
                   />
                 </div>
 
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-[#5f5f5f]">
-                    Parent Name
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Enter parent name"
-                    className="w-full rounded-2xl border border-gray-300 bg-white/85 p-4 text-[#171717] outline-none placeholder:text-[#8a8a8a] transition focus:border-[#B8963D] focus:bg-white"
-                    value={parentName}
-                    onChange={(e) => setParentName(e.target.value)}
-                  />
-                </div>
+        
 
                 <div>
                   <label className="mb-2 block text-sm font-medium text-[#5f5f5f]">
@@ -246,18 +235,6 @@ export default function NewStudentPage() {
                   />
                 </div>
 
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-[#5f5f5f]">
-                    Parent Email
-                  </label>
-                  <input
-                    type="email"
-                    placeholder="Enter parent email (optional)"
-                    className="w-full rounded-2xl border border-gray-300 bg-white/85 p-4 text-[#171717] outline-none placeholder:text-[#8a8a8a] transition focus:border-[#B8963D] focus:bg-white"
-                    value={parentEmail}
-                    onChange={(e) => setParentEmail(e.target.value)}
-                  />
-                </div>
 
                 <div className="flex flex-col gap-3 pt-2 sm:flex-row">
                   <button
@@ -279,47 +256,22 @@ export default function NewStudentPage() {
               </form>
             </div>
 
-            <div className="space-y-4">
-              <div className="rounded-[28px] border border-gray-300 bg-white/72 p-5 shadow-sm backdrop-blur-xl">
-                <p className="text-[11px] uppercase tracking-[0.24em] text-[#B8963D]">
-                  New Student Record
-                </p>
-                <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-[#171717]">
-                  Clean setup from the start
-                </h2>
-                <p className="mt-3 text-sm leading-7 text-[#5f5f5f]">
-                  Add the student’s details correctly so the system can begin
-                  tracking progress, revision, and weekly goals in a structured way.
-                </p>
-              </div>
+           <div className="space-y-4">
+  <div className="rounded-[28px] border border-gray-300 bg-white/72 p-5 shadow-sm backdrop-blur-xl">
+    <p className="text-[11px] uppercase tracking-[0.24em] text-[#B8963D]">
+      Student Registration
+    </p>
 
-              <div className="rounded-[28px] border border-gray-300 bg-white/72 p-5 shadow-sm backdrop-blur-xl">
-                <p className="text-[11px] uppercase tracking-[0.24em] text-[#B8963D]">
-                  Included
-                </p>
-                <div className="mt-3 grid gap-3">
-                  {[
-                    "Student profile creation",
-                    "Parent contact details",
-                    "Ready for daily logs",
-                    "Ready for weekly goals",
-                  ].map((item) => (
-                    <div
-                      key={item}
-                      className="rounded-2xl border border-gray-300 bg-white/70 px-4 py-3 text-sm text-[#5b5b5b]"
-                    >
-                      {item}
-                    </div>
-                  ))}
-                </div>
-              </div>
+    <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-[#171717]">
+      Add a new student
+    </h2>
 
-              <div className="rounded-[28px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.8),rgba(255,255,255,0.62))] p-5 shadow-sm backdrop-blur-xl">
-                <p className="text-sm leading-7 text-[#5f5f5f]">
-                  Once saved, the system immediately opens the student profile so
-                  you can continue with setup and begin logging progress.
-                </p>
-              </div>
+    <p className="mt-3 text-sm leading-7 text-[#5f5f5f]">
+      Enter the student’s details to begin tracking their daily lessons,
+      revision, and weekly progress in a clear and structured system.
+    </p>
+  </div>
+
             </div>
           </div>
         </div>
