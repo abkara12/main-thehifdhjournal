@@ -1,6 +1,7 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useState } from "react";import Link from "next/link";
+import { Fragment, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
   collection,
@@ -15,7 +16,6 @@ import { useRequireStaff } from "../../../../lib/auth-guards";
 import { getDateKeySA, diffDaysInclusive } from "../../../../lib/date";
 import {
   DashboardShell,
-  PremiumBadge,
   PremiumStatCard,
 } from "../../../../components/dashboard-shell";
 
@@ -131,46 +131,6 @@ function SectionCard({
   );
 }
 
-function SnapshotCard({
-  title,
-  value,
-  quality,
-  notes,
-  mistakes,
-}: {
-  title: string;
-  value: string;
-  quality: string;
-  notes?: string;
-  mistakes?: string;
-}) {
-  return (
-    <div className="min-w-0 overflow-hidden rounded-[26px] border border-gray-300 bg-white/82 p-4 shadow-sm backdrop-blur-xl sm:p-5">
-      <p className="text-sm text-[#7a7a7a]">{title}</p>
-
-      <p className="mt-2 break-words text-lg font-semibold tracking-[-0.03em] text-[#171717]">
-        {value || "—"}
-      </p>
-
-      <div className="mt-3 min-w-0">
-        <PremiumBadge>{quality || "No quality"}</PremiumBadge>
-      </div>
-
-      {notes ? (
-        <p className="mt-4 break-words text-sm leading-6 text-[#5f5f5f]">
-          {notes}
-        </p>
-      ) : null}
-
-      {mistakes ? (
-        <p className="mt-4 break-words text-sm text-[#6b6b6b]">
-          Mistakes: {mistakes}
-        </p>
-      ) : null}
-    </div>
-  );
-}
-
 function AttendanceBadge({ value }: { value?: string }) {
   const isPresent = value === "present";
   const isAbsent = value === "absent";
@@ -188,31 +148,6 @@ function AttendanceBadge({ value }: { value?: string }) {
       {value || "—"}
     </span>
   );
-}
-
-function compactQuality(row: LogRow) {
-  return [
-    row.sabakReadQuality || row.sabakRead || "",
-    row.sabakDhorReadQuality || row.sabakDhorRead || "",
-    row.dhorReadQuality || row.dhorRead || "",
-  ]
-    .filter(Boolean)
-    .join(" / ");
-}
-
-function compactMistakes(row: LogRow) {
-  const parts = [];
-  if (toText(row.sabakDhorMistakes).trim()) parts.push(`SD: ${row.sabakDhorMistakes}`);
-  if (toText(row.dhorMistakes).trim()) parts.push(`D: ${row.dhorMistakes}`);
-  return parts.join(" • ");
-}
-
-function compactNotes(row: LogRow) {
-  const parts = [];
-  if (toText(row.sabakReadNotes).trim()) parts.push(`S: ${row.sabakReadNotes}`);
-  if (toText(row.sabakDhorReadNotes).trim()) parts.push(`SD: ${row.sabakDhorReadNotes}`);
-  if (toText(row.dhorReadNotes).trim()) parts.push(`D: ${row.dhorReadNotes}`);
-  return parts.join(" • ");
 }
 
 function LogDetails({ row }: { row: LogRow }) {
@@ -493,7 +428,7 @@ export default function StudentOverviewPage() {
   return (
     <DashboardShell
       title={studentName || "Student Overview"}
-      subtitle="Review the full progress story, current standing, attendance, and weekly goal performance in one premium overview."
+      subtitle="Review the full progress story, attendance, weekly goal performance, and full log history in one clean overview."
       eyebrow="Student Intelligence View"
       rightSlot={
         <div className="flex w-full flex-col gap-3 rounded-[24px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.78),rgba(255,255,255,0.60))] p-3 shadow-[0_12px_36px_rgba(0,0,0,0.06)] backdrop-blur-xl sm:p-4 lg:min-w-[260px] lg:max-w-[340px]">
@@ -531,268 +466,203 @@ export default function StudentOverviewPage() {
               subtext="All recorded log entries for this student."
             />
             <PremiumStatCard
-              label="Present Days"
-              value={String(summary.presentDays)}
-              subtext="Days marked present."
+              label="Current Month Absents"
+              value={String(currentMonthAbsents)}
+              subtext={currentMonth || "This month"}
             />
             <PremiumStatCard
               label="Avg Sabak"
               value={summary.avgSabakLines ? `${summary.avgSabakLines.toFixed(1)} lines` : "—"}
               subtext="Average across all logged days."
             />
-            <PremiumStatCard
-              label="Current Month Absents"
-              value={String(currentMonthAbsents)}
-              subtext={currentMonth || "This month"}
-            />
           </div>
 
-          <div className="mt-8 grid min-w-0 gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-            <div className="space-y-6">
-              <SectionCard
-                title="Parent Details"
-                subtitle="Keep parent communication context visible at a glance."
-              >
-                <div className="grid gap-4">
+          <div className="mt-8 grid gap-6">
+            <SectionCard
+              title="Weekly Goal"
+              subtitle="Monitor the current goal and whether it is still running or already complete."
+            >
+              <div className="space-y-4">
+                <div className="rounded-2xl border border-gray-300 bg-white/82 p-4">
+                  <p className="text-sm text-[#7a7a7a]">Goal</p>
+                  <p className="mt-2 font-medium text-[#171717]">
+                    {studentMeta.weeklyGoal || "—"}
+                  </p>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
                   <div className="rounded-2xl border border-gray-300 bg-white/82 p-4">
-                    <p className="text-sm text-[#7a7a7a]">Parent Name</p>
+                    <p className="text-sm text-[#7a7a7a]">Started</p>
                     <p className="mt-2 font-medium text-[#171717]">
-                      {studentMeta.parentName || "—"}
+                      {studentMeta.weeklyGoalStartDateKey || "—"}
                     </p>
                   </div>
+
                   <div className="rounded-2xl border border-gray-300 bg-white/82 p-4">
-                    <p className="text-sm text-[#7a7a7a]">Phone</p>
+                    <p className="text-sm text-[#7a7a7a]">Completed</p>
                     <p className="mt-2 font-medium text-[#171717]">
-                      {studentMeta.parentPhone || "—"}
-                    </p>
-                  </div>
-                  <div className="rounded-2xl border border-gray-300 bg-white/82 p-4">
-                    <p className="text-sm text-[#7a7a7a]">Email</p>
-                    <p className="mt-2 break-words font-medium text-[#171717]">
-                      {studentMeta.parentEmail || "—"}
+                      {studentMeta.weeklyGoalCompletedDateKey || "—"}
                     </p>
                   </div>
                 </div>
-              </SectionCard>
 
-              <SectionCard
-                title="Weekly Goal"
-                subtitle="Monitor the current goal and whether it is still running or already complete."
-              >
-                <div className="space-y-4">
-                  <div className="rounded-2xl border border-gray-300 bg-white/82 p-4">
-                    <p className="text-sm text-[#7a7a7a]">Goal</p>
-                    <p className="mt-2 font-medium text-[#171717]">
-                      {studentMeta.weeklyGoal || "—"}
-                    </p>
-                  </div>
-
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="rounded-2xl border border-gray-300 bg-white/82 p-4">
-                      <p className="text-sm text-[#7a7a7a]">Started</p>
-                      <p className="mt-2 font-medium text-[#171717]">
-                        {studentMeta.weeklyGoalStartDateKey || "—"}
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl border border-gray-300 bg-white/82 p-4">
-                      <p className="text-sm text-[#7a7a7a]">Completed</p>
-                      <p className="mt-2 font-medium text-[#171717]">
-                        {studentMeta.weeklyGoalCompletedDateKey || "—"}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="rounded-2xl border border-gray-300 bg-white/82 p-4">
-                    <p className="text-sm text-[#7a7a7a]">Duration</p>
-                    <p className="mt-2 font-medium text-[#171717]">
-                      {studentMeta.weeklyGoalDurationDays
-                        ? `${studentMeta.weeklyGoalDurationDays} day(s)`
-                        : studentMeta.weeklyGoalStartDateKey && !studentMeta.weeklyGoalCompletedDateKey
-                        ? `${diffDaysInclusive(studentMeta.weeklyGoalStartDateKey, getDateKeySA())} day(s) running`
-                        : "—"}
-                    </p>
-                  </div>
+                <div className="rounded-2xl border border-gray-300 bg-white/82 p-4">
+                  <p className="text-sm text-[#7a7a7a]">Duration</p>
+                  <p className="mt-2 font-medium text-[#171717]">
+                    {studentMeta.weeklyGoalDurationDays
+                      ? `${studentMeta.weeklyGoalDurationDays} day(s)`
+                      : studentMeta.weeklyGoalStartDateKey && !studentMeta.weeklyGoalCompletedDateKey
+                      ? `${diffDaysInclusive(studentMeta.weeklyGoalStartDateKey, getDateKeySA())} day(s) running`
+                      : "—"}
+                  </p>
                 </div>
-              </SectionCard>
-            </div>
+              </div>
+            </SectionCard>
 
-            <div className="space-y-6">
-              <SectionCard
-                title="Current Progress Snapshot"
-                subtitle="A clean view of the latest known standing for sabak, sabak dhor, and dhor."
-              >
-                <div className="grid gap-4 md:grid-cols-3">
-                  <SnapshotCard
-                    title="Sabak"
-                    value={studentMeta.currentSabak}
-                    quality={studentMeta.currentSabakReadQuality}
-                    notes={studentMeta.currentSabakReadNotes}
-                  />
+            <SectionCard
+              title="Log History"
+              subtitle="Search through the full history and review how this student has been progressing over time."
+            >
+              <div className="mb-5 min-w-0">
+                <input
+                  type="text"
+                  placeholder="Search logs by date, attendance, notes, mistakes, goals, or teacher email..."
+                  className="w-full min-w-0 rounded-2xl border border-gray-300 bg-white/88 p-4 text-[#171717] outline-none placeholder:text-[#8a8a8a] transition focus:border-[#B8963D] focus:bg-white"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
 
-                  <SnapshotCard
-                    title="Sabak Dhor"
-                    value={studentMeta.currentSabakDhor}
-                    quality={studentMeta.currentSabakDhorReadQuality}
-                    notes={studentMeta.currentSabakDhorReadNotes}
-                    mistakes={studentMeta.currentSabakDhorMistakes}
-                  />
-
-                  <SnapshotCard
-                    title="Dhor"
-                    value={studentMeta.currentDhor}
-                    quality={studentMeta.currentDhorReadQuality}
-                    notes={studentMeta.currentDhorReadNotes}
-                    mistakes={studentMeta.currentDhorMistakes}
-                  />
+              {!rows.length ? (
+                <div className="rounded-2xl border border-gray-300 bg-white/82 p-6 text-center text-[#666666]">
+                  No logs have been recorded for this student yet.
                 </div>
-              </SectionCard>
-
-              <SectionCard
-                title="Log History"
-                subtitle="Search through the full history and review how this student has been progressing over time."
-              >
-                <div className="mb-5 min-w-0">
-                  <input
-                    type="text"
-                    placeholder="Search logs by date, attendance, notes, mistakes, goals, or teacher email..."
-                    className="w-full min-w-0 rounded-2xl border border-gray-300 bg-white/88 p-4 text-[#171717] outline-none placeholder:text-[#8a8a8a] transition focus:border-[#B8963D] focus:bg-white"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                  />
+              ) : filteredRows.length === 0 ? (
+                <div className="rounded-2xl border border-gray-300 bg-white/82 p-6 text-center text-[#666666]">
+                  No logs matched your search.
                 </div>
+              ) : (
+                <>
+                  <div className="hidden overflow-hidden rounded-[24px] border border-gray-300 bg-white/86 shadow-sm lg:block">
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full border-collapse">
+                        <thead>
+                          <tr className="border-b border-gray-300 bg-[#f6f2ea]">
+                            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">
+                              Date
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">
+                              Attendance
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">
+                              Sabak
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">
+                              Sabak Dhor
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">
+                              Dhor
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">
+                              Goal
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">
+                              Updated By
+                            </th>
+                            <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">
+                              Action
+                            </th>
+                          </tr>
+                        </thead>
 
-                {!rows.length ? (
-                  <div className="rounded-2xl border border-gray-300 bg-white/82 p-6 text-center text-[#666666]">
-                    No logs have been recorded for this student yet.
-                  </div>
-                ) : filteredRows.length === 0 ? (
-                  <div className="rounded-2xl border border-gray-300 bg-white/82 p-6 text-center text-[#666666]">
-                    No logs matched your search.
-                  </div>
-                ) : (
-                  <>
-                    <div className="hidden overflow-hidden rounded-[24px] border border-gray-300 bg-white/86 shadow-sm lg:block">
-                      <div className="overflow-x-auto">
-                        <table className="min-w-full border-collapse">
-                          <thead>
-                            <tr className="border-b border-gray-300 bg-[#f6f2ea]">
-                              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">
-                                Date
-                              </th>
-                              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">
-                                Attendance
-                              </th>
-                              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">
-                                Sabak
-                              </th>
-                              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">
-                                Sabak Dhor
-                              </th>
-                              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">
-                                Dhor
-                              </th>
-                              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">
-                                Goal
-                              </th>
-                              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">
-                                Updated By
-                              </th>
-                              <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">
-                                Action
-                              </th>
-                            </tr>
-                          </thead>
+                        <tbody>
+                          {filteredRows.map((row, index) => {
+                            const isOpen = openRowId === row.id;
 
-                          <tbody>
-                            {filteredRows.map((row, index) => {
-                              const isOpen = openRowId === row.id;
+                            return (
+                              <Fragment key={row.id}>
+                                <tr
+                                  className={`border-b border-gray-200 ${
+                                    index % 2 === 0 ? "bg-white/70" : "bg-[#faf8f3]"
+                                  }`}
+                                >
+                                  <td className="px-4 py-4 align-top text-sm text-[#171717]">
+                                    <div className="font-medium">
+                                      {getDayName(row.dateKey)} {row.dateKey || "—"}
+                                    </div>
+                                  </td>
 
-                              return (
-                                <Fragment key={row.id}>
-                                  <tr
-                                    className={`border-b border-gray-200 ${
-                                      index % 2 === 0 ? "bg-white/70" : "bg-[#faf8f3]"
-                                    }`}
-                                  >
-                                    <td className="px-4 py-4 align-top text-sm text-[#171717]">
-                                      <div className="font-medium">
-                                        {getDayName(row.dateKey)} {row.dateKey || "—"}
-                                      </div>
-                                    </td>
+                                  <td className="px-4 py-4 align-top">
+                                    <AttendanceBadge value={row.attendance} />
+                                  </td>
 
-                                    <td className="px-4 py-4 align-top">
-                                      <AttendanceBadge value={row.attendance} />
-                                    </td>
+                                  <td className="px-4 py-4 align-top text-sm text-[#171717]">
+                                    {row.sabak || "—"}
+                                  </td>
 
-                                    <td className="px-4 py-4 align-top text-sm text-[#171717]">
-                                      {row.sabak || "—"}
-                                    </td>
+                                  <td className="px-4 py-4 align-top text-sm text-[#171717]">
+                                    {row.sabakDhor || "—"}
+                                  </td>
 
-                                    <td className="px-4 py-4 align-top text-sm text-[#171717]">
-                                      {row.sabakDhor || "—"}
-                                    </td>
+                                  <td className="px-4 py-4 align-top text-sm text-[#171717]">
+                                    {row.dhor || "—"}
+                                  </td>
 
-                                    <td className="px-4 py-4 align-top text-sm text-[#171717]">
-                                      {row.dhor || "—"}
-                                    </td>
+                                  <td className="px-4 py-4 align-top text-sm text-[#5f5f5f]">
+                                    <div className="max-w-[160px] break-words">
+                                      {row.weeklyGoal || "—"}
+                                    </div>
+                                  </td>
 
-                                    <td className="px-4 py-4 align-top text-sm text-[#5f5f5f]">
-                                      <div className="max-w-[160px] break-words">
-                                        {row.weeklyGoal || "—"}
-                                      </div>
-                                    </td>
+                                  <td className="px-4 py-4 align-top text-sm text-[#7a7a7a]">
+                                    <div className="max-w-[180px] break-words">
+                                      {row.updatedByEmail || "—"}
+                                    </div>
+                                  </td>
 
-                                    <td className="px-4 py-4 align-top text-sm text-[#7a7a7a]">
-                                      <div className="max-w-[180px] break-words">
-                                        {row.updatedByEmail || "—"}
-                                      </div>
-                                    </td>
+                                  <td className="px-4 py-4 align-top text-right">
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setOpenRowId((prev) => (prev === row.id ? null : row.id))
+                                      }
+                                      className="rounded-full border border-gray-300 bg-white/80 px-4 py-2 text-sm font-medium text-[#5b5b5b] transition hover:bg-white hover:text-[#171717]"
+                                    >
+                                      {isOpen ? "Hide Details" : "View Details"}
+                                    </button>
+                                  </td>
+                                </tr>
 
-                                    <td className="px-4 py-4 align-top text-right">
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          setOpenRowId((prev) => (prev === row.id ? null : row.id))
-                                        }
-                                        className="rounded-full border border-gray-300 bg-white/80 px-4 py-2 text-sm font-medium text-[#5b5b5b] transition hover:bg-white hover:text-[#171717]"
-                                      >
-                                        {isOpen ? "Hide Details" : "View Details"}
-                                      </button>
+                                {isOpen ? (
+                                  <tr className="border-b border-gray-200 bg-[#fdfbf7] last:border-b-0">
+                                    <td colSpan={8} className="p-0">
+                                      <LogDetails row={row} />
                                     </td>
                                   </tr>
-
-                                  {isOpen ? (
-                                    <tr className="border-b border-gray-200 bg-[#fdfbf7] last:border-b-0">
-                                      <td colSpan={8} className="p-0">
-                                        <LogDetails row={row} />
-                                      </td>
-                                    </tr>
-                                  ) : null}
-                                </Fragment>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
+                                ) : null}
+                              </Fragment>
+                            );
+                          })}
+                        </tbody>
+                      </table>
                     </div>
+                  </div>
 
-                    <div className="grid gap-4 lg:hidden">
-                      {filteredRows.map((row) => (
-                        <MobileLogCard
-                          key={row.id}
-                          row={row}
-                          isOpen={openRowId === row.id}
-                          onToggle={() =>
-                            setOpenRowId((prev) => (prev === row.id ? null : row.id))
-                          }
-                        />
-                      ))}
-                    </div>
-                  </>
-                )}
-              </SectionCard>
-            </div>
+                  <div className="grid gap-4 lg:hidden">
+                    {filteredRows.map((row) => (
+                      <MobileLogCard
+                        key={row.id}
+                        row={row}
+                        isOpen={openRowId === row.id}
+                        onToggle={() =>
+                          setOpenRowId((prev) => (prev === row.id ? null : row.id))
+                        }
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+            </SectionCard>
           </div>
         </>
       )}
