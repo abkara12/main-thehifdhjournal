@@ -278,7 +278,6 @@ export default function TeachersPage() {
             <StatCard label="Total Staff" value={staff.length} />
             <StatCard label="Admins" value={adminCount} />
             <StatCard label="Teachers" value={teacherCount} />
-            <StatCard label="Active Staff" value={activeCount} />
           </div>
         </div>
 

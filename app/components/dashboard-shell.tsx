@@ -18,8 +18,6 @@ type StaffRole = "admin" | "teacher" | "super_admin" | "";
 const ADMIN_NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", href: "/dashboard" },
   { label: "Students", href: "/dashboard/students" },
-  { label: "Reports", href: "/dashboard/reports" },
-  { label: "Settings", href: "/dashboard/settings" },
   { label: "Teachers", href: "/dashboard/teachers" },
 ];
 
