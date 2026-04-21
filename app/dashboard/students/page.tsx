@@ -214,16 +214,7 @@ eyebrow={
           value={loadingStudents ? "..." : String(totalStudents)}
           subtext="All student records in this madrassah."
         />
-        <PremiumStatCard
-          label="Active"
-          value={loadingStudents ? "..." : String(activeStudents)}
-          subtext="Students currently active."
-        />
-        <PremiumStatCard
-          label="Inactive"
-          value={loadingStudents ? "..." : String(inactiveStudents)}
-          subtext="Students currently inactive."
-        />
+
         <PremiumStatCard
           label="With Weekly Goals"
           value={loadingStudents ? "..." : String(withGoals)}
