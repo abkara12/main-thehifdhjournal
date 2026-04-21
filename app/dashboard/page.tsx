@@ -279,7 +279,7 @@ eyebrow={
     Join Code
   </span>
 
-  <div className="rounded-full border border-[#B8963D]/30 bg-[#B8963D]/10 px-4 py-2 text-lg font-semibold tracking-wider text-[#7b6128]">
+  <div className="rounded-full border border-[#B8963D]/30 bg-[#B8963D]/10 px-4 py-2 text-m font-semibold tracking-wider text-[#7b6128]">
     {joinCode}
   </div>
 </div>
