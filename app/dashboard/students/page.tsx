@@ -191,11 +191,11 @@ export default function StudentsPage() {
       subtitle="Search learners, review parent details, and move quickly into daily progress logging."
 eyebrow={
   <div className="w-full text-center space-y-2">
-    <div className="text-[0.75rem] uppercase tracking-[0.35em] text-[#a1a1a1]">
+    <div className="text-[0.75rem] uppercase tracking-[0.35em] text-[#4f4d4d]">
       Student Management
     </div>
 
-    <div className="text-[1.4rem] sm:text-[1.8rem] font-semibold tracking-[-0.03em] text-[#a88423]">
+    <div className="text-[1.2rem] sm:text-[1.4rem]  uppercase tracking-[0.24em] text-[#a88423]">
       {profile?.madrassahName || "Your Madrassah"}
     </div>
   </div>
