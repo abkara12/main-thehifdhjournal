@@ -265,7 +265,7 @@ export default function StudentDetailPage() {
   }, [loading, profile, studentId, dateKey]);
 
   async function handleSave() {
-    setMsg(null);
+  setMsg("Saving...");
 
     if (!profile?.madrassahId || !firebaseUser?.uid) {
       setPageErr("Your account is not linked correctly.");
@@ -405,10 +405,11 @@ updatedAt: serverTimestamp(),
       setWeeklyGoalCompletedDateKey(nextGoalCompletedDateKey);
       setWeeklyGoalDurationDays(nextGoalDurationDays);
 
-      setHasExistingTodayLog(true);
-      setEditorMode("edit");
-      setMarkGoalCompleted(false);
-      setMsg("Today’s log was saved successfully.");
+setHasExistingTodayLog(true);
+setEditorMode("edit");
+setMarkGoalCompleted(false);
+setMsg("Saved successfully ✓");
+setTimeout(() => setMsg(null), 2500);
     } catch (e: any) {
       setMsg(e?.message ?? "Could not save the log.");
     } finally {
@@ -461,11 +462,19 @@ subtitle="Capture today’s lesson clearly, with structured progress tracking an
         </div>
       ) : null}
 
-      {msg ? (
-        <div className="mb-6 rounded-2xl border border-gray-300 bg-white/78 p-4 text-sm text-[#4f4f4f] shadow-sm backdrop-blur-xl">
-          {msg}
-        </div>
-      ) : null}
+{msg ? (
+  <div
+    className={`mb-6 rounded-2xl p-4 text-sm shadow-sm backdrop-blur-xl ${
+      msg.includes("Saved")
+        ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
+        : msg.includes("Saving")
+        ? "border border-gray-300 bg-white/80 text-[#5f5f5f]"
+        : "border border-red-300 bg-red-50 text-red-700"
+    }`}
+  >
+    {msg}
+  </div>
+) : null}
 
       
 
