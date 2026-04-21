@@ -178,11 +178,19 @@ export default function StudentsPage() {
     <DashboardShell
       title="Students"
       subtitle="Search learners, review parent details, and move quickly into daily progress logging."
-      eyebrow="Student Management"
-      rightSlot={
+eyebrow={
+  <div className="w-full text-center space-y-2">
+    <div className="text-[0.75rem] uppercase tracking-[0.35em] text-[#a1a1a1]">
+      Student Management
+    </div>
+
+    <div className="text-[1.4rem] sm:text-[1.8rem] font-semibold tracking-[-0.03em] text-[#171717]">
+      {profile?.madrassahName || "Your Madrassah"}
+    </div>
+  </div>
+}      rightSlot={
         <div className="flex w-full flex-col gap-3 rounded-[24px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.78),rgba(255,255,255,0.60))] p-3 shadow-[0_12px_36px_rgba(0,0,0,0.06)] backdrop-blur-xl sm:p-4 lg:min-w-[250px] lg:max-w-[320px]">
           <div className="flex flex-wrap items-center gap-2">
-            <PremiumBadge>{profile.madrassahName || "Madrassah"}</PremiumBadge>
           </div>
 
           <Link
