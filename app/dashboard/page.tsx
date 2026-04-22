@@ -29,6 +29,43 @@ type StaffRow = {
   isActive: boolean;
 };
 
+async function copyTextToClipboard(text: string) {
+  if (!text) return false;
+
+  try {
+    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // fall through to fallback
+  }
+
+  try {
+    if (typeof document === "undefined") return false;
+
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.setAttribute("readonly", "");
+    textArea.style.position = "fixed";
+    textArea.style.top = "-9999px";
+    textArea.style.left = "-9999px";
+    textArea.style.opacity = "0";
+
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    textArea.setSelectionRange(0, text.length);
+
+    const successful = document.execCommand("copy");
+    document.body.removeChild(textArea);
+
+    return successful;
+  } catch {
+    return false;
+  }
+}
+
 function RoleBadge({ role }: { role: "admin" | "teacher" }) {
   const styles =
     role === "admin"
@@ -78,8 +115,8 @@ function StaffCard({
           </div>
 
           <div className="mt-3 text-sm text-[#6a6a6a]">
-  {person.role === "admin" ? "Madrassah Admin" : "Teacher Account"}
-</div>
+            {person.role === "admin" ? "Madrassah Admin" : "Teacher Account"}
+          </div>
         </div>
 
         <div className="flex w-full flex-wrap gap-3 xl:w-auto xl:justify-end">
@@ -168,10 +205,10 @@ export default function TeachersPage() {
 
     return staff.filter((person) => {
       const haystack = [
-  person.fullName,
-  person.role,
-  person.isActive ? "active" : "inactive",
-]
+        person.fullName,
+        person.role,
+        person.isActive ? "active" : "inactive",
+      ]
         .join(" ")
         .toLowerCase();
 
@@ -234,11 +271,15 @@ export default function TeachersPage() {
   }
 
   async function handleCopyJoinCode() {
-    try {
-      await navigator.clipboard.writeText(joinCode);
+    if (!joinCode) return;
+
+    setPageError("");
+    const copied = await copyTextToClipboard(joinCode);
+
+    if (copied) {
       setActionMsg("Join code copied.");
       window.setTimeout(() => setActionMsg(""), 1200);
-    } catch {
+    } else {
       setPageError("Could not copy join code.");
     }
   }
@@ -263,36 +304,38 @@ export default function TeachersPage() {
 
   return (
     <DashboardShell
-  title="Admin Dashboard"
-eyebrow={
-  <div className="w-full text-center">
-    <div className="text-[1.2rem] sm:text-[1.4rem]  uppercase tracking-[0.24em] text-[#a88423]">
-      {profile?.madrassahName || "Your Madrassah"}
-    </div>
-  </div>
-}  subtitle="Manage staff access, monitor teacher status, and keep the madrassah team organized with confidence."
+      title="Admin Dashboard"
+      eyebrow={
+        <div className="w-full text-center">
+          <div className="text-[1.2rem] sm:text-[1.4rem] uppercase tracking-[0.24em] text-[#a88423]">
+            {profile?.madrassahName || "Your Madrassah"}
+          </div>
+        </div>
+      }
+      subtitle="Manage staff access, monitor teacher status, and keep the madrassah team organized with confidence."
       rightSlot={
         <div className="w-full lg:w-auto">
-<div className="flex w-full flex-col items-center gap-4 text-center rounded-[24px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.76),rgba(255,255,255,0.56))] p-4 shadow-[0_12px_36px_rgba(0,0,0,0.06)] backdrop-blur-xl sm:items-start sm:text-left lg:min-w-[250px] lg:max-w-[320px]">            {joinCode ? (
+          <div className="flex w-full flex-col items-center gap-4 text-center rounded-[24px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.76),rgba(255,255,255,0.56))] p-4 shadow-[0_12px_36px_rgba(0,0,0,0.06)] backdrop-blur-xl sm:items-start sm:text-left lg:min-w-[250px] lg:max-w-[320px]">
+            {joinCode ? (
               <div className="flex flex-col items-center justify-center gap-2 text-center">
-  <span className="text-xs uppercase tracking-[0.2em] text-[#8a8a8a]">
-    Join Code
-  </span>
+                <span className="text-xs uppercase tracking-[0.2em] text-[#8a8a8a]">
+                  Join Code
+                </span>
 
-  <div className="rounded-full border border-[#B8963D]/30 bg-[#B8963D]/10 px-4 py-2 text-m font-semibold tracking-wider text-[#7b6128]">
-    {joinCode}
-  </div>
-</div>
+                <div className="rounded-full border border-[#B8963D]/30 bg-[#B8963D]/10 px-4 py-2 text-m font-semibold tracking-wider text-[#7b6128]">
+                  {joinCode}
+                </div>
+              </div>
             ) : null}
 
             <button
-  type="button"
-  onClick={handleCopyJoinCode}
-  disabled={!joinCode}
-  className="w-full rounded-full bg-black px-5 py-3 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(0,0,0,0.12)] transition hover:bg-[#1d1d1d] disabled:opacity-60 sm:w-auto"
->
-  Copy Join Code
-</button>
+              type="button"
+              onClick={handleCopyJoinCode}
+              disabled={!joinCode}
+              className="w-full rounded-full bg-black px-5 py-3 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(0,0,0,0.12)] transition hover:bg-[#1d1d1d] disabled:opacity-60 sm:w-auto"
+            >
+              Copy Join Code
+            </button>
           </div>
         </div>
       }
@@ -330,7 +373,8 @@ eyebrow={
       <div className="mt-8 rounded-[30px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.78),rgba(255,255,255,0.56))] p-4 shadow-[0_12px_40px_rgba(0,0,0,0.06)] backdrop-blur-xl sm:p-5">
         <input
           type="text"
-placeholder="Search by name, role, or status..."          className="w-full rounded-2xl border border-gray-300 bg-white/85 p-4 text-[#171717] outline-none placeholder:text-[#8a8a8a] transition focus:border-[#B8963D] focus:bg-white"
+          placeholder="Search by name, role, or status..."
+          className="w-full rounded-2xl border border-gray-300 bg-white/85 p-4 text-[#171717] outline-none placeholder:text-[#8a8a8a] transition focus:border-[#B8963D] focus:bg-white"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />

@@ -58,6 +58,43 @@ function isValidPhone(value: string) {
   return digits.length >= 10 && digits.length <= 15;
 }
 
+async function copyTextToClipboard(text: string) {
+  if (!text) return false;
+
+  try {
+    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // fall through to fallback
+  }
+
+  try {
+    if (typeof document === "undefined") return false;
+
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.setAttribute("readonly", "");
+    textArea.style.position = "fixed";
+    textArea.style.top = "-9999px";
+    textArea.style.left = "-9999px";
+    textArea.style.opacity = "0";
+
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    textArea.setSelectionRange(0, text.length);
+
+    const successful = document.execCommand("copy");
+    document.body.removeChild(textArea);
+
+    return successful;
+  } catch {
+    return false;
+  }
+}
+
 function PageShell({
   children,
   title,
@@ -390,14 +427,15 @@ export default function AdminPage() {
   async function handleCopyJoinCode() {
     if (!joinCode) return;
 
-    try {
-      await navigator.clipboard.writeText(joinCode);
+    const copied = await copyTextToClipboard(joinCode);
+
+    if (copied) {
       setJoinCodeMsg("Join code copied.");
-      setTimeout(() => setJoinCodeMsg(null), 2000);
-    } catch {
+    } else {
       setJoinCodeMsg("Could not copy join code.");
-      setTimeout(() => setJoinCodeMsg(null), 2000);
     }
+
+    setTimeout(() => setJoinCodeMsg(null), 2000);
   }
 
   async function handleRefreshStudents() {

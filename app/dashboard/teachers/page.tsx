@@ -30,6 +30,43 @@ type ConfigDoc = {
   joinCode: string;
 };
 
+async function copyTextToClipboard(text: string) {
+  if (!text) return false;
+
+  try {
+    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // fall through to fallback
+  }
+
+  try {
+    if (typeof document === "undefined") return false;
+
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.setAttribute("readonly", "");
+    textArea.style.position = "fixed";
+    textArea.style.top = "-9999px";
+    textArea.style.left = "-9999px";
+    textArea.style.opacity = "0";
+
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    textArea.setSelectionRange(0, text.length);
+
+    const successful = document.execCommand("copy");
+    document.body.removeChild(textArea);
+
+    return successful;
+  } catch {
+    return false;
+  }
+}
+
 function RoleBadge({ role }: { role: "admin" | "teacher" }) {
   const styles =
     role === "admin"
@@ -132,11 +169,11 @@ export default function TeachersPage() {
     if (!term) return staff;
 
     return staff.filter((person) => {
-     const haystack = [
-  person.fullName,
-  person.role,
-  person.isActive ? "active" : "inactive",
-]
+      const haystack = [
+        person.fullName,
+        person.role,
+        person.isActive ? "active" : "inactive",
+      ]
         .join(" ")
         .toLowerCase();
 
@@ -199,11 +236,15 @@ export default function TeachersPage() {
   }
 
   async function handleCopyJoinCode() {
-    try {
-      await navigator.clipboard.writeText(joinCode);
+    if (!joinCode) return;
+
+    setPageError("");
+    const copied = await copyTextToClipboard(joinCode);
+
+    if (copied) {
       setActionMsg("Join code copied.");
       window.setTimeout(() => setActionMsg(""), 1200);
-    } catch {
+    } else {
       setPageError("Could not copy join code.");
     }
   }
@@ -381,8 +422,8 @@ export default function TeachersPage() {
                             </div>
 
                             <div className="mt-3 text-sm text-[#6a6a6a]">
-  {person.role === "admin" ? "Madrassah Admin" : "Teacher Account"}
-</div>
+                              {person.role === "admin" ? "Madrassah Admin" : "Teacher Account"}
+                            </div>
                           </div>
 
                           <div className="flex flex-wrap gap-3">
