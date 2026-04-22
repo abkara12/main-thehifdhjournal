@@ -224,18 +224,6 @@ export default function NewStudentPage() {
                   />
                 </div>
 
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-[#5f5f5f]">
-                    Parent Email <span className="text-[#8a8a8a]">(optional)</span>
-                  </label>
-                  <input
-                    type="email"
-                    placeholder="Enter parent email address"
-                    className="w-full rounded-2xl border border-gray-300 bg-white/85 p-4 text-[#171717] outline-none placeholder:text-[#8a8a8a] transition focus:border-[#B8963D] focus:bg-white"
-                    value={parentEmail}
-                    onChange={(e) => setParentEmail(e.target.value)}
-                  />
-                </div>
 
                 <div className="flex flex-col gap-3 pt-2 sm:flex-row">
                   <button
