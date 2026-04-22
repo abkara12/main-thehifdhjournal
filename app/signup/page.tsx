@@ -15,6 +15,7 @@ export default function SignupPage() {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -192,14 +193,23 @@ export default function SignupPage() {
 
                 <div>
                   <label className="mb-2 block text-sm text-[#5f5f5f]">Password</label>
-                  <input
-                    type="password"
-                    placeholder="Create a password"
-                    className="w-full rounded-2xl border border-gray-300 bg-white/80 p-4 text-[#171717] outline-none placeholder:text-[#8a8a8a] transition focus:border-[#B8963D] focus:bg-white"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Create a password"
+                      className="w-full rounded-2xl border border-gray-300 bg-white/80 p-4 pr-24 text-[#171717] outline-none placeholder:text-[#8a8a8a] transition focus:border-[#B8963D] focus:bg-white"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-[#5b5b5b] transition hover:bg-[#f7f7f7]"
+                    >
+                      {showPassword ? "Hide" : "Show"}
+                    </button>
+                  </div>
                 </div>
 
                 <button
@@ -231,7 +241,6 @@ export default function SignupPage() {
                 the platform structure for your staff and students.
               </div>
             </div>
-
           </section>
         </div>
       </div>
