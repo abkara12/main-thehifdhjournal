@@ -263,7 +263,7 @@ export default function TeachersPage() {
 
   return (
     <DashboardShell
-  title="Teacher Management"
+  title="Admin Dashboard"
 eyebrow={
   <div className="w-full text-center">
     <div className="text-[1.2rem] sm:text-[1.4rem]  uppercase tracking-[0.24em] text-[#a88423]">
@@ -318,7 +318,7 @@ eyebrow={
         <PremiumStatCard
           label="Admins"
           value={String(adminCount)}
-          subtext="Protected admin accounts."
+          subtext="Admin accounts."
         />
         <PremiumStatCard
           label="Teachers"

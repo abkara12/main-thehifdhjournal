@@ -24,7 +24,6 @@ export default function NewStudentPage() {
   const { loading, profile, firebaseUser, error } = useRequireStaff();
 
   const [fullName, setFullName] = useState("");
-  const [parentName, setParentName] = useState("");
   const [parentPhone, setParentPhone] = useState("");
   const [parentEmail, setParentEmail] = useState("");
 
@@ -47,17 +46,11 @@ export default function NewStudentPage() {
     }
 
     const cleanFullName = normalizeName(fullName);
-    const cleanParentName = normalizeName(parentName);
     const cleanParentPhone = normalizePhone(parentPhone);
     const cleanParentEmail = parentEmail.trim().toLowerCase();
 
     if (!cleanFullName) {
       setFormError("Please enter the student's full name.");
-      return;
-    }
-
-    if (!cleanParentName) {
-      setFormError("Please enter the parent's name.");
       return;
     }
 
@@ -79,7 +72,6 @@ export default function NewStudentPage() {
         {
           fullName: cleanFullName,
           fullNameLower: cleanFullName.toLowerCase(),
-          parentName: cleanParentName,
           parentPhone: cleanParentPhone,
           parentEmail: cleanParentEmail,
           isActive: true,
@@ -111,7 +103,6 @@ export default function NewStudentPage() {
 
       setSuccessMsg("Student added successfully.");
       setFullName("");
-      setParentName("");
       setParentPhone("");
       setParentEmail("");
 
@@ -177,7 +168,7 @@ export default function NewStudentPage() {
       </div>
 
       <div className="mx-auto max-w-4xl">
-        <div className="rounded-[32px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.82),rgba(255,255,255,0.62))] shadow-[0_24px_80px_rgba(0,0,0,0.08)] backdrop-blur-2xl overflow-hidden">
+        <div className="overflow-hidden rounded-[32px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.82),rgba(255,255,255,0.62))] shadow-[0_24px_80px_rgba(0,0,0,0.08)] backdrop-blur-2xl">
           <div className="border-b border-gray-300 px-5 py-5 sm:px-8 sm:py-7">
             <p className="text-[11px] uppercase tracking-[0.3em] text-[#8d7440]">
               Student Management
@@ -220,8 +211,6 @@ export default function NewStudentPage() {
                   />
                 </div>
 
-        
-
                 <div>
                   <label className="mb-2 block text-sm font-medium text-[#5f5f5f]">
                     Parent Phone
@@ -235,6 +224,18 @@ export default function NewStudentPage() {
                   />
                 </div>
 
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-[#5f5f5f]">
+                    Parent Email <span className="text-[#8a8a8a]">(optional)</span>
+                  </label>
+                  <input
+                    type="email"
+                    placeholder="Enter parent email address"
+                    className="w-full rounded-2xl border border-gray-300 bg-white/85 p-4 text-[#171717] outline-none placeholder:text-[#8a8a8a] transition focus:border-[#B8963D] focus:bg-white"
+                    value={parentEmail}
+                    onChange={(e) => setParentEmail(e.target.value)}
+                  />
+                </div>
 
                 <div className="flex flex-col gap-3 pt-2 sm:flex-row">
                   <button
@@ -256,22 +257,22 @@ export default function NewStudentPage() {
               </form>
             </div>
 
-           <div className="space-y-4">
-  <div className="rounded-[28px] border border-gray-300 bg-white/72 p-5 shadow-sm backdrop-blur-xl">
-    <p className="text-[11px] uppercase tracking-[0.24em] text-[#B8963D]">
-      Student Registration
-    </p>
+            <div className="space-y-4">
+              <div className="rounded-[28px] border border-gray-300 bg-white/72 p-5 shadow-sm backdrop-blur-xl">
+                <p className="text-[11px] uppercase tracking-[0.24em] text-[#B8963D]">
+                  Student Registration
+                </p>
 
-    <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-[#171717]">
-      Add a new student
-    </h2>
+                <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-[#171717]">
+                  Add a new student
+                </h2>
 
-    <p className="mt-3 text-sm leading-7 text-[#5f5f5f]">
-      Enter the student’s details to begin tracking their daily lessons,
-      revision, and weekly progress in a clear and structured system.
-    </p>
-  </div>
-
+                <p className="mt-3 text-sm leading-7 text-[#5f5f5f]">
+                  Enter the student’s details to begin tracking their daily
+                  lessons, revision, and weekly progress in a clear and
+                  structured system.
+                </p>
+              </div>
             </div>
           </div>
         </div>

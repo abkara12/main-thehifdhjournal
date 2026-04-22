@@ -131,7 +131,7 @@ export default function SignupPage() {
                   Create Madrassah
                 </p>
                 <h2 className="mt-3 text-3xl font-semibold tracking-[-0.05em] text-[#171717]">
-                  Start strongly
+                  Add Your Madrassah
                 </h2>
                 <p className="mt-2 text-sm leading-7 text-[#5f5f5f]">
                   Create the main admin account and open your madrassah on the platform.
@@ -232,20 +232,6 @@ export default function SignupPage() {
               </div>
             </div>
 
-            <div className="mx-auto mt-5 max-w-md lg:hidden">
-              <div className="rounded-3xl border border-gray-300 bg-white/72 p-5 shadow-sm backdrop-blur-xl">
-                <p className="text-xs uppercase tracking-[0.24em] text-[#B8963D]">
-                  The Hifdh Journal
-                </p>
-                <h3 className="mt-2 text-xl font-semibold tracking-tight text-[#171717]">
-                  Premium madrassah setup
-                </h3>
-                <p className="mt-2 text-sm leading-7 text-[#5e5e5e]">
-                  Create your madrassah, manage staff cleanly, and start from a refined
-                  professional foundation.
-                </p>
-              </div>
-            </div>
           </section>
         </div>
       </div>

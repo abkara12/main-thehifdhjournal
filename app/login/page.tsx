@@ -196,22 +196,7 @@ export default function LoginPage() {
               </div>
 
               <div className="mt-6 rounded-2xl border border-gray-300 bg-white/65 p-4 text-sm leading-7 text-[#5b5b5b]">
-                Access is reserved for approved admin, teacher, and super admin accounts.
-              </div>
-            </div>
-
-            <div className="mx-auto mt-5 max-w-md lg:hidden">
-              <div className="rounded-3xl border border-gray-300 bg-white/72 p-5 shadow-sm backdrop-blur-xl">
-                <p className="text-xs uppercase tracking-[0.24em] text-[#B8963D]">
-                  The Hifdh Journal
-                </p>
-                <h3 className="mt-2 text-xl font-semibold tracking-tight text-[#171717]">
-                  Premium staff access
-                </h3>
-                <p className="mt-2 text-sm leading-7 text-[#5e5e5e]">
-                  Sign in to access your madrassah workspace, manage progress properly,
-                  and continue from a clean professional system.
-                </p>
+                Access is reserved for approved admin & teacher accounts.
               </div>
             </div>
           </section>
