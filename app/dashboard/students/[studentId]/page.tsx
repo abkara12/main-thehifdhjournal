@@ -95,6 +95,82 @@ function PremiumSelect(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
   );
 }
 
+function getEmptyCurrentLogFields() {
+  return {
+    currentSabak: "",
+    currentSabakDhor: "",
+    currentDhor: "",
+    currentSabakReadQuality: "",
+    currentSabakDhorReadQuality: "",
+    currentDhorReadQuality: "",
+    currentSabakReadNotes: "",
+    currentSabakDhorReadNotes: "",
+    currentDhorReadNotes: "",
+    currentSabakDhorMistakes: "",
+    currentDhorMistakes: "",
+  };
+}
+
+function hasAnyCurrentLogData(data: any) {
+  return [
+    data?.currentSabak,
+    data?.currentSabakDhor,
+    data?.currentDhor,
+    data?.currentSabakReadQuality,
+    data?.currentSabakDhorReadQuality,
+    data?.currentDhorReadQuality,
+    data?.currentSabakReadNotes,
+    data?.currentSabakDhorReadNotes,
+    data?.currentDhorReadNotes,
+    data?.currentSabakDhorMistakes,
+    data?.currentDhorMistakes,
+  ].some((value) => toText(value).trim().length > 0);
+}
+
+function isFullDayLogComplete({
+  attendance,
+  sabak,
+  sabakDhor,
+  dhor,
+  sabakReadQuality,
+  sabakReadNotes,
+  sabakDhorReadQuality,
+  sabakDhorReadNotes,
+  dhorReadQuality,
+  dhorReadNotes,
+  sabakDhorMistakes,
+  dhorMistakes,
+}: {
+  attendance: "present" | "absent";
+  sabak: string;
+  sabakDhor: string;
+  dhor: string;
+  sabakReadQuality: string;
+  sabakReadNotes: string;
+  sabakDhorReadQuality: string;
+  sabakDhorReadNotes: string;
+  dhorReadQuality: string;
+  dhorReadNotes: string;
+  sabakDhorMistakes: string;
+  dhorMistakes: string;
+}) {
+  if (attendance === "absent") return true;
+
+  return [
+    sabak,
+    sabakDhor,
+    dhor,
+    sabakReadQuality,
+    sabakReadNotes,
+    sabakDhorReadQuality,
+    sabakDhorReadNotes,
+    dhorReadQuality,
+    dhorReadNotes,
+    sabakDhorMistakes,
+    dhorMistakes,
+  ].every((value) => value.trim().length > 0);
+}
+
 export default function StudentDetailPage() {
   const { loading, profile, firebaseUser, error } = useRequireStaff();
   const params = useParams<{ studentId: string }>();
@@ -201,9 +277,8 @@ export default function StudentDetailPage() {
       setExistingLogMeta(null);
 
       try {
-        const sDoc = await getDoc(
-          doc(db, "madrassahs", profile.madrassahId, "students", studentId)
-        );
+        const studentRef = doc(db, "madrassahs", profile.madrassahId, "students", studentId);
+        const sDoc = await getDoc(studentRef);
 
         if (!sDoc.exists()) {
           setStudentName("Student");
@@ -212,6 +287,19 @@ export default function StudentDetailPage() {
         }
 
         const data = sDoc.data() as any;
+
+        const lastLogDateKey = toText(data.lastLogDateKey);
+        const staleCurrentFields =
+          lastLogDateKey &&
+          lastLogDateKey !== dateKey &&
+          hasAnyCurrentLogData(data);
+
+        if (staleCurrentFields) {
+          await updateDoc(studentRef, {
+            ...getEmptyCurrentLogFields(),
+            updatedAt: serverTimestamp(),
+          });
+        }
 
         setStudentExists(true);
         setStudentName(toText(data.fullName) || "Student");
@@ -247,7 +335,7 @@ export default function StudentDetailPage() {
         fillFieldsFromLog(logData);
 
         setExistingLogMeta({
-  updatedByName: toText(logData.updatedByName),
+          updatedByName: toText(logData.updatedByName),
           updatedAtText: logData.updatedAt?.toDate
             ? logData.updatedAt.toDate().toLocaleString()
             : "",
@@ -265,7 +353,7 @@ export default function StudentDetailPage() {
   }, [loading, profile, studentId, dateKey]);
 
   async function handleSave() {
-  setMsg("Saving...");
+    setMsg("Saving...");
 
     if (!profile?.madrassahId || !firebaseUser?.uid) {
       setPageErr("Your account is not linked correctly.");
@@ -323,24 +411,56 @@ export default function StudentDetailPage() {
         nextGoalDurationDays = null;
       }
 
-      const logPayload = {
+      const trimmedSabak = sabak.trim();
+      const trimmedSabakDhor = sabakDhor.trim();
+      const trimmedDhor = dhor.trim();
+      const trimmedSabakReadQuality = sabakReadQuality.trim();
+      const trimmedSabakReadNotes = sabakReadNotes.trim();
+      const trimmedSabakDhorReadQuality = sabakDhorReadQuality.trim();
+      const trimmedSabakDhorReadNotes = sabakDhorReadNotes.trim();
+      const trimmedDhorReadQuality = dhorReadQuality.trim();
+      const trimmedDhorReadNotes = dhorReadNotes.trim();
+      const trimmedSabakDhorMistakes = sabakDhorMistakes.trim();
+      const trimmedDhorMistakes = dhorMistakes.trim();
+
+const shouldClearCurrentFields =
+  attendance === "absent" ||
+  isFullDayLogComplete({
+    attendance,
+    sabak: trimmedSabak,
+    sabakDhor: trimmedSabakDhor,
+    dhor: trimmedDhor,
+    sabakReadQuality: trimmedSabakReadQuality,
+    sabakReadNotes: trimmedSabakReadNotes,
+    sabakDhorReadQuality: trimmedSabakDhorReadQuality,
+    sabakDhorReadNotes: trimmedSabakDhorReadNotes,
+    dhorReadQuality: trimmedDhorReadQuality,
+    dhorReadNotes: trimmedDhorReadNotes,
+    sabakDhorMistakes: trimmedSabakDhorMistakes,
+    dhorMistakes: trimmedDhorMistakes,
+  });
+
+const logPayload =
+  attendance === "absent"
+    ? {
         dateKey,
-        attendance,
-        sabak: sabak.trim(),
-        sabakDhor: sabakDhor.trim(),
-        dhor: dhor.trim(),
+        attendance: "absent",
 
-        sabakReadQuality: sabakReadQuality.trim(),
-        sabakReadNotes: sabakReadNotes.trim(),
+        sabak: "",
+        sabakDhor: "",
+        dhor: "",
 
-        sabakDhorReadQuality: sabakDhorReadQuality.trim(),
-        sabakDhorReadNotes: sabakDhorReadNotes.trim(),
+        sabakReadQuality: "",
+        sabakReadNotes: "",
 
-        dhorReadQuality: dhorReadQuality.trim(),
-        dhorReadNotes: dhorReadNotes.trim(),
+        sabakDhorReadQuality: "",
+        sabakDhorReadNotes: "",
 
-        sabakDhorMistakes: sabakDhorMistakes.trim(),
-        dhorMistakes: dhorMistakes.trim(),
+        dhorReadQuality: "",
+        dhorReadNotes: "",
+
+        sabakDhorMistakes: "",
+        dhorMistakes: "",
 
         weeklyGoal: nextGoal,
         weeklyGoalWeekKey: nextGoalWeekKey,
@@ -350,35 +470,78 @@ export default function StudentDetailPage() {
         weeklyGoalCompleted: Boolean(nextGoalCompletedDateKey),
 
         updatedBy: firebaseUser.uid,
-updatedByName:
-  profile.fullName ||
-  (profile as any).name ||
-  firebaseUser.displayName ||
-  profile.email ||
-  firebaseUser.email ||
-  "Staff",
-updatedByEmail: profile.email || firebaseUser.email || "",
-createdAt: serverTimestamp(),
-updatedAt: serverTimestamp(),
+        updatedByName:
+          profile.fullName ||
+          (profile as any).name ||
+          firebaseUser.displayName ||
+          profile.email ||
+          firebaseUser.email ||
+          "Staff",
+        updatedByEmail: profile.email || firebaseUser.email || "",
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }
+    : {
+        dateKey,
+        attendance,
+
+        sabak: trimmedSabak,
+        sabakDhor: trimmedSabakDhor,
+        dhor: trimmedDhor,
+
+        sabakReadQuality: trimmedSabakReadQuality,
+        sabakReadNotes: trimmedSabakReadNotes,
+
+        sabakDhorReadQuality: trimmedSabakDhorReadQuality,
+        sabakDhorReadNotes: trimmedSabakDhorReadNotes,
+
+        dhorReadQuality: trimmedDhorReadQuality,
+        dhorReadNotes: trimmedDhorReadNotes,
+
+        sabakDhorMistakes: trimmedSabakDhorMistakes,
+        dhorMistakes: trimmedDhorMistakes,
+
+        weeklyGoal: nextGoal,
+        weeklyGoalWeekKey: nextGoalWeekKey,
+        weeklyGoalStartDateKey: nextGoalStartDateKey,
+        weeklyGoalCompletedDateKey: nextGoalCompletedDateKey,
+        weeklyGoalDurationDays: nextGoalDurationDays,
+        weeklyGoalCompleted: Boolean(nextGoalCompletedDateKey),
+
+        updatedBy: firebaseUser.uid,
+        updatedByName:
+          profile.fullName ||
+          (profile as any).name ||
+          firebaseUser.displayName ||
+          profile.email ||
+          firebaseUser.email ||
+          "Staff",
+        updatedByEmail: profile.email || firebaseUser.email || "",
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
       };
 
       await setDoc(logRef, logPayload, { merge: true });
 
       await updateDoc(studentRef, {
-        currentSabak: sabak.trim(),
-        currentSabakDhor: sabakDhor.trim(),
-        currentDhor: dhor.trim(),
+        ...(shouldClearCurrentFields
+          ? getEmptyCurrentLogFields()
+          : {
+              currentSabak: trimmedSabak,
+              currentSabakDhor: trimmedSabakDhor,
+              currentDhor: trimmedDhor,
 
-        currentSabakReadQuality: sabakReadQuality.trim(),
-        currentSabakDhorReadQuality: sabakDhorReadQuality.trim(),
-        currentDhorReadQuality: dhorReadQuality.trim(),
+              currentSabakReadQuality: trimmedSabakReadQuality,
+              currentSabakDhorReadQuality: trimmedSabakDhorReadQuality,
+              currentDhorReadQuality: trimmedDhorReadQuality,
 
-        currentSabakReadNotes: sabakReadNotes.trim(),
-        currentSabakDhorReadNotes: sabakDhorReadNotes.trim(),
-        currentDhorReadNotes: dhorReadNotes.trim(),
+              currentSabakReadNotes: trimmedSabakReadNotes,
+              currentSabakDhorReadNotes: trimmedSabakDhorReadNotes,
+              currentDhorReadNotes: trimmedDhorReadNotes,
 
-        currentSabakDhorMistakes: sabakDhorMistakes.trim(),
-        currentDhorMistakes: dhorMistakes.trim(),
+              currentSabakDhorMistakes: trimmedSabakDhorMistakes,
+              currentDhorMistakes: trimmedDhorMistakes,
+            }),
 
         weeklyGoal: nextGoal,
         weeklyGoalWeekKey: nextGoalWeekKey,
@@ -387,16 +550,16 @@ updatedAt: serverTimestamp(),
         weeklyGoalDurationDays: nextGoalDurationDays,
 
         lastLogDateKey: dateKey,
-updatedByUid: firebaseUser.uid,
-updatedByName:
-  profile.fullName ||
-  (profile as any).name ||
-  firebaseUser.displayName ||
-  profile.email ||
-  firebaseUser.email ||
-  "Staff",
-updatedByEmail: profile.email || firebaseUser.email || "",
-updatedAt: serverTimestamp(),
+        updatedByUid: firebaseUser.uid,
+        updatedByName:
+          profile.fullName ||
+          (profile as any).name ||
+          firebaseUser.displayName ||
+          profile.email ||
+          firebaseUser.email ||
+          "Staff",
+        updatedByEmail: profile.email || firebaseUser.email || "",
+        updatedAt: serverTimestamp(),
       });
 
       setWeeklyGoal(nextGoal);
@@ -405,11 +568,18 @@ updatedAt: serverTimestamp(),
       setWeeklyGoalCompletedDateKey(nextGoalCompletedDateKey);
       setWeeklyGoalDurationDays(nextGoalDurationDays);
 
-setHasExistingTodayLog(true);
-setEditorMode("edit");
-setMarkGoalCompleted(false);
-setMsg("Saved successfully ✓");
-setTimeout(() => setMsg(null), 2500);
+      setHasExistingTodayLog(true);
+      setEditorMode("edit");
+      setMarkGoalCompleted(false);
+
+      if (shouldClearCurrentFields) {
+        resetFields();
+        setMsg("Saved successfully ✓ Logs cleared for the next entry.");
+      } else {
+        setMsg("Saved successfully ✓");
+      }
+
+      setTimeout(() => setMsg(null), 2500);
     } catch (e: any) {
       setMsg(e?.message ?? "Could not save the log.");
     } finally {
@@ -438,7 +608,8 @@ setTimeout(() => setMsg(null), 2500);
   return (
     <DashboardShell
       title={studentName || "Student Record"}
-subtitle="Capture today’s lesson clearly, with structured progress tracking and weekly goal updates."      eyebrow="Daily Progress Logging"
+      subtitle="Capture today’s lesson clearly, with structured progress tracking and weekly goal updates."
+      eyebrow="Daily Progress Logging"
       rightSlot={
         <div className="flex w-full flex-col gap-3 rounded-[24px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.78),rgba(255,255,255,0.60))] p-3 shadow-[0_12px_36px_rgba(0,0,0,0.06)] backdrop-blur-xl sm:p-4 lg:min-w-[260px] lg:max-w-[340px]">
           <Link
@@ -462,21 +633,19 @@ subtitle="Capture today’s lesson clearly, with structured progress tracking an
         </div>
       ) : null}
 
-{msg ? (
-  <div
-    className={`mb-6 rounded-2xl p-4 text-sm shadow-sm backdrop-blur-xl ${
-      msg.includes("Saved")
-        ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
-        : msg.includes("Saving")
-        ? "border border-gray-300 bg-white/80 text-[#5f5f5f]"
-        : "border border-red-300 bg-red-50 text-red-700"
-    }`}
-  >
-    {msg}
-  </div>
-) : null}
-
-      
+      {msg ? (
+        <div
+          className={`mb-6 rounded-2xl p-4 text-sm shadow-sm backdrop-blur-xl ${
+            msg.includes("Saved")
+              ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
+              : msg.includes("Saving")
+              ? "border border-gray-300 bg-white/80 text-[#5f5f5f]"
+              : "border border-red-300 bg-red-50 text-red-700"
+          }`}
+        >
+          {msg}
+        </div>
+      ) : null}
 
       {hasExistingTodayLog ? (
         <div className="mt-8 rounded-[28px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.82),rgba(255,255,255,0.64))] p-5 shadow-[0_12px_40px_rgba(0,0,0,0.06)] backdrop-blur-xl">
@@ -486,8 +655,8 @@ subtitle="Capture today’s lesson clearly, with structured progress tracking an
                 Today already has a saved log.
               </p>
               {existingLogMeta?.updatedByName ? (
-  <p className="mt-2 text-sm text-[#5f5f5f]">
-    Last updated by {existingLogMeta.updatedByName}
+                <p className="mt-2 text-sm text-[#5f5f5f]">
+                  Last updated by {existingLogMeta.updatedByName}
                   {existingLogMeta.updatedAtText ? ` • ${existingLogMeta.updatedAtText}` : ""}
                 </p>
               ) : null}
@@ -637,7 +806,7 @@ subtitle="Capture today’s lesson clearly, with structured progress tracking an
           </div>
         </SectionCard>
 
-        <SectionCard title="Dhor" >
+        <SectionCard title="Dhor">
           <div className="grid gap-4">
             <div>
               <FieldLabel>Dhor</FieldLabel>

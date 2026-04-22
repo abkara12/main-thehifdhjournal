@@ -47,7 +47,7 @@ export default function JoinPage() {
       }
 
       await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
-      router.push("/dashboard");
+      router.push("/dashboard/students");
     } catch (err: any) {
       setError(err?.message || "Failed to join.");
     } finally {
