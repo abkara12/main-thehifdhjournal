@@ -183,8 +183,8 @@ export default function StudentsPage() {
 
   return (
     <DashboardShell
-      title="Student Progress"
-subtitle="Open a student, capture today’s lesson, and keep daily hifdh progress updated clearly and efficiently."eyebrow={
+title="Teacher Workspace"
+subtitle="Open a student, record today’s work, and keep each learner’s daily hifdh progress updated smoothly."eyebrow={
   <div className="w-full text-center space-y-2">
     <div className="text-[0.75rem] uppercase tracking-[0.35em] text-[#4f4d4d]">
       Student Management

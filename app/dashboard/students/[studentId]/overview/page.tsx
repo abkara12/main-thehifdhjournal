@@ -52,6 +52,47 @@ function getMonthLabel(dateKey?: string) {
   return d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
 }
 
+function getDateSearchTerms(dateKey?: string) {
+  if (!dateKey) return "";
+
+  const d = parseDateKey(dateKey);
+  const day = String(d.getDate());
+  const monthLong = d.toLocaleDateString("en-GB", { month: "long" }).toLowerCase();
+  const monthShort = d.toLocaleDateString("en-GB", { month: "short" }).toLowerCase();
+  const year = String(d.getFullYear());
+  const weekdayLong = d.toLocaleDateString("en-GB", { weekday: "long" }).toLowerCase();
+  const weekdayShort = d.toLocaleDateString("en-GB", { weekday: "short" }).toLowerCase();
+
+  const longDate = formatLongDate(dateKey).toLowerCase();
+  const dayMonth = `${day} ${monthLong}`;
+  const dayMonthYear = `${day} ${monthLong} ${year}`;
+  const dayShortMonth = `${day} ${monthShort}`;
+  const dayShortMonthYear = `${day} ${monthShort} ${year}`;
+  const iso = dateKey.toLowerCase();
+
+  return [
+    iso,
+    longDate,
+    dayMonth,
+    dayMonthYear,
+    dayShortMonth,
+    dayShortMonthYear,
+    `${monthLong} ${day}`,
+    `${monthLong} ${year}`,
+    `${monthShort} ${day}`,
+    `${weekdayLong} ${longDate}`,
+    `${weekdayShort} ${longDate}`,
+    day,
+    monthLong,
+    monthShort,
+    year,
+    weekdayLong,
+    weekdayShort,
+  ]
+    .join(" ")
+    .toLowerCase();
+}
+
 function sabakToLines(v: unknown) {
   const s = toText(v).toLowerCase().trim();
   if (!s) return 0;
@@ -63,6 +104,38 @@ function sabakToLines(v: unknown) {
 
   const n = parseFloat(s.replace(",", "."));
   return isNaN(n) ? 0 : n;
+}
+
+function getWeeklyGoalStatus(row: LogRow) {
+  const goal = toText(row.weeklyGoal).trim();
+  const started = toText(row.weeklyGoalStartDateKey).trim();
+  const completed = toText(row.weeklyGoalCompletedDateKey).trim();
+  const durationRaw = row.weeklyGoalDurationDays;
+  const duration =
+    typeof durationRaw === "number"
+      ? durationRaw
+      : durationRaw
+      ? Number(durationRaw)
+      : null;
+
+  if (!goal) return { label: "No Goal", tone: "neutral" as const };
+
+  if (completed || (duration ?? 0) > 0) {
+    return { label: "Completed", tone: "success" as const };
+  }
+
+  if (started) {
+    const today = getDateKeySA();
+    const runningDays = diffDaysInclusive(started, today);
+
+    if (runningDays > 7) {
+      return { label: "Overdue", tone: "danger" as const };
+    }
+
+    return { label: "In Progress", tone: "warning" as const };
+  }
+
+  return { label: "Set", tone: "neutral" as const };
 }
 
 type LogRow = {
@@ -87,8 +160,8 @@ type LogRow = {
   weeklyGoalStartDateKey?: string;
   weeklyGoalCompletedDateKey?: string;
   weeklyGoalDurationDays?: number | string;
-updatedByName?: string;
-updatedByEmail?: string;
+  updatedByName?: string;
+  updatedByEmail?: string;
 };
 
 type StudentMeta = {
@@ -161,6 +234,25 @@ function AttendanceBadge({ value }: { value?: string }) {
   );
 }
 
+function WeeklyGoalStatusBadge({ row }: { row: LogRow }) {
+  const status = getWeeklyGoalStatus(row);
+
+  const className =
+    status.tone === "success"
+      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+      : status.tone === "danger"
+      ? "border-red-200 bg-red-50 text-red-700"
+      : status.tone === "warning"
+      ? "border-amber-200 bg-amber-50 text-amber-700"
+      : "border-gray-300 bg-white/80 text-[#5f5f5f]";
+
+  return (
+    <span className={`inline-flex rounded-full border px-3 py-1 text-xs font-medium ${className}`}>
+      {status.label}
+    </span>
+  );
+}
+
 function LogDetails({ row }: { row: LogRow }) {
   return (
     <div className="grid gap-4 p-4 sm:p-5 lg:grid-cols-3">
@@ -196,16 +288,23 @@ function LogDetails({ row }: { row: LogRow }) {
       </div>
 
       <div className="rounded-2xl border border-gray-300 bg-white/82 p-4 lg:col-span-3">
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-3">
           <div>
             <p className="text-sm text-[#7a7a7a]">Weekly Goal</p>
             <p className="mt-1 break-words text-sm text-[#171717]">{row.weeklyGoal || "—"}</p>
           </div>
           <div>
+            <p className="text-sm text-[#7a7a7a]">Goal Status</p>
+            <div className="mt-2">
+              <WeeklyGoalStatusBadge row={row} />
+            </div>
+          </div>
+          <div>
             <p className="text-sm text-[#7a7a7a]">Updated By</p>
-          <p className="mt-1 break-words text-sm text-[#171717]">
-            {row.updatedByName || row.updatedByEmail || "—"}
-          </p>          </div>
+            <p className="mt-1 break-words text-sm text-[#171717]">
+              {row.updatedByName || row.updatedByEmail || "—"}
+            </p>
+          </div>
         </div>
       </div>
     </div>
@@ -227,22 +326,27 @@ function MobileLogCard({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-sm font-semibold text-[#171717]">
-{getDayName(row.dateKey)} • {formatLongDate(row.dateKey) || "—"}     
-       </p>
+              {getDayName(row.dateKey)} • {formatLongDate(row.dateKey) || "—"}
+            </p>
             <p className="mt-1 text-sm text-[#5f5f5f]">
-  S: {row.sabak || "—"} • SD: {row.sabakDhor || "—"} • D: {row.dhor || "—"}
-</p>
+              S: {row.sabak || "—"} • SD: {row.sabakDhor || "—"} • D: {row.dhor || "—"}
+            </p>
           </div>
 
           <AttendanceBadge value={row.attendance} />
         </div>
 
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <WeeklyGoalStatusBadge row={row} />
+        </div>
+
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="text-xs uppercase tracking-[0.16em] text-[#8d7440]">Updated By</p>
-        <p className="mt-1 break-words text-xs text-[#7a7a7a]">
-          {row.updatedByName || row.updatedByEmail || "—"}
-        </p>          </div>
+            <p className="mt-1 break-words text-xs text-[#7a7a7a]">
+              {row.updatedByName || row.updatedByEmail || "—"}
+            </p>
+          </div>
 
           <button
             type="button"
@@ -393,8 +497,11 @@ export default function StudentOverviewPage() {
     if (!term) return rows;
 
     return rows.filter((r) => {
+      const goalStatus = getWeeklyGoalStatus(r);
+
       const haystack = [
         r.dateKey,
+        getDateSearchTerms(r.dateKey),
         r.attendance,
         r.sabak,
         r.sabakReadQuality,
@@ -409,11 +516,12 @@ export default function StudentOverviewPage() {
         r.dhorRead,
         r.dhorReadNotes,
         r.weeklyGoal,
+        goalStatus.label,
         r.sabakDhorMistakes,
         r.dhorMistakes,
         r.updatedByName,
-        r.updatedByEmail,   
-          ]
+        r.updatedByEmail,
+      ]
         .map((v) => toText(v).toLowerCase())
         .join(" ");
 
@@ -442,7 +550,8 @@ export default function StudentOverviewPage() {
   return (
     <DashboardShell
       title={studentName || "Student Overview"}
-subtitle="View progress history, track weekly goals, and review each day’s recorded work in one place."      eyebrow="Student Progress Overview"
+      subtitle="View progress history, track weekly goals, and review each day’s recorded work in one place."
+      eyebrow="Student Progress Overview"
       rightSlot={
         <div className="flex w-full flex-col gap-3 rounded-[24px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.78),rgba(255,255,255,0.60))] p-3 shadow-[0_12px_36px_rgba(0,0,0,0.06)] backdrop-blur-xl sm:p-4 lg:min-w-[260px] lg:max-w-[340px]">
           <Link
@@ -578,6 +687,9 @@ subtitle="View progress history, track weekly goals, and review each day’s rec
                               Goal
                             </th>
                             <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">
+                              Goal Status
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">
                               Updated By
                             </th>
                             <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-[0.18em] text-[#8d7440]">
@@ -599,8 +711,8 @@ subtitle="View progress history, track weekly goals, and review each day’s rec
                                 >
                                   <td className="px-4 py-4 align-top text-sm text-[#171717]">
                                     <div className="font-medium">
-  {getDayName(row.dateKey)} • {formatLongDate(row.dateKey) || "—"}
-</div>
+                                      {getDayName(row.dateKey)} • {formatLongDate(row.dateKey) || "—"}
+                                    </div>
                                   </td>
 
                                   <td className="px-4 py-4 align-top">
@@ -625,10 +737,14 @@ subtitle="View progress history, track weekly goals, and review each day’s rec
                                     </div>
                                   </td>
 
+                                  <td className="px-4 py-4 align-top">
+                                    <WeeklyGoalStatusBadge row={row} />
+                                  </td>
+
                                   <td className="px-4 py-4 align-top text-sm text-[#7a7a7a]">
                                     <div className="max-w-[180px] break-words">
-  {row.updatedByName || row.updatedByEmail || "—"}
-</div>
+                                      {row.updatedByName || row.updatedByEmail || "—"}
+                                    </div>
                                   </td>
 
                                   <td className="px-4 py-4 align-top text-right">
@@ -646,7 +762,7 @@ subtitle="View progress history, track weekly goals, and review each day’s rec
 
                                 {isOpen ? (
                                   <tr className="border-b border-gray-200 bg-[#fdfbf7] last:border-b-0">
-                                    <td colSpan={8} className="p-0">
+                                    <td colSpan={9} className="p-0">
                                       <LogDetails row={row} />
                                     </td>
                                   </tr>

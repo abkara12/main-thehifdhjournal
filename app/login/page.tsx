@@ -49,8 +49,13 @@ export default function LoginPage() {
         return;
       }
 
-      router.push("/dashboard");
-    } catch (err: any) {
+if (profile.role === "admin") {
+  router.push("/dashboard");
+} else if (profile.role === "teacher") {
+  router.push("/dashboard/students");
+} else {
+  router.push("/");
+}    } catch (err: any) {
       setError(err?.message || "Login failed.");
     } finally {
       setLoading(false);

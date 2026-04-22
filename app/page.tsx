@@ -589,25 +589,21 @@ export default function Home() {
       <section className="mx-auto max-w-7xl px-6 pb-16 pt-10 sm:px-10">
         <div className="grid items-stretch gap-10 lg:grid-cols-12">
           <div className="lg:col-span-7">
-            <div className="inline-flex items-center gap-2 rounded-full border border-gray-300 bg-white/70 px-4 py-2 text-sm backdrop-blur-xl">
-              <span className="h-2 w-2 rounded-full bg-[#B8963D]" />
+<div className="mx-auto inline-flex items-center gap-2 rounded-full border border-gray-300 bg-white/70 px-4 py-2 text-sm backdrop-blur-xl lg:mx-0">              <span className="h-2 w-2 rounded-full bg-[#B8963D]" />
               <span className="text-gray-800">The Hifdh Journal</span>
             </div>
 
-            <h1 className="mt-6 text-4xl font-bold leading-[1.05] tracking-tight sm:text-6xl">
-              Preserve the Qur’an.
+<h1 className="mt-6 text-center text-4xl font-bold leading-[1.05] tracking-tight sm:text-6xl lg:text-left">              Preserve the Qur’an.
               <br />
               <span className="text-[#1F3F3F]">Elevate the Heart.</span>
             </h1>
 
-            <p className="mt-6 max-w-2xl text-lg leading-relaxed text-gray-800 sm:text-xl">
-              Welcome to the Hifdh Journal — a journey of memorisation, discipline,
+<p className="mx-auto mt-6 max-w-2xl text-center text-lg leading-relaxed text-gray-800 sm:text-xl lg:mx-0 lg:text-left">              Welcome to the Hifdh Journal — a journey of memorisation, discipline,
               and spiritual growth. Track your daily Sabak, Dhor, Sabak Dhor and weekly goals — all
               in one place.
             </p>
 
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Link
+<div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center lg:justify-start">              <Link
                 href="/signup"
                 className="inline-flex h-12 items-center justify-center rounded-full bg-black px-8 text-base font-medium text-white shadow-sm hover:bg-gray-900"
               >
@@ -627,8 +623,7 @@ export default function Home() {
               </Link>
             </div>
 
-            <div className="mt-10 grid max-w-2xl grid-cols-1 gap-4 sm:grid-cols-3 items-stretch">
-              {[
+<div className="mt-10 grid max-w-2xl grid-cols-1 gap-4 sm:grid-cols-3 items-stretch">              {[
                 {
                   k: "Sabak",
                   v: "Daily memorisation",
@@ -682,8 +677,7 @@ export default function Home() {
                   <div className="absolute left-0 top-0 h-1 w-full bg-gradient-to-r from-[#B8963D] via-[#B8963D]/60 to-transparent" />
                   <div className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-[#B8963D]/10 opacity-0 blur-2xl transition-opacity duration-300 group-hover:opacity-100" />
 
-                  <div className="flex items-center gap-3">
-                    <div className="grid h-10 w-10 place-items-center rounded-2xl bg-black text-white shadow-sm">
+<div className="flex items-center justify-center gap-3 text-center sm:text-left">                    <div className="grid h-10 w-10 place-items-center rounded-2xl bg-black text-white shadow-sm">
                       {item.icon}
                     </div>
                     <div>
@@ -731,15 +725,15 @@ export default function Home() {
       <section id="about" className="py-20">
         <div className="mx-auto max-w-5xl px-6 sm:px-10">
           <div className="rounded-3xl border border-gray-300 bg-white/70 p-10 shadow-sm backdrop-blur-xl">
-            <p className="mb-3 text-sm uppercase tracking-widest text-[#B8963D]">About the Hifdh Journal</p>
+              <p className="mb-3 text-center text-sm uppercase tracking-widest text-[#B8963D] md:text-left">About the Hifdh Journal</p>
 
-            <h2 className="text-4xl font-semibold tracking-tight">
-              Clarity, Consistency, and Accountability in Hifdh
-            </h2>
+              <h2 className="text-center text-4xl font-semibold tracking-tight md:text-left">  
+                            Clarity, Consistency, and Accountability in Hifdh
+                          </h2>
 
-            <div className="mt-6 grid gap-8 md:grid-cols-2">
-              <p className="text-lg leading-relaxed text-gray-800">
-                A structured and organised platform designed to track and manage Hifdh progress with
+                          <div className="mt-6 grid gap-8 md:grid-cols-2">
+              <p className="text-center text-lg leading-relaxed text-gray-800 md:text-left">
+                  A structured and organised platform designed to track and manage Hifdh progress with
                 clarity and consistency.
                 <br />
                 <br />
@@ -756,9 +750,9 @@ export default function Home() {
       <section className="py-12 pb-24">
         <div className="mx-auto max-w-6xl px-6 sm:px-10">
           <div className="mb-10 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-            <div>
-              <p className="text-sm uppercase tracking-widest text-[#5E4A1D]">Program Highlights</p>
-              <h2 className="mt-2 text-4xl font-semibold tracking-tight">
+            <div className="text-center md:text-left">
+            <p className="text-sm uppercase tracking-widest text-[#5E4A1D]">Program Highlights</p>
+            <h2 className="mt-2 text-4xl font-semibold tracking-tight">
                 Designed for Consistency & Excellence
               </h2>
             </div>
@@ -844,8 +838,7 @@ export default function Home() {
             <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-black/10 blur-3xl" />
 
             <div className="relative grid items-center gap-10 md:grid-cols-12">
-              <div className="md:col-span-8">
-                <p className="text-sm uppercase tracking-widest text-[#B8963D]">Ready to begin?</p>
+            <div className="text-center md:col-span-8 md:text-left">                <p className="text-sm uppercase tracking-widest text-[#B8963D]">Ready to begin?</p>
                 <h2 className="mt-2 text-4xl font-semibold tracking-tight">
                   Enrol and start tracking your Hifdh journey today
                 </h2>
@@ -855,7 +848,7 @@ export default function Home() {
                 </p>
               </div>
 
-              <div className="flex flex-wrap gap-3 md:col-span-4 md:justify-end">
+              <div className="flex flex-wrap justify-center gap-3 md:col-span-4 md:justify-end">
                 <Link
                   href="/signup"
                   className="inline-flex h-12 items-center justify-center rounded-full bg-black px-7 text-base font-medium text-white shadow-sm hover:bg-gray-900"
@@ -885,7 +878,7 @@ export default function Home() {
         <div className="mx-auto max-w-7xl px-6 py-14 sm:px-10">
           <div className="grid items-start gap-10 lg:grid-cols-12">
             <div className="lg:col-span-4">
-              <div className="flex items-center gap-4">
+              <div className="flex items-center justify-center gap-4 text-center lg:justify-start lg:text-left">
                 <div className="grid h-[80px] w-[85px] place-items-center rounded-xl border border-gray-300 bg-white/100 shadow-sm backdrop-blur">
                   <Image src="/logo4.png" alt="Hifdh Journal" width={58} height={58} className="rounded" priority />
                 </div>
@@ -896,7 +889,7 @@ export default function Home() {
             </div>
 
             <div className="lg:col-span-7 lg:col-start-6">
-              <div className="grid grid-cols-2 gap-8 sm:grid-cols-3">
+              <div className="grid grid-cols-2 gap-8 text-center sm:grid-cols-3 lg:text-left">
                 <div>
                   <div className="mb-4 text-sm font-semibold text-gray-900">Explore</div>
                   <div className="space-y-3">
@@ -941,7 +934,7 @@ export default function Home() {
               </div>
 
               <div className="mt-10 rounded-3xl border border-gray-300 bg-gradient-to-br from-white/70 to-white/40 p-6 shadow-sm backdrop-blur">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-4 text-center sm:flex-row sm:items-center sm:justify-between sm:text-left">
                   <div>
                     <div className="text-sm uppercase tracking-widest text-[#B8963D]">Student Portal</div>
                     <div className="mt-1 text-lg font-semibold">Ready to begin your journey?</div>
@@ -976,8 +969,7 @@ export default function Home() {
 
           <div className="my-10 h-px bg-gray-200" />
 
-          <div className="flex flex-col items-center justify-between gap-4 text-sm text-gray-600 sm:flex-row">
-            <div className="flex items-center gap-4">
+<div className="flex flex-col items-center justify-between gap-4 text-center text-sm text-gray-600 sm:flex-row sm:text-left">            <div className="flex items-center gap-4">
               <a href="#top" className="hover:text-black">
                 Back to top ↑
               </a>

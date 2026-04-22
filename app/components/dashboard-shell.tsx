@@ -117,8 +117,7 @@ subtitle?: ReactNode;
             </div>
 
             <div className="px-3 py-3 sm:px-4">
-              <div className="flex flex-wrap gap-2">
-                {!roleLoading &&
+<div className="grid grid-cols-3 gap-2">                {!roleLoading &&
                   navItems.map((item) => {
                     const active =
                       pathname === item.href ||
@@ -129,8 +128,7 @@ subtitle?: ReactNode;
                         key={item.href}
                         href={item.href}
                         className={cx(
-                          "rounded-full border px-4 py-2.5 text-sm font-medium transition",
-                          active
+"flex items-center justify-center rounded-full border px-4 py-2.5 text-center text-sm font-medium transition min-h-[44px]",                          active
                             ? "border-[#B8963D]/25 bg-black text-white shadow-[0_10px_30px_rgba(0,0,0,0.12)]"
                             : "border-gray-300 bg-white/72 text-[#5e5e5e] hover:bg-white hover:text-[#171717]"
                         )}
