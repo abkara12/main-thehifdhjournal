@@ -24,6 +24,13 @@ const initialState: GuardState = {
   error: null,
 };
 
+function getDefaultRouteForRole(role?: string | null) {
+  if (role === "teacher") return "/dashboard/students";
+  if (role === "admin") return "/dashboard";
+  if (role === "super_admin") return "/super-admin";
+  return "/login";
+}
+
 export function useRequireStaff(redirectTo = "/login") {
   const router = useRouter();
   const [state, setState] = useState<GuardState>(initialState);
@@ -73,7 +80,7 @@ export function useRequireStaff(redirectTo = "/login") {
             profile,
             error: "You do not have access to this page.",
           });
-          router.replace("/login");
+          router.replace(getDefaultRouteForRole(profile.role));
           return;
         }
 
@@ -99,7 +106,7 @@ export function useRequireStaff(redirectTo = "/login") {
   return state;
 }
 
-export function useRequireAdmin(redirectTo = "/dashboard") {
+export function useRequireAdmin(redirectTo?: string) {
   const router = useRouter();
   const [state, setState] = useState<GuardState>(initialState);
 
@@ -148,7 +155,7 @@ export function useRequireAdmin(redirectTo = "/dashboard") {
             profile,
             error: "Only admins can access this page.",
           });
-          router.replace(redirectTo);
+          router.replace(redirectTo || getDefaultRouteForRole(profile.role));
           return;
         }
 
@@ -174,7 +181,7 @@ export function useRequireAdmin(redirectTo = "/dashboard") {
   return state;
 }
 
-export function useRequireSuperAdmin(redirectTo = "/dashboard") {
+export function useRequireSuperAdmin(redirectTo?: string) {
   const router = useRouter();
   const [state, setState] = useState<GuardState>(initialState);
 
@@ -223,7 +230,7 @@ export function useRequireSuperAdmin(redirectTo = "/dashboard") {
             profile,
             error: "Only super admins can access this page.",
           });
-          router.replace(redirectTo);
+          router.replace(redirectTo || getDefaultRouteForRole(profile.role));
           return;
         }
 
