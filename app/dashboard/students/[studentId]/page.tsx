@@ -20,7 +20,6 @@ import {
 import {
   DashboardShell,
   PremiumBadge,
-  PremiumStatCard,
 } from "../../../components/dashboard-shell";
 
 /* ---------------- helpers ---------------- */
@@ -65,7 +64,11 @@ function SectionCard({
 }
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <label className="mb-2 block text-sm font-medium text-[#5f5f5f]">{children}</label>;
+  return (
+    <label className="mb-2 block text-sm font-medium text-[#5f5f5f]">
+      {children}
+    </label>
+  );
 }
 
 function PremiumInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
@@ -207,6 +210,7 @@ export default function StudentDetailPage() {
   const [markGoalCompleted, setMarkGoalCompleted] = useState(false);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [saveButtonDone, setSaveButtonDone] = useState(false);
 
   const [hasExistingTodayLog, setHasExistingTodayLog] = useState(false);
   const [editorMode, setEditorMode] = useState<"new" | "edit" | "overwrite" | null>(null);
@@ -270,6 +274,7 @@ export default function StudentDetailPage() {
       resetFields();
       setMarkGoalCompleted(false);
       setMsg(null);
+      setSaveButtonDone(false);
       setPageErr(null);
       setStudentExists(false);
       setHasExistingTodayLog(false);
@@ -354,6 +359,7 @@ export default function StudentDetailPage() {
 
   async function handleSave() {
     setMsg("Saving...");
+    setSaveButtonDone(false);
 
     if (!profile?.madrassahId || !firebaseUser?.uid) {
       setPageErr("Your account is not linked correctly.");
@@ -423,103 +429,103 @@ export default function StudentDetailPage() {
       const trimmedSabakDhorMistakes = sabakDhorMistakes.trim();
       const trimmedDhorMistakes = dhorMistakes.trim();
 
-const shouldClearCurrentFields =
-  attendance === "absent" ||
-  isFullDayLogComplete({
-    attendance,
-    sabak: trimmedSabak,
-    sabakDhor: trimmedSabakDhor,
-    dhor: trimmedDhor,
-    sabakReadQuality: trimmedSabakReadQuality,
-    sabakReadNotes: trimmedSabakReadNotes,
-    sabakDhorReadQuality: trimmedSabakDhorReadQuality,
-    sabakDhorReadNotes: trimmedSabakDhorReadNotes,
-    dhorReadQuality: trimmedDhorReadQuality,
-    dhorReadNotes: trimmedDhorReadNotes,
-    sabakDhorMistakes: trimmedSabakDhorMistakes,
-    dhorMistakes: trimmedDhorMistakes,
-  });
+      const shouldClearCurrentFields =
+        attendance === "absent" ||
+        isFullDayLogComplete({
+          attendance,
+          sabak: trimmedSabak,
+          sabakDhor: trimmedSabakDhor,
+          dhor: trimmedDhor,
+          sabakReadQuality: trimmedSabakReadQuality,
+          sabakReadNotes: trimmedSabakReadNotes,
+          sabakDhorReadQuality: trimmedSabakDhorReadQuality,
+          sabakDhorReadNotes: trimmedSabakDhorReadNotes,
+          dhorReadQuality: trimmedDhorReadQuality,
+          dhorReadNotes: trimmedDhorReadNotes,
+          sabakDhorMistakes: trimmedSabakDhorMistakes,
+          dhorMistakes: trimmedDhorMistakes,
+        });
 
-const logPayload =
-  attendance === "absent"
-    ? {
-        dateKey,
-        attendance: "absent",
+      const logPayload =
+        attendance === "absent"
+          ? {
+              dateKey,
+              attendance: "absent",
 
-        sabak: "",
-        sabakDhor: "",
-        dhor: "",
+              sabak: "",
+              sabakDhor: "",
+              dhor: "",
 
-        sabakReadQuality: "",
-        sabakReadNotes: "",
+              sabakReadQuality: "",
+              sabakReadNotes: "",
 
-        sabakDhorReadQuality: "",
-        sabakDhorReadNotes: "",
+              sabakDhorReadQuality: "",
+              sabakDhorReadNotes: "",
 
-        dhorReadQuality: "",
-        dhorReadNotes: "",
+              dhorReadQuality: "",
+              dhorReadNotes: "",
 
-        sabakDhorMistakes: "",
-        dhorMistakes: "",
+              sabakDhorMistakes: "",
+              dhorMistakes: "",
 
-        weeklyGoal: nextGoal,
-        weeklyGoalWeekKey: nextGoalWeekKey,
-        weeklyGoalStartDateKey: nextGoalStartDateKey,
-        weeklyGoalCompletedDateKey: nextGoalCompletedDateKey,
-        weeklyGoalDurationDays: nextGoalDurationDays,
-        weeklyGoalCompleted: Boolean(nextGoalCompletedDateKey),
+              weeklyGoal: nextGoal,
+              weeklyGoalWeekKey: nextGoalWeekKey,
+              weeklyGoalStartDateKey: nextGoalStartDateKey,
+              weeklyGoalCompletedDateKey: nextGoalCompletedDateKey,
+              weeklyGoalDurationDays: nextGoalDurationDays,
+              weeklyGoalCompleted: Boolean(nextGoalCompletedDateKey),
 
-        updatedBy: firebaseUser.uid,
-        updatedByName:
-          profile.fullName ||
-          (profile as any).name ||
-          firebaseUser.displayName ||
-          profile.email ||
-          firebaseUser.email ||
-          "Staff",
-        updatedByEmail: profile.email || firebaseUser.email || "",
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      }
-    : {
-        dateKey,
-        attendance,
+              updatedBy: firebaseUser.uid,
+              updatedByName:
+                profile.fullName ||
+                (profile as any).name ||
+                firebaseUser.displayName ||
+                profile.email ||
+                firebaseUser.email ||
+                "Staff",
+              updatedByEmail: profile.email || firebaseUser.email || "",
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+            }
+          : {
+              dateKey,
+              attendance,
 
-        sabak: trimmedSabak,
-        sabakDhor: trimmedSabakDhor,
-        dhor: trimmedDhor,
+              sabak: trimmedSabak,
+              sabakDhor: trimmedSabakDhor,
+              dhor: trimmedDhor,
 
-        sabakReadQuality: trimmedSabakReadQuality,
-        sabakReadNotes: trimmedSabakReadNotes,
+              sabakReadQuality: trimmedSabakReadQuality,
+              sabakReadNotes: trimmedSabakReadNotes,
 
-        sabakDhorReadQuality: trimmedSabakDhorReadQuality,
-        sabakDhorReadNotes: trimmedSabakDhorReadNotes,
+              sabakDhorReadQuality: trimmedSabakDhorReadQuality,
+              sabakDhorReadNotes: trimmedSabakDhorReadNotes,
 
-        dhorReadQuality: trimmedDhorReadQuality,
-        dhorReadNotes: trimmedDhorReadNotes,
+              dhorReadQuality: trimmedDhorReadQuality,
+              dhorReadNotes: trimmedDhorReadNotes,
 
-        sabakDhorMistakes: trimmedSabakDhorMistakes,
-        dhorMistakes: trimmedDhorMistakes,
+              sabakDhorMistakes: trimmedSabakDhorMistakes,
+              dhorMistakes: trimmedDhorMistakes,
 
-        weeklyGoal: nextGoal,
-        weeklyGoalWeekKey: nextGoalWeekKey,
-        weeklyGoalStartDateKey: nextGoalStartDateKey,
-        weeklyGoalCompletedDateKey: nextGoalCompletedDateKey,
-        weeklyGoalDurationDays: nextGoalDurationDays,
-        weeklyGoalCompleted: Boolean(nextGoalCompletedDateKey),
+              weeklyGoal: nextGoal,
+              weeklyGoalWeekKey: nextGoalWeekKey,
+              weeklyGoalStartDateKey: nextGoalStartDateKey,
+              weeklyGoalCompletedDateKey: nextGoalCompletedDateKey,
+              weeklyGoalDurationDays: nextGoalDurationDays,
+              weeklyGoalCompleted: Boolean(nextGoalCompletedDateKey),
 
-        updatedBy: firebaseUser.uid,
-        updatedByName:
-          profile.fullName ||
-          (profile as any).name ||
-          firebaseUser.displayName ||
-          profile.email ||
-          firebaseUser.email ||
-          "Staff",
-        updatedByEmail: profile.email || firebaseUser.email || "",
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      };
+              updatedBy: firebaseUser.uid,
+              updatedByName:
+                profile.fullName ||
+                (profile as any).name ||
+                firebaseUser.displayName ||
+                profile.email ||
+                firebaseUser.email ||
+                "Staff",
+              updatedByEmail: profile.email || firebaseUser.email || "",
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+            };
 
       await setDoc(logRef, logPayload, { merge: true });
 
@@ -571,17 +577,22 @@ const logPayload =
       setHasExistingTodayLog(true);
       setEditorMode("edit");
       setMarkGoalCompleted(false);
+      setSaveButtonDone(true);
 
       if (shouldClearCurrentFields) {
         resetFields();
-        setMsg("Saved successfully ✓ Logs cleared for the next entry.");
+        setMsg("✅ Log saved successfully. Logs cleared for the next entry.");
       } else {
-        setMsg("Saved successfully ✓");
+        setMsg("✅ Log saved successfully.");
       }
 
-      setTimeout(() => setMsg(null), 2500);
+      setTimeout(() => {
+        setMsg(null);
+        setSaveButtonDone(false);
+      }, 2500);
     } catch (e: any) {
       setMsg(e?.message ?? "Could not save the log.");
+      setSaveButtonDone(false);
     } finally {
       setSaving(false);
     }
@@ -635,12 +646,12 @@ const logPayload =
 
       {msg ? (
         <div
-          className={`mb-6 rounded-2xl p-4 text-sm shadow-sm backdrop-blur-xl ${
-            msg.includes("Saved")
-              ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
+          className={`mb-6 flex items-center justify-center rounded-2xl px-6 py-5 text-center text-base font-semibold shadow-lg transition-all ${
+            msg.includes("✅")
+              ? "border border-emerald-300 bg-emerald-100 text-emerald-800"
               : msg.includes("Saving")
-              ? "border border-gray-300 bg-white/80 text-[#5f5f5f]"
-              : "border border-red-300 bg-red-50 text-red-700"
+              ? "border border-gray-300 bg-white text-[#5f5f5f]"
+              : "border border-red-300 bg-red-100 text-red-700"
           }`}
         >
           {msg}
@@ -852,7 +863,10 @@ const logPayload =
           </div>
         </SectionCard>
 
-        <SectionCard title="Weekly Goal" subtitle="Set this week’s target and mark it complete when achieved.">
+        <SectionCard
+          title="Weekly Goal"
+          subtitle="Set this week’s target and mark it complete when achieved."
+        >
           <div className="mb-4 flex flex-wrap gap-2">
             {goalLocked ? <PremiumBadge>Current week goal active</PremiumBadge> : null}
             {goalAlreadyCompleted ? <PremiumBadge>Goal completed</PremiumBadge> : null}
@@ -895,7 +909,11 @@ const logPayload =
             disabled={saving || (hasExistingTodayLog && editorMode === null)}
             className="rounded-full bg-black px-6 py-3 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(0,0,0,0.12)] transition hover:bg-[#1d1d1d] disabled:opacity-60"
           >
-            {saving ? "Saving..." : "Save Today’s Log"}
+            {saving
+              ? "Saving..."
+              : saveButtonDone
+              ? "Saved ✓"
+              : "Save Today’s Log"}
           </button>
 
           <Link
