@@ -192,6 +192,7 @@ export default function AdminPage() {
   const [addingStudent, setAddingStudent] = useState(false);
   const [studentMsg, setStudentMsg] = useState<string | null>(null);
   const [joinCodeMsg, setJoinCodeMsg] = useState<string | null>(null);
+  const [joinCodeCopied, setJoinCodeCopied] = useState(false);
   const [pageErr, setPageErr] = useState<string | null>(null);
   const [studentListErr, setStudentListErr] = useState<string | null>(null);
 
@@ -430,12 +431,17 @@ export default function AdminPage() {
     const copied = await copyTextToClipboard(joinCode);
 
     if (copied) {
-      setJoinCodeMsg("Join code copied.");
+      setJoinCodeCopied(true);
+      setJoinCodeMsg("✅ Join code copied successfully.");
     } else {
+      setJoinCodeCopied(false);
       setJoinCodeMsg("Could not copy join code.");
     }
 
-    setTimeout(() => setJoinCodeMsg(null), 2000);
+    setTimeout(() => {
+      setJoinCodeMsg(null);
+      setJoinCodeCopied(false);
+    }, 2000);
   }
 
   async function handleRefreshStudents() {
@@ -589,12 +595,24 @@ export default function AdminPage() {
                   type="button"
                   onClick={handleCopyJoinCode}
                   disabled={!joinCode}
-                  className="h-12 w-full sm:w-auto px-7 rounded-2xl bg-black text-white font-semibold hover:bg-gray-900 disabled:opacity-60 shadow-sm"
+                  className={`h-12 w-full sm:w-auto px-7 rounded-2xl font-semibold shadow-sm transition ${
+                    joinCodeCopied
+                      ? "bg-emerald-600 text-white"
+                      : "bg-black text-white hover:bg-gray-900"
+                  } disabled:opacity-60`}
                 >
-                  Copy Join Code
+                  {joinCodeCopied ? "Copied ✓" : "Copy Join Code"}
                 </button>
 
-                <div className="text-sm font-medium text-gray-700">
+                <div
+                  className={`min-h-[24px] text-sm font-semibold transition ${
+                    joinCodeMsg?.includes("✅")
+                      ? "text-emerald-700"
+                      : joinCodeMsg
+                      ? "text-red-700"
+                      : "text-gray-700"
+                  }`}
+                >
                   {joinCodeMsg ?? ""}
                 </div>
               </div>
