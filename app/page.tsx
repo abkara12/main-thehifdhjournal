@@ -564,9 +564,8 @@ export default function Home() {
       )}
 
       {/* HERO */}
-      <section className="mx-auto max-w-7xl px-6 pb-16 pt-10 sm:px-10 xl:max-w-[1440px] xl:px-12 xl:pb-24 xl:pt-14 2xl:max-w-[1560px] 2xl:px-16 2xl:pt-16">
-        <div className="grid items-stretch gap-10 lg:grid-cols-12 xl:gap-14 2xl:gap-16">
-          <div className="lg:col-span-7">
+<section className="mx-auto max-w-7xl px-6 pb-16 pt-10 sm:px-10 lg:min-h-[calc(100vh-136px)] lg:flex lg:items-center xl:max-w-[1480px] xl:px-14 xl:pb-24 xl:pt-10 2xl:max-w-[1640px] 2xl:px-20">        <div className="grid w-full items-center gap-10 lg:grid-cols-12 lg:gap-12 xl:gap-16 2xl:gap-20">
+          <div className="lg:col-span-7 xl:pr-4 2xl:pr-8">
             <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-gray-300 bg-white/70 px-4 py-2 text-sm backdrop-blur-xl lg:mx-0 xl:px-5 xl:py-2.5 xl:text-[15px]">
               <span className="h-2 w-2 rounded-full bg-[#B8963D]" />
               <span className="text-gray-800">The Hifdh Journal</span>
@@ -674,7 +673,7 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="grid gap-6 lg:col-span-5 xl:gap-7">
+          <div className="grid gap-6 lg:col-span-5 lg:self-center xl:gap-8">
             <div className="rounded-3xl border border-gray-300 bg-gradient-to-br from-white/80 to-white/40 p-8 shadow-lg backdrop-blur xl:p-10 2xl:p-12">
               <p className="text-xl italic leading-relaxed xl:text-[1.65rem] xl:leading-[1.65]">
                 “And We have certainly made the Qur’an easy for remembrance, so is there any who
