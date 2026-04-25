@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { auth } from "./lib/firebase";
 import { getUserProfileByUid } from "./lib/current-user";
 
-/* ---------------- PWA Install Prompt (ALWAYS shows until installed) ---------------- */
+/* ---------------- PWA Install Prompt ---------------- */
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
@@ -22,10 +22,10 @@ function isIosDevice() {
 
 function isStandaloneMode() {
   if (typeof window === "undefined") return false;
-  const iosStandalone = (window.navigator as any).standalone === true;
-  const mql = window.matchMedia?.("(display-mode: standalone)");
-  const displayModeStandalone = mql ? mql.matches : false;
-  return iosStandalone || displayModeStandalone;
+  return (
+    (window.navigator as any).standalone === true ||
+    window.matchMedia?.("(display-mode: standalone)").matches
+  );
 }
 
 function InstallAppPrompt() {
@@ -41,54 +41,60 @@ function InstallAppPrompt() {
     if (typeof window === "undefined") return;
 
     const ios = isIosDevice();
+    const installed = isStandaloneMode();
+
     setIsIOS(ios);
+    setStandalone(installed);
 
-    const standaloneNow = isStandaloneMode();
-    setStandalone(standaloneNow);
-
-    if (standaloneNow) {
-      setOpen(false);
-      return;
-    }
+    if (installed) return;
 
     const dismissedAt = Number(localStorage.getItem(DISMISS_KEY) || "0");
-    const hoursSince = dismissedAt ? (Date.now() - dismissedAt) / (1000 * 60 * 60) : 999;
+    const hoursSince = dismissedAt
+      ? (Date.now() - dismissedAt) / (1000 * 60 * 60)
+      : 999;
 
-    if (ios) {
-      if (hoursSince >= DISMISS_COOLDOWN_HOURS) setOpen(true);
-      return;
+    if (ios && hoursSince >= DISMISS_COOLDOWN_HOURS) {
+      setOpen(true);
     }
 
-    const onBIP = (e: Event) => {
+    const onBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
-      setDeferred(e as BeforeInstallPromptEvent);
-      if (hoursSince >= DISMISS_COOLDOWN_HOURS) setOpen(true);
+
+      const installEvent = e as BeforeInstallPromptEvent;
+      setDeferred(installEvent);
+
+      if (hoursSince >= DISMISS_COOLDOWN_HOURS) {
+        setOpen(true);
+      }
     };
 
     const onInstalled = () => {
       setOpen(false);
       setDeferred(null);
-      localStorage.removeItem(DISMISS_KEY);
       setStandalone(true);
+      localStorage.removeItem(DISMISS_KEY);
     };
 
-    window.addEventListener("beforeinstallprompt", onBIP);
+    window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
     window.addEventListener("appinstalled", onInstalled);
 
-    if (hoursSince >= DISMISS_COOLDOWN_HOURS) setOpen(true);
-
     return () => {
-      window.removeEventListener("beforeinstallprompt", onBIP);
+      window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
       window.removeEventListener("appinstalled", onInstalled);
     };
   }, []);
 
   async function handleInstall() {
-    if (!deferred) return;
+    if (!deferred) {
+      alert("Please use your browser menu and choose 'Install app' or 'Add to Home Screen'.");
+      return;
+    }
 
     try {
       await deferred.prompt();
       const choice = await deferred.userChoice;
+
+      setDeferred(null);
 
       if (choice.outcome === "accepted") {
         setOpen(false);
@@ -98,8 +104,7 @@ function InstallAppPrompt() {
         setOpen(false);
       }
     } catch {
-      localStorage.setItem(DISMISS_KEY, String(Date.now()));
-      setOpen(false);
+      alert("The browser blocked the install popup. Please install from the browser menu.");
     }
   }
 
@@ -108,23 +113,19 @@ function InstallAppPrompt() {
     setOpen(false);
   }
 
-  if (standalone) return null;
-  if (!open) return null;
+  if (standalone || !open) return null;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center p-4 sm:items-center">
+    <div className="fixed inset-0 z-[9999] flex items-end justify-center p-4 sm:items-center">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" onClick={handleClose} />
 
-      <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-white/30 bg-white/75 shadow-2xl backdrop-blur-2xl">
-        <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-[#B8963D]/18 blur-3xl" />
-          <div className="absolute -bottom-28 -left-28 h-80 w-80 rounded-full bg-black/10 blur-3xl" />
-        </div>
-
+      <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-white/30 bg-white/90 shadow-2xl backdrop-blur-2xl">
         <div className="relative p-6">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <div className="text-xs uppercase tracking-widest text-[#B8963D]">Install App</div>
+              <div className="text-xs uppercase tracking-widest text-[#B8963D]">
+                Install App
+              </div>
               <h3 className="mt-2 text-xl font-semibold tracking-tight text-gray-900">
                 Add the Hifdh Journal App to your Home Screen
               </h3>
@@ -133,72 +134,49 @@ function InstallAppPrompt() {
             <button
               type="button"
               onClick={handleClose}
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-gray-300 bg-white/70 transition-colors hover:bg-white"
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-gray-300 bg-white/70 hover:bg-white"
               aria-label="Close"
             >
-              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
-                <path
-                  d="M6 6l12 12M18 6l-12 12"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
-              </svg>
+              ✕
             </button>
           </div>
 
           {isIOS ? (
-            <div className="mt-5 rounded-2xl border border-gray-300 bg-white/70 p-4 text-sm text-gray-700">
-              <div className="font-semibold text-gray-900">On iPhone / iPad (Safari):</div>
+            <div className="mt-5 rounded-2xl border border-gray-300 bg-white/80 p-4 text-sm text-gray-700">
+              <div className="font-semibold text-gray-900">On iPhone / iPad:</div>
               <ol className="mt-2 list-inside list-decimal space-y-1">
-                <li>
-                  Tap the <span className="font-semibold">Share</span> button
-                </li>
-                <li>
-                  Select <span className="font-semibold">Add to Home Screen</span>
-                </li>
-                <li>
-                  Tap <span className="font-semibold">Add</span>
-                </li>
+                <li>Open this site in Safari.</li>
+                <li>Tap the Share button.</li>
+                <li>Tap Add to Home Screen.</li>
+                <li>Tap Add.</li>
               </ol>
             </div>
           ) : (
-            <div className="mt-5 rounded-2xl border border-gray-300 bg-white/70 p-4 text-sm text-gray-700">
-              {deferred ? (
-                <div>
-                  Tap <span className="font-semibold">Install</span> to add it to your Home Screen.
-                </div>
-              ) : (
-                <div>
-                  A calm, focused space for daily Qur’an progress.
-                </div>
-              )}
+            <div className="mt-5 rounded-2xl border border-gray-300 bg-white/80 p-4 text-sm text-gray-700">
+              {deferred
+                ? "Tap Install to add the app to your Home Screen."
+                : "If the install button does not appear, open the browser menu and choose Install app."}
             </div>
           )}
 
           <div className="mt-5 flex gap-3">
-            {!isIOS ? (
+            {!isIOS && (
               <button
                 type="button"
                 onClick={handleInstall}
-                className="h-12 flex-1 rounded-2xl bg-black font-semibold text-white transition-colors hover:bg-gray-900 disabled:opacity-60"
-                disabled={!deferred}
+                className="h-12 flex-1 rounded-2xl bg-black font-semibold text-white hover:bg-gray-900"
               >
                 Install
               </button>
-            ) : null}
+            )}
 
             <button
               type="button"
               onClick={handleClose}
-              className="h-12 flex-1 rounded-2xl border border-gray-300 bg-white/70 font-semibold transition-colors hover:bg-white"
+              className="h-12 flex-1 rounded-2xl border border-gray-300 bg-white/70 font-semibold hover:bg-white"
             >
               Not now
             </button>
-          </div>
-
-          <div className="mt-4 text-xs text-gray-500">
-            This message will keep showing until the app is installed.
           </div>
         </div>
       </div>
