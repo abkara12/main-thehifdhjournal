@@ -704,32 +704,37 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ABOUT */}
-      <section id="about" className="py-20 xl:py-24">
-        <div className="mx-auto max-w-5xl px-6 sm:px-10 xl:max-w-[1320px] xl:px-12 2xl:max-w-[1440px] 2xl:px-16">
-          <div className="rounded-3xl border border-gray-300 bg-white/70 p-10 shadow-sm backdrop-blur-xl xl:p-14 2xl:p-16">
-            <p className="mb-3 text-center text-sm uppercase tracking-widest text-[#B8963D] md:text-left xl:text-[15px]">
-              About the Hifdh Journal
-            </p>
+     {/* ABOUT */}
+<section id="about" className="py-20 xl:py-24">
+  <div className="mx-auto max-w-5xl px-6 sm:px-10 xl:max-w-[1320px] xl:px-12 2xl:max-w-[1440px] 2xl:px-16">
+    <div className="rounded-3xl border border-gray-300 bg-white/70 p-10 shadow-sm backdrop-blur-xl xl:p-14 2xl:p-16 text-center">
+      
+      {/* Subheading */}
+      <p className="mb-3 text-sm uppercase tracking-widest text-[#B8963D] xl:text-[15px]">
+        About the Hifdh Journal
+      </p>
 
-            <h2 className="text-center text-4xl font-semibold tracking-tight md:text-left xl:max-w-4xl xl:text-[3.2rem] xl:leading-[1.08]">
-              Clarity, Consistency, and Accountability in Hifdh
-            </h2>
+      {/* Heading */}
+      <h2 className="mx-auto text-4xl font-semibold tracking-tight xl:max-w-4xl xl:text-[3.2rem] xl:leading-[1.08]">
+        Clarity, Consistency, and Accountability in Hifdh
+      </h2>
 
-            <div className="mt-6 grid gap-8 md:grid-cols-2 xl:mt-8 xl:gap-12">
-              <p className="text-center text-lg leading-relaxed text-gray-800 md:text-left xl:max-w-3xl xl:text-[1.2rem] xl:leading-[1.95]">
-                A structured and organised platform designed to track and manage Hifdh progress with
-                clarity and consistency.
-                <br />
-                <br />
-                Through focused Sabak tracking, Dhor monitoring, weekly targets, and personalised
-                notes, the system ensures steady memorisation progress while promoting discipline and
-                accountability.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* Content */}
+      <div className="mt-6 flex justify-center xl:mt-8">
+        <p className="max-w-3xl text-lg leading-relaxed text-gray-800 xl:text-[1.2rem] xl:leading-[1.95]">
+          A structured and organised platform designed to track and manage Hifdh progress with
+          clarity and consistency.
+          <br />
+          <br />
+          Through focused Sabak tracking, Dhor monitoring, weekly targets, and personalised
+          notes, the system ensures steady memorisation progress while promoting discipline and
+          accountability.
+        </p>
+      </div>
+
+    </div>
+  </div>
+</section>
 
       {/* FEATURES */}
       <section className="py-12 pb-24 xl:py-16 xl:pb-28">
