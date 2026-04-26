@@ -6,8 +6,8 @@ import { useParams } from "next/navigation";
 import {
   doc,
   getDoc,
+  runTransaction,
   serverTimestamp,
-  setDoc,
   updateDoc,
 } from "firebase/firestore";
 import { db } from "../../../lib/firebase";
@@ -75,16 +75,22 @@ function PremiumInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
       {...props}
-      className={`w-full rounded-2xl border border-gray-300 bg-white/88 p-4 text-[#171717] outline-none placeholder:text-[#8a8a8a] transition focus:border-[#B8963D] focus:bg-white ${props.className || ""}`}
+      className={`w-full rounded-2xl border border-gray-300 bg-white/88 p-4 text-[#171717] outline-none placeholder:text-[#8a8a8a] transition focus:border-[#B8963D] focus:bg-white disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 ${
+        props.className || ""
+      }`}
     />
   );
 }
 
-function PremiumTextarea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
+function PremiumTextarea(
+  props: React.TextareaHTMLAttributes<HTMLTextAreaElement>
+) {
   return (
     <textarea
       {...props}
-      className={`w-full rounded-2xl border border-gray-300 bg-white/88 p-4 text-[#171717] outline-none placeholder:text-[#8a8a8a] transition focus:border-[#B8963D] focus:bg-white ${props.className || ""}`}
+      className={`w-full rounded-2xl border border-gray-300 bg-white/88 p-4 text-[#171717] outline-none placeholder:text-[#8a8a8a] transition focus:border-[#B8963D] focus:bg-white disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 ${
+        props.className || ""
+      }`}
     />
   );
 }
@@ -93,7 +99,9 @@ function PremiumSelect(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <select
       {...props}
-      className={`w-full rounded-2xl border border-gray-300 bg-white/88 p-4 text-[#171717] outline-none transition focus:border-[#B8963D] focus:bg-white ${props.className || ""}`}
+      className={`w-full rounded-2xl border border-gray-300 bg-white/88 p-4 text-[#171717] outline-none transition focus:border-[#B8963D] focus:bg-white disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 ${
+        props.className || ""
+      }`}
     />
   );
 }
@@ -130,21 +138,7 @@ function hasAnyCurrentLogData(data: any) {
   ].some((value) => toText(value).trim().length > 0);
 }
 
-function isFullDayLogComplete({
-  attendance,
-  sabak,
-  sabakDhor,
-  dhor,
-  sabakReadQuality,
-  sabakReadNotes,
-  sabakDhorReadQuality,
-  sabakDhorReadNotes,
-  dhorReadQuality,
-  dhorReadNotes,
-  sabakDhorMistakes,
-  dhorMistakes,
-}: {
-  attendance: "present" | "absent";
+function hasAnyWorkLogged(values: {
   sabak: string;
   sabakDhor: string;
   dhor: string;
@@ -157,21 +151,7 @@ function isFullDayLogComplete({
   sabakDhorMistakes: string;
   dhorMistakes: string;
 }) {
-  if (attendance === "absent") return true;
-
-  return [
-    sabak,
-    sabakDhor,
-    dhor,
-    sabakReadQuality,
-    sabakReadNotes,
-    sabakDhorReadQuality,
-    sabakDhorReadNotes,
-    dhorReadQuality,
-    dhorReadNotes,
-    sabakDhorMistakes,
-    dhorMistakes,
-  ].every((value) => value.trim().length > 0);
+  return Object.values(values).some((value) => value.trim().length > 0);
 }
 
 export default function StudentDetailPage() {
@@ -179,11 +159,15 @@ export default function StudentDetailPage() {
   const params = useParams<{ studentId: string }>();
   const studentId = params?.studentId || "";
 
+  const [dateKey, setDateKey] = useState(() => getDateKeySA());
+
   const [studentName, setStudentName] = useState("");
   const [studentExists, setStudentExists] = useState(false);
   const [pageErr, setPageErr] = useState<string | null>(null);
 
-  const [attendance, setAttendance] = useState<"present" | "absent">("present");
+  const [attendance, setAttendance] = useState<"present" | "absent">(
+    "present"
+  );
 
   const [sabak, setSabak] = useState("");
   const [sabakDhor, setSabakDhor] = useState("");
@@ -204,8 +188,11 @@ export default function StudentDetailPage() {
   const [weeklyGoal, setWeeklyGoal] = useState("");
   const [weeklyGoalWeekKey, setWeeklyGoalWeekKey] = useState("");
   const [weeklyGoalStartDateKey, setWeeklyGoalStartDateKey] = useState("");
-  const [weeklyGoalCompletedDateKey, setWeeklyGoalCompletedDateKey] = useState("");
-  const [weeklyGoalDurationDays, setWeeklyGoalDurationDays] = useState<number | null>(null);
+  const [weeklyGoalCompletedDateKey, setWeeklyGoalCompletedDateKey] =
+    useState("");
+  const [weeklyGoalDurationDays, setWeeklyGoalDurationDays] = useState<
+    number | null
+  >(null);
 
   const [markGoalCompleted, setMarkGoalCompleted] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -213,11 +200,46 @@ export default function StudentDetailPage() {
   const [saveButtonDone, setSaveButtonDone] = useState(false);
 
   const [hasExistingTodayLog, setHasExistingTodayLog] = useState(false);
-  const [editorMode, setEditorMode] = useState<"new" | "edit" | "overwrite" | null>(null);
-  const [existingLogMeta, setExistingLogMeta] = useState<ExistingLogMeta | null>(null);
+  const [existingLogMeta, setExistingLogMeta] =
+    useState<ExistingLogMeta | null>(null);
+
+  const currentWeekKey = useMemo(
+    () => isoWeekKeyFromDateKey(dateKey),
+    [dateKey]
+  );
+
+  const goalLocked =
+    weeklyGoal.trim().length > 0 &&
+    weeklyGoalWeekKey === currentWeekKey &&
+    !weeklyGoalCompletedDateKey;
+
+  const goalAlreadyCompleted =
+    Boolean(weeklyGoalCompletedDateKey) || (weeklyGoalDurationDays ?? 0) > 0;
+
+  const goalNotReached =
+    weeklyGoal.trim().length > 0 &&
+    weeklyGoalStartDateKey.trim().length > 0 &&
+    !weeklyGoalCompletedDateKey &&
+    diffDaysInclusive(weeklyGoalStartDateKey, dateKey) > 7;
+
+  const workDisabled = attendance === "absent" || saving;
 
   function resetFields() {
     setAttendance("present");
+    setSabak("");
+    setSabakDhor("");
+    setDhor("");
+    setSabakReadQuality("");
+    setSabakReadNotes("");
+    setSabakDhorReadQuality("");
+    setSabakDhorReadNotes("");
+    setDhorReadQuality("");
+    setDhorReadNotes("");
+    setSabakDhorMistakes("");
+    setDhorMistakes("");
+  }
+
+  function clearWorkFieldsOnly() {
     setSabak("");
     setSabakDhor("");
     setDhor("");
@@ -240,7 +262,9 @@ export default function StudentDetailPage() {
     setSabakReadQuality(toText(data?.sabakReadQuality || data?.sabakRead));
     setSabakReadNotes(toText(data?.sabakReadNotes));
 
-    setSabakDhorReadQuality(toText(data?.sabakDhorReadQuality || data?.sabakDhorRead));
+    setSabakDhorReadQuality(
+      toText(data?.sabakDhorReadQuality || data?.sabakDhorRead)
+    );
     setSabakDhorReadNotes(toText(data?.sabakDhorReadNotes));
 
     setDhorReadQuality(toText(data?.dhorReadQuality || data?.dhorRead));
@@ -250,22 +274,16 @@ export default function StudentDetailPage() {
     setDhorMistakes(toText(data?.dhorMistakes));
   }
 
-  const dateKey = useMemo(() => getDateKeySA(), []);
-  const currentWeekKey = useMemo(() => isoWeekKeyFromDateKey(dateKey), [dateKey]);
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      const latestDateKey = getDateKeySA();
+      setDateKey((current) =>
+        current === latestDateKey ? current : latestDateKey
+      );
+    }, 60_000);
 
-  const goalLocked =
-    weeklyGoal.trim().length > 0 &&
-    weeklyGoalWeekKey === currentWeekKey &&
-    !weeklyGoalCompletedDateKey;
-
-  const goalAlreadyCompleted =
-    Boolean(weeklyGoalCompletedDateKey) || (weeklyGoalDurationDays ?? 0) > 0;
-
-  const goalNotReached =
-    weeklyGoal.trim().length > 0 &&
-    weeklyGoalStartDateKey.trim().length > 0 &&
-    !weeklyGoalCompletedDateKey &&
-    diffDaysInclusive(weeklyGoalStartDateKey, dateKey) > 7;
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     async function loadStudent() {
@@ -278,11 +296,17 @@ export default function StudentDetailPage() {
       setPageErr(null);
       setStudentExists(false);
       setHasExistingTodayLog(false);
-      setEditorMode(null);
       setExistingLogMeta(null);
 
       try {
-        const studentRef = doc(db, "madrassahs", profile.madrassahId, "students", studentId);
+        const studentRef = doc(
+          db,
+          "madrassahs",
+          profile.madrassahId,
+          "students",
+          studentId
+        );
+
         const sDoc = await getDoc(studentRef);
 
         if (!sDoc.exists()) {
@@ -311,10 +335,14 @@ export default function StudentDetailPage() {
         setWeeklyGoal(toText(data.weeklyGoal));
         setWeeklyGoalWeekKey(toText(data.weeklyGoalWeekKey));
         setWeeklyGoalStartDateKey(toText(data.weeklyGoalStartDateKey));
-        setWeeklyGoalCompletedDateKey(toText(data.weeklyGoalCompletedDateKey));
+        setWeeklyGoalCompletedDateKey(
+          toText(data.weeklyGoalCompletedDateKey)
+        );
 
         const dur = data.weeklyGoalDurationDays;
-        setWeeklyGoalDurationDays(typeof dur === "number" ? dur : dur ? Number(dur) : null);
+        setWeeklyGoalDurationDays(
+          typeof dur === "number" ? dur : dur ? Number(dur) : null
+        );
 
         const todayLogRef = doc(
           db,
@@ -330,7 +358,6 @@ export default function StudentDetailPage() {
 
         if (!todayLogSnap.exists()) {
           setHasExistingTodayLog(false);
-          setEditorMode("new");
           return;
         }
 
@@ -345,8 +372,6 @@ export default function StudentDetailPage() {
             ? logData.updatedAt.toDate().toLocaleString()
             : "",
         });
-
-        setEditorMode("edit");
       } catch (e: any) {
         setPageErr(e?.message ?? "Could not load the student.");
       }
@@ -360,21 +385,44 @@ export default function StudentDetailPage() {
   async function handleSave() {
     setMsg("Saving...");
     setSaveButtonDone(false);
+    setPageErr(null);
+
+    if (saving) return;
 
     if (!profile?.madrassahId || !firebaseUser?.uid) {
       setPageErr("Your account is not linked correctly.");
+      setMsg(null);
       return;
     }
 
     if (!studentExists) {
       setPageErr("Student not found.");
+      setMsg(null);
       return;
     }
 
     setSaving(true);
 
     try {
-      const studentRef = doc(db, "madrassahs", profile.madrassahId, "students", studentId);
+      const latestDateKey = getDateKeySA();
+
+      if (latestDateKey !== dateKey) {
+        setDateKey(latestDateKey);
+        setMsg(
+          "The date changed while this page was open. Please save again on the new day."
+        );
+        setSaveButtonDone(false);
+        return;
+      }
+
+      const studentRef = doc(
+        db,
+        "madrassahs",
+        profile.madrassahId,
+        "students",
+        studentId
+      );
+
       const logRef = doc(
         db,
         "madrassahs",
@@ -429,108 +477,76 @@ export default function StudentDetailPage() {
       const trimmedSabakDhorMistakes = sabakDhorMistakes.trim();
       const trimmedDhorMistakes = dhorMistakes.trim();
 
-      const shouldClearCurrentFields =
-        attendance === "absent" ||
-        isFullDayLogComplete({
-          attendance,
-          sabak: trimmedSabak,
-          sabakDhor: trimmedSabakDhor,
-          dhor: trimmedDhor,
-          sabakReadQuality: trimmedSabakReadQuality,
-          sabakReadNotes: trimmedSabakReadNotes,
-          sabakDhorReadQuality: trimmedSabakDhorReadQuality,
-          sabakDhorReadNotes: trimmedSabakDhorReadNotes,
-          dhorReadQuality: trimmedDhorReadQuality,
-          dhorReadNotes: trimmedDhorReadNotes,
-          sabakDhorMistakes: trimmedSabakDhorMistakes,
-          dhorMistakes: trimmedDhorMistakes,
-        });
+      const staffName =
+        profile.fullName ||
+        (profile as any).name ||
+        firebaseUser.displayName ||
+        profile.email ||
+        firebaseUser.email ||
+        "Staff";
 
-      const logPayload =
+      const staffEmail = profile.email || firebaseUser.email || "";
+
+      const workValues =
         attendance === "absent"
           ? {
-              dateKey,
-              attendance: "absent",
-
               sabak: "",
               sabakDhor: "",
               dhor: "",
-
               sabakReadQuality: "",
               sabakReadNotes: "",
-
               sabakDhorReadQuality: "",
               sabakDhorReadNotes: "",
-
               dhorReadQuality: "",
               dhorReadNotes: "",
-
               sabakDhorMistakes: "",
               dhorMistakes: "",
-
-              weeklyGoal: nextGoal,
-              weeklyGoalWeekKey: nextGoalWeekKey,
-              weeklyGoalStartDateKey: nextGoalStartDateKey,
-              weeklyGoalCompletedDateKey: nextGoalCompletedDateKey,
-              weeklyGoalDurationDays: nextGoalDurationDays,
-              weeklyGoalCompleted: Boolean(nextGoalCompletedDateKey),
-
-              updatedBy: firebaseUser.uid,
-              updatedByName:
-                profile.fullName ||
-                (profile as any).name ||
-                firebaseUser.displayName ||
-                profile.email ||
-                firebaseUser.email ||
-                "Staff",
-              updatedByEmail: profile.email || firebaseUser.email || "",
-              createdAt: serverTimestamp(),
-              updatedAt: serverTimestamp(),
             }
           : {
-              dateKey,
-              attendance,
-
               sabak: trimmedSabak,
               sabakDhor: trimmedSabakDhor,
               dhor: trimmedDhor,
-
               sabakReadQuality: trimmedSabakReadQuality,
               sabakReadNotes: trimmedSabakReadNotes,
-
               sabakDhorReadQuality: trimmedSabakDhorReadQuality,
               sabakDhorReadNotes: trimmedSabakDhorReadNotes,
-
               dhorReadQuality: trimmedDhorReadQuality,
               dhorReadNotes: trimmedDhorReadNotes,
-
               sabakDhorMistakes: trimmedSabakDhorMistakes,
               dhorMistakes: trimmedDhorMistakes,
-
-              weeklyGoal: nextGoal,
-              weeklyGoalWeekKey: nextGoalWeekKey,
-              weeklyGoalStartDateKey: nextGoalStartDateKey,
-              weeklyGoalCompletedDateKey: nextGoalCompletedDateKey,
-              weeklyGoalDurationDays: nextGoalDurationDays,
-              weeklyGoalCompleted: Boolean(nextGoalCompletedDateKey),
-
-              updatedBy: firebaseUser.uid,
-              updatedByName:
-                profile.fullName ||
-                (profile as any).name ||
-                firebaseUser.displayName ||
-                profile.email ||
-                firebaseUser.email ||
-                "Staff",
-              updatedByEmail: profile.email || firebaseUser.email || "",
-              createdAt: serverTimestamp(),
-              updatedAt: serverTimestamp(),
             };
 
-      await setDoc(logRef, logPayload, { merge: true });
+      const hasWork = hasAnyWorkLogged(workValues);
 
-      await updateDoc(studentRef, {
-        ...(shouldClearCurrentFields
+      if (attendance === "present" && !hasWork && !nextGoal.trim()) {
+        setMsg(
+          "Please enter at least one item, mark absent, or update the weekly goal."
+        );
+        setSaveButtonDone(false);
+        return;
+      }
+
+      const logPayload = {
+        dateKey,
+        attendance,
+
+        ...workValues,
+
+        weeklyGoal: nextGoal,
+        weeklyGoalWeekKey: nextGoalWeekKey,
+        weeklyGoalStartDateKey: nextGoalStartDateKey,
+        weeklyGoalCompletedDateKey: nextGoalCompletedDateKey,
+        weeklyGoalDurationDays: nextGoalDurationDays,
+        weeklyGoalCompleted: Boolean(nextGoalCompletedDateKey),
+
+        updatedBy: firebaseUser.uid,
+        updatedByName: staffName,
+        updatedByEmail: staffEmail,
+        updatedAt: serverTimestamp(),
+      };
+
+      const currentStudentFields =
+        attendance === "absent"
           ? getEmptyCurrentLogFields()
           : {
               currentSabak: trimmedSabak,
@@ -547,25 +563,37 @@ export default function StudentDetailPage() {
 
               currentSabakDhorMistakes: trimmedSabakDhorMistakes,
               currentDhorMistakes: trimmedDhorMistakes,
-            }),
+            };
 
-        weeklyGoal: nextGoal,
-        weeklyGoalWeekKey: nextGoalWeekKey,
-        weeklyGoalStartDateKey: nextGoalStartDateKey,
-        weeklyGoalCompletedDateKey: nextGoalCompletedDateKey,
-        weeklyGoalDurationDays: nextGoalDurationDays,
+      await runTransaction(db, async (transaction) => {
+        const existingLog = await transaction.get(logRef);
 
-        lastLogDateKey: dateKey,
-        updatedByUid: firebaseUser.uid,
-        updatedByName:
-          profile.fullName ||
-          (profile as any).name ||
-          firebaseUser.displayName ||
-          profile.email ||
-          firebaseUser.email ||
-          "Staff",
-        updatedByEmail: profile.email || firebaseUser.email || "",
-        updatedAt: serverTimestamp(),
+        transaction.set(
+          logRef,
+          {
+            ...logPayload,
+            createdAt: existingLog.exists()
+              ? existingLog.data()?.createdAt || serverTimestamp()
+              : serverTimestamp(),
+          },
+          { merge: true }
+        );
+
+        transaction.update(studentRef, {
+          ...currentStudentFields,
+
+          weeklyGoal: nextGoal,
+          weeklyGoalWeekKey: nextGoalWeekKey,
+          weeklyGoalStartDateKey: nextGoalStartDateKey,
+          weeklyGoalCompletedDateKey: nextGoalCompletedDateKey,
+          weeklyGoalDurationDays: nextGoalDurationDays,
+
+          lastLogDateKey: dateKey,
+          updatedByUid: firebaseUser.uid,
+          updatedByName: staffName,
+          updatedByEmail: staffEmail,
+          updatedAt: serverTimestamp(),
+        });
       });
 
       setWeeklyGoal(nextGoal);
@@ -575,18 +603,21 @@ export default function StudentDetailPage() {
       setWeeklyGoalDurationDays(nextGoalDurationDays);
 
       setHasExistingTodayLog(true);
-      setEditorMode("edit");
+      setExistingLogMeta({
+        updatedByName: staffName,
+        updatedAtText: new Date().toLocaleString(),
+      });
+
       setMarkGoalCompleted(false);
       setSaveButtonDone(true);
 
-      if (shouldClearCurrentFields) {
-        resetFields();
-        setMsg("✅ Log saved successfully. Logs cleared for the next entry.");
-      } else {
-        setMsg("✅ Log saved successfully.");
+      if (attendance === "absent") {
+        clearWorkFieldsOnly();
       }
 
-      setTimeout(() => {
+      setMsg("✅ Log saved successfully.");
+
+      window.setTimeout(() => {
         setMsg(null);
         setSaveButtonDone(false);
       }, 2500);
@@ -619,7 +650,7 @@ export default function StudentDetailPage() {
   return (
     <DashboardShell
       title={studentName || "Student Record"}
-      subtitle="Capture today’s lesson clearly, with structured progress tracking and weekly goal updates."
+      subtitle="Capture today’s lesson in any order. Sabak, Sabak Dhor, and Dhor can be saved separately throughout the day."
       eyebrow="Daily Progress Logging"
       rightSlot={
         <div className="flex w-full flex-col gap-3 rounded-[24px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.78),rgba(255,255,255,0.60))] p-3 shadow-[0_12px_36px_rgba(0,0,0,0.06)] backdrop-blur-xl sm:p-4 lg:min-w-[260px] lg:max-w-[340px]">
@@ -660,58 +691,40 @@ export default function StudentDetailPage() {
 
       {hasExistingTodayLog ? (
         <div className="mt-8 rounded-[28px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.82),rgba(255,255,255,0.64))] p-5 shadow-[0_12px_40px_rgba(0,0,0,0.06)] backdrop-blur-xl">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <p className="text-base font-semibold text-[#171717]">
-                Today already has a saved log.
-              </p>
-              {existingLogMeta?.updatedByName ? (
-                <p className="mt-2 text-sm text-[#5f5f5f]">
-                  Last updated by {existingLogMeta.updatedByName}
-                  {existingLogMeta.updatedAtText ? ` • ${existingLogMeta.updatedAtText}` : ""}
-                </p>
-              ) : null}
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => setEditorMode("edit")}
-                className={`rounded-full border px-4 py-3 text-sm font-medium transition ${
-                  editorMode === "edit"
-                    ? "border-[#B8963D]/25 bg-black text-white shadow-[0_10px_30px_rgba(0,0,0,0.10)]"
-                    : "border-gray-300 bg-white/72 text-[#5e5e5e] hover:bg-white hover:text-[#171717]"
-                }`}
-              >
-                Edit Today’s Log
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setEditorMode("overwrite")}
-                className={`rounded-full border px-4 py-3 text-sm font-medium transition ${
-                  editorMode === "overwrite"
-                    ? "border-[#B8963D]/25 bg-black text-white shadow-[0_10px_30px_rgba(0,0,0,0.10)]"
-                    : "border-gray-300 bg-white/72 text-[#5e5e5e] hover:bg-white hover:text-[#171717]"
-                }`}
-              >
-                Overwrite Today’s Log
-              </button>
-            </div>
-          </div>
+          <p className="text-base font-semibold text-[#171717]">
+            Today’s log is open and editable.
+          </p>
+          <p className="mt-2 text-sm leading-7 text-[#5f5f5f]">
+            You can save Sabak now, Dhor later, and Sabak Dhor later. The same
+            day’s record will keep updating.
+          </p>
+          {existingLogMeta?.updatedByName ? (
+            <p className="mt-2 text-sm text-[#5f5f5f]">
+              Last updated by {existingLogMeta.updatedByName}
+              {existingLogMeta.updatedAtText
+                ? ` • ${existingLogMeta.updatedAtText}`
+                : ""}
+            </p>
+          ) : null}
         </div>
-      ) : null}
+      ) : (
+        <div className="mt-8 rounded-[28px] border border-gray-300 bg-white/70 p-5 text-sm leading-7 text-[#5f5f5f] shadow-[0_12px_40px_rgba(0,0,0,0.05)] backdrop-blur-xl">
+          No log has been saved for today yet. Enter whatever the student has
+          read so far and save.
+        </div>
+      )}
 
       <div className="mt-8 grid gap-6">
         <SectionCard
           title="Attendance"
-          subtitle="Set today’s attendance status before capturing the learning detail."
+          subtitle="If the student is absent, the work fields will be saved empty for today."
         >
           <div className="flex flex-wrap gap-3">
             <button
               type="button"
+              disabled={saving}
               onClick={() => setAttendance("present")}
-              className={`rounded-full px-5 py-3 text-sm font-medium transition ${
+              className={`rounded-full px-5 py-3 text-sm font-medium transition disabled:opacity-60 ${
                 attendance === "present"
                   ? "bg-black text-white shadow-[0_12px_30px_rgba(0,0,0,0.12)]"
                   : "border border-gray-300 bg-white/72 text-[#5e5e5e] hover:bg-white hover:text-[#171717]"
@@ -722,8 +735,9 @@ export default function StudentDetailPage() {
 
             <button
               type="button"
+              disabled={saving}
               onClick={() => setAttendance("absent")}
-              className={`rounded-full px-5 py-3 text-sm font-medium transition ${
+              className={`rounded-full px-5 py-3 text-sm font-medium transition disabled:opacity-60 ${
                 attendance === "absent"
                   ? "bg-black text-white shadow-[0_12px_30px_rgba(0,0,0,0.12)]"
                   : "border border-gray-300 bg-white/72 text-[#5e5e5e] hover:bg-white hover:text-[#171717]"
@@ -739,6 +753,7 @@ export default function StudentDetailPage() {
             <div>
               <FieldLabel>Sabak</FieldLabel>
               <PremiumInput
+                disabled={workDisabled}
                 value={sabak}
                 onChange={(e) => setSabak(e.target.value)}
                 placeholder="Enter sabak"
@@ -748,6 +763,7 @@ export default function StudentDetailPage() {
             <div>
               <FieldLabel>Reading Quality</FieldLabel>
               <PremiumSelect
+                disabled={workDisabled}
                 value={sabakReadQuality}
                 onChange={(e) => setSabakReadQuality(e.target.value)}
               >
@@ -762,6 +778,7 @@ export default function StudentDetailPage() {
             <div>
               <FieldLabel>Sabak Notes</FieldLabel>
               <PremiumTextarea
+                disabled={workDisabled}
                 value={sabakReadNotes}
                 onChange={(e) => setSabakReadNotes(e.target.value)}
                 placeholder="Notes about today’s sabak"
@@ -776,6 +793,7 @@ export default function StudentDetailPage() {
             <div>
               <FieldLabel>Sabak Dhor</FieldLabel>
               <PremiumInput
+                disabled={workDisabled}
                 value={sabakDhor}
                 onChange={(e) => setSabakDhor(e.target.value)}
                 placeholder="Enter sabak dhor"
@@ -785,6 +803,7 @@ export default function StudentDetailPage() {
             <div>
               <FieldLabel>Reading Quality</FieldLabel>
               <PremiumSelect
+                disabled={workDisabled}
                 value={sabakDhorReadQuality}
                 onChange={(e) => setSabakDhorReadQuality(e.target.value)}
               >
@@ -799,6 +818,7 @@ export default function StudentDetailPage() {
             <div>
               <FieldLabel>Sabak Dhor Notes</FieldLabel>
               <PremiumTextarea
+                disabled={workDisabled}
                 value={sabakDhorReadNotes}
                 onChange={(e) => setSabakDhorReadNotes(e.target.value)}
                 placeholder="Notes about sabak dhor"
@@ -809,6 +829,7 @@ export default function StudentDetailPage() {
             <div>
               <FieldLabel>Sabak Dhor Mistakes</FieldLabel>
               <PremiumInput
+                disabled={workDisabled}
                 value={sabakDhorMistakes}
                 onChange={(e) => setSabakDhorMistakes(e.target.value)}
                 placeholder="Enter mistakes"
@@ -822,6 +843,7 @@ export default function StudentDetailPage() {
             <div>
               <FieldLabel>Dhor</FieldLabel>
               <PremiumInput
+                disabled={workDisabled}
                 value={dhor}
                 onChange={(e) => setDhor(e.target.value)}
                 placeholder="Enter dhor"
@@ -831,6 +853,7 @@ export default function StudentDetailPage() {
             <div>
               <FieldLabel>Reading Quality</FieldLabel>
               <PremiumSelect
+                disabled={workDisabled}
                 value={dhorReadQuality}
                 onChange={(e) => setDhorReadQuality(e.target.value)}
               >
@@ -845,6 +868,7 @@ export default function StudentDetailPage() {
             <div>
               <FieldLabel>Dhor Notes</FieldLabel>
               <PremiumTextarea
+                disabled={workDisabled}
                 value={dhorReadNotes}
                 onChange={(e) => setDhorReadNotes(e.target.value)}
                 placeholder="Notes about dhor"
@@ -855,6 +879,7 @@ export default function StudentDetailPage() {
             <div>
               <FieldLabel>Dhor Mistakes</FieldLabel>
               <PremiumInput
+                disabled={workDisabled}
                 value={dhorMistakes}
                 onChange={(e) => setDhorMistakes(e.target.value)}
                 placeholder="Enter mistakes"
@@ -877,6 +902,7 @@ export default function StudentDetailPage() {
             <div>
               <FieldLabel>Weekly Goal</FieldLabel>
               <PremiumInput
+                disabled={saving}
                 value={weeklyGoal}
                 onChange={(e) => setWeeklyGoal(e.target.value)}
                 placeholder="Set weekly goal"
@@ -886,6 +912,7 @@ export default function StudentDetailPage() {
             <label className="flex items-center gap-3 rounded-2xl border border-gray-300 bg-white/80 px-4 py-4 text-sm text-[#5f5f5f]">
               <input
                 type="checkbox"
+                disabled={saving || !weeklyGoal.trim()}
                 checked={markGoalCompleted}
                 onChange={(e) => setMarkGoalCompleted(e.target.checked)}
               />
@@ -895,8 +922,12 @@ export default function StudentDetailPage() {
             {weeklyGoalStartDateKey ? (
               <div className="rounded-2xl border border-gray-300 bg-white/80 p-4 text-sm text-[#5f5f5f]">
                 Goal started: {weeklyGoalStartDateKey}
-                {weeklyGoalCompletedDateKey ? ` • Completed: ${weeklyGoalCompletedDateKey}` : ""}
-                {weeklyGoalDurationDays ? ` • Duration: ${weeklyGoalDurationDays} day(s)` : ""}
+                {weeklyGoalCompletedDateKey
+                  ? ` • Completed: ${weeklyGoalCompletedDateKey}`
+                  : ""}
+                {weeklyGoalDurationDays
+                  ? ` • Duration: ${weeklyGoalDurationDays} day(s)`
+                  : ""}
               </div>
             ) : null}
           </div>
@@ -906,14 +937,10 @@ export default function StudentDetailPage() {
           <button
             type="button"
             onClick={handleSave}
-            disabled={saving || (hasExistingTodayLog && editorMode === null)}
+            disabled={saving || !studentExists}
             className="rounded-full bg-black px-6 py-3 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(0,0,0,0.12)] transition hover:bg-[#1d1d1d] disabled:opacity-60"
           >
-            {saving
-              ? "Saving..."
-              : saveButtonDone
-              ? "Saved ✓"
-              : "Save Today’s Log"}
+            {saving ? "Saving..." : saveButtonDone ? "Saved ✓" : "Save Today’s Log"}
           </button>
 
           <Link
