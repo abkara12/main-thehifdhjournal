@@ -61,8 +61,26 @@ type ReportRunRow = {
   createdByEmail?: string;
 };
 
-function copyText(text: string) {
-  return navigator.clipboard.writeText(text);
+function cleanPhoneForWhatsApp(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+
+  if (digits.startsWith("27")) return digits;
+  if (digits.startsWith("0")) return `27${digits.slice(1)}`;
+
+  return digits;
+}
+
+function openWhatsAppMessage(phone: string, message: string) {
+  const cleanPhone = cleanPhoneForWhatsApp(phone);
+
+  if (!cleanPhone) {
+    alert("No parent phone number found for this student.");
+    return false;
+  }
+
+  const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+  window.open(url, "_blank", "noopener,noreferrer");
+  return true;
 }
 
 function RunCard({
@@ -95,16 +113,12 @@ function RunCard({
 
 function ReportCard({
   report,
-  copiedId,
   sentId,
-  onCopy,
-  onMarkSent,
+  onSendWhatsApp,
 }: {
   report: StoredReportRow;
-  copiedId: string | null;
   sentId: string | null;
-  onCopy: (report: StoredReportRow) => void;
-  onMarkSent: (report: StoredReportRow) => void;
+  onSendWhatsApp: (report: StoredReportRow) => void;
 }) {
   return (
     <div className="rounded-[30px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] p-6 shadow-[0_12px_40px_rgba(0,0,0,0.2)]">
@@ -121,7 +135,6 @@ function ReportCard({
               <PremiumBadge>No logs</PremiumBadge>
             )}
 
-            {report.copiedAt ? <PremiumBadge>Copied</PremiumBadge> : null}
             {report.sentAt ? <PremiumBadge>Sent</PremiumBadge> : null}
           </div>
 
@@ -129,7 +142,6 @@ function ReportCard({
             <p>Parent: {report.parentName || "—"}</p>
             <p>Phone: {report.parentPhone || "—"}</p>
             <p>Email: {report.parentEmail || "—"}</p>
-            {report.copiedByEmail ? <p>Copied by: {report.copiedByEmail}</p> : null}
             {report.sentByEmail ? <p>Sent by: {report.sentByEmail}</p> : null}
           </div>
         </div>
@@ -137,18 +149,14 @@ function ReportCard({
         <div className="flex shrink-0 flex-wrap gap-3">
           <button
             type="button"
-            onClick={() => onCopy(report)}
+            onClick={() => onSendWhatsApp(report)}
             className="rounded-full bg-[linear-gradient(135deg,#fbf4e8_0%,#d8b67e_45%,#ffffff_100%)] px-5 py-3 text-sm font-semibold text-black shadow-[0_12px_30px_rgba(216,182,126,0.18)]"
           >
-            {copiedId === report.studentId ? "Copied" : "Copy Report"}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => onMarkSent(report)}
-            className="rounded-full border border-white/10 bg-white/[0.04] px-5 py-3 text-sm font-semibold text-white hover:bg-white/[0.08]"
-          >
-            {sentId === report.studentId ? "Marked Sent" : report.sentAt ? "Sent" : "Mark Sent"}
+            {sentId === report.studentId
+              ? "Opened WhatsApp"
+              : report.sentAt
+              ? "Send Again"
+              : "Send WhatsApp"}
           </button>
         </div>
       </div>
@@ -178,13 +186,13 @@ export default function SuperAdminMadrassahReportsPage() {
   const [pageError, setPageError] = useState("");
   const [msg, setMsg] = useState("");
   const [search, setSearch] = useState("");
-  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [sentId, setSentId] = useState<string | null>(null);
 
   const currentWindow = useMemo(() => getCurrentReportWindow(), []);
 
   async function loadMadrassah() {
     const madrassahSnap = await getDoc(doc(db, "madrassahs", madrassahId));
+
     if (madrassahSnap.exists()) {
       const data = madrassahSnap.data() as any;
       setMadrassahName(String(data.name || "Madrassah"));
@@ -310,7 +318,6 @@ export default function SuperAdminMadrassahReportsPage() {
     );
   }, [reports, search]);
 
-  const copiedCount = reports.filter((r) => !!r.copiedAt).length;
   const sentCount = reports.filter((r) => !!r.sentAt).length;
   const withLogsCount = reports.filter((r) => r.hasLogs).length;
 
@@ -460,58 +467,18 @@ export default function SuperAdminMadrassahReportsPage() {
       await loadRuns();
       setSelectedRunId(currentWindow.runId);
       await loadReportsForRun(currentWindow.runId);
-      setMsg("Current week report run prepared successfully.");
+      setMsg("Current week reports generated successfully.");
     } catch (err: any) {
-      setPageError(err?.message || "Could not prepare report run.");
+      setPageError(err?.message || "Could not generate reports.");
     } finally {
       setPreparing(false);
     }
   }
 
-  async function handleCopy(report: StoredReportRow) {
-    if (!madrassahId || !firebaseUser?.uid || !selectedRunId) return;
+  async function handleSendWhatsApp(report: StoredReportRow) {
+    const opened = openWhatsAppMessage(report.parentPhone, report.reportText);
 
-    try {
-      await copyText(report.reportText);
-
-      await updateDoc(
-        doc(
-          db,
-          "madrassahs",
-          madrassahId,
-          "reportRuns",
-          selectedRunId,
-          "reports",
-          report.studentId
-        ),
-        {
-          copiedAt: serverTimestamp(),
-          copiedByUid: firebaseUser.uid,
-          copiedByEmail: profile?.email || firebaseUser.email || "",
-        }
-      );
-
-      setCopiedId(report.studentId);
-
-      setReports((prev) =>
-        prev.map((item) =>
-          item.studentId === report.studentId
-            ? {
-                ...item,
-                copiedAt: new Date(),
-                copiedByEmail: profile?.email || firebaseUser.email || "",
-              }
-            : item
-        )
-      );
-
-      window.setTimeout(() => setCopiedId(null), 1400);
-    } catch {
-      alert("Copy failed. Please try again.");
-    }
-  }
-
-  async function handleMarkSent(report: StoredReportRow) {
+    if (!opened) return;
     if (!madrassahId || !firebaseUser?.uid || !selectedRunId) return;
 
     try {
@@ -548,7 +515,7 @@ export default function SuperAdminMadrassahReportsPage() {
 
       window.setTimeout(() => setSentId(null), 1400);
     } catch {
-      alert("Could not mark as sent. Please try again.");
+      alert("WhatsApp opened, but the system could not mark this report as sent.");
     }
   }
 
@@ -573,7 +540,7 @@ export default function SuperAdminMadrassahReportsPage() {
   return (
     <DashboardShell
       title={`${madrassahName} Reports`}
-      subtitle="Generate weekly reports from the super admin side, copy them for WhatsApp, and mark each parent report as sent."
+      subtitle="Generate weekly reports from the super admin side, open WhatsApp directly to the parent, and track which reports have been sent."
       eyebrow="Super Admin • Weekly Reports"
       rightSlot={
         <>
@@ -584,7 +551,7 @@ export default function SuperAdminMadrassahReportsPage() {
             disabled={preparing}
             className="rounded-full bg-[linear-gradient(135deg,#fbf4e8_0%,#d8b67e_45%,#ffffff_100%)] px-5 py-3 text-sm font-semibold text-black shadow-[0_12px_30px_rgba(216,182,126,0.18)] disabled:opacity-60"
           >
-            {preparing ? "Preparing..." : "Prepare Current Week"}
+            {preparing ? "Generating..." : "Generate Reports"}
           </button>
         </>
       }
@@ -601,11 +568,38 @@ export default function SuperAdminMadrassahReportsPage() {
         </div>
       ) : null}
 
+      <div className="mb-6 flex justify-end xl:hidden">
+        <button
+          type="button"
+          onClick={handlePrepareCurrentRun}
+          disabled={preparing}
+          className="rounded-full bg-[linear-gradient(135deg,#fbf4e8_0%,#d8b67e_45%,#ffffff_100%)] px-5 py-3 text-sm font-semibold text-black shadow-[0_12px_30px_rgba(216,182,126,0.18)] disabled:opacity-60"
+        >
+          {preparing ? "Generating..." : "Generate Reports"}
+        </button>
+      </div>
+
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <PremiumStatCard label="Report Runs" value={String(runs.length)} subtext="Saved weekly run history." />
-        <PremiumStatCard label="Reports With Logs" value={String(withLogsCount)} subtext="Prepared reports backed by logs." />
-        <PremiumStatCard label="Copied" value={String(copiedCount)} subtext="Copied from this selected run." />
-        <PremiumStatCard label="Sent" value={String(sentCount)} subtext="Marked sent by super admin." />
+        <PremiumStatCard
+          label="Report Runs"
+          value={String(runs.length)}
+          subtext="Saved weekly run history."
+        />
+        <PremiumStatCard
+          label="Reports With Logs"
+          value={String(withLogsCount)}
+          subtext="Prepared reports backed by logs."
+        />
+        <PremiumStatCard
+          label="Sent"
+          value={String(sentCount)}
+          subtext="Reports opened in WhatsApp."
+        />
+        <PremiumStatCard
+          label="Total Reports"
+          value={String(reports.length)}
+          subtext="Reports in this selected run."
+        />
       </div>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[300px_1fr]">
@@ -653,7 +647,9 @@ export default function SuperAdminMadrassahReportsPage() {
               </div>
             ) : filteredReports.length === 0 ? (
               <div className="rounded-2xl border border-white/10 bg-black/10 p-10 text-center text-white/60">
-                {selectedRunId ? "No reports matched your search." : "Select or prepare a run first."}
+                {selectedRunId
+                  ? "No reports matched your search."
+                  : "Select or generate a run first."}
               </div>
             ) : (
               <div className="grid gap-5">
@@ -661,10 +657,8 @@ export default function SuperAdminMadrassahReportsPage() {
                   <ReportCard
                     key={report.studentId}
                     report={report}
-                    copiedId={copiedId}
                     sentId={sentId}
-                    onCopy={handleCopy}
-                    onMarkSent={handleMarkSent}
+                    onSendWhatsApp={handleSendWhatsApp}
                   />
                 ))}
               </div>
