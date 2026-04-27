@@ -2,11 +2,38 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import { collection, doc, getDoc, getDocs, orderBy, query, serverTimestamp, updateDoc } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  orderBy,
+  query,
+  serverTimestamp,
+  setDoc,
+  updateDoc,
+  where,
+} from "firebase/firestore";
+
 import { db } from "../../../../app/lib/firebase";
 import { useRequireSuperAdmin } from "../../../lib/auth-guards";
+import { formatWeeklyReportText, type WeeklyReportLog } from "../../../lib/report-format";
+import { getMonthLabel } from "../../../lib/date";
 import { getCurrentReportWindow } from "../../../lib/report-run";
-import { DashboardShell, PremiumBadge, PremiumStatCard } from "../../../components/dashboard-shell";
+import {
+  DashboardShell,
+  PremiumBadge,
+  PremiumStatCard,
+} from "../../../components/dashboard-shell";
+
+type StudentRow = {
+  id: string;
+  fullName: string;
+  parentName: string;
+  parentPhone: string;
+  parentEmail: string;
+  isActive: boolean;
+};
 
 type StoredReportRow = {
   id: string;
@@ -24,22 +51,76 @@ type StoredReportRow = {
   sentByEmail?: string;
 };
 
-function ReportTrackingCard({
-  report,
-  isBusy,
-  onToggleSent,
+type ReportRunRow = {
+  id: string;
+  startKey: string;
+  endKey: string;
+  label: string;
+  reportCount: number;
+  createdAt?: any;
+  createdByEmail?: string;
+};
+
+function copyText(text: string) {
+  return navigator.clipboard.writeText(text);
+}
+
+function RunCard({
+  run,
+  active,
+  onClick,
 }: {
-  report: StoredReportRow;
-  isBusy: boolean;
-  onToggleSent: () => void;
+  run: ReportRunRow;
+  active: boolean;
+  onClick: () => void;
 }) {
   return (
-    <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.025))] p-5 shadow-[0_12px_40px_rgba(0,0,0,0.2)]">
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+    <button
+      type="button"
+      onClick={onClick}
+      className={`w-full rounded-[24px] border p-4 text-left transition ${
+        active
+          ? "border-[#d8b67e]/30 bg-[linear-gradient(135deg,rgba(251,244,232,0.16),rgba(216,182,126,0.18),rgba(255,255,255,0.06))]"
+          : "border-white/10 bg-white/[0.03] hover:bg-white/[0.06]"
+      }`}
+    >
+      <p className="text-sm font-semibold text-white">{run.label}</p>
+      <p className="mt-2 text-xs text-white/55">{run.reportCount} report(s)</p>
+      {run.createdByEmail ? (
+        <p className="mt-1 text-xs text-white/42">{run.createdByEmail}</p>
+      ) : null}
+    </button>
+  );
+}
+
+function ReportCard({
+  report,
+  copiedId,
+  sentId,
+  onCopy,
+  onMarkSent,
+}: {
+  report: StoredReportRow;
+  copiedId: string | null;
+  sentId: string | null;
+  onCopy: (report: StoredReportRow) => void;
+  onMarkSent: (report: StoredReportRow) => void;
+}) {
+  return (
+    <div className="rounded-[30px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] p-6 shadow-[0_12px_40px_rgba(0,0,0,0.2)]">
+      <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-3">
-            <h2 className="text-2xl font-semibold tracking-[-0.03em] text-white">{report.studentName}</h2>
-            {report.hasLogs ? <PremiumBadge>{report.logCount} log(s)</PremiumBadge> : <PremiumBadge>No logs</PremiumBadge>}
+            <h2 className="text-2xl font-semibold tracking-[-0.03em] text-white">
+              {report.studentName}
+            </h2>
+
+            {report.hasLogs ? (
+              <PremiumBadge>{report.logCount} log(s)</PremiumBadge>
+            ) : (
+              <PremiumBadge>No logs</PremiumBadge>
+            )}
+
             {report.copiedAt ? <PremiumBadge>Copied</PremiumBadge> : null}
             {report.sentAt ? <PremiumBadge>Sent</PremiumBadge> : null}
           </div>
@@ -53,63 +134,111 @@ function ReportTrackingCard({
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={onToggleSent}
-          disabled={isBusy}
-          className={`rounded-full px-5 py-3 text-sm font-medium ${
-            report.sentAt
-              ? "border border-red-500/20 bg-red-500/10 text-red-200"
-              : "bg-[linear-gradient(135deg,#fbf4e8_0%,#d8b67e_45%,#ffffff_100%)] text-black"
-          } disabled:opacity-60`}
-        >
-          {isBusy ? "Saving..." : report.sentAt ? "Mark Unsent" : "Mark Sent"}
-        </button>
+        <div className="flex shrink-0 flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={() => onCopy(report)}
+            className="rounded-full bg-[linear-gradient(135deg,#fbf4e8_0%,#d8b67e_45%,#ffffff_100%)] px-5 py-3 text-sm font-semibold text-black shadow-[0_12px_30px_rgba(216,182,126,0.18)]"
+          >
+            {copiedId === report.studentId ? "Copied" : "Copy Report"}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onMarkSent(report)}
+            className="rounded-full border border-white/10 bg-white/[0.04] px-5 py-3 text-sm font-semibold text-white hover:bg-white/[0.08]"
+          >
+            {sentId === report.studentId ? "Marked Sent" : report.sentAt ? "Sent" : "Mark Sent"}
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-5 rounded-[24px] border border-white/10 bg-black/10 p-5">
+        <pre className="whitespace-pre-wrap break-words font-sans text-sm leading-7 text-white/74">
+          {report.reportText}
+        </pre>
       </div>
     </div>
   );
 }
 
-export default function SuperAdminReportTrackingDetailPage() {
-  const params = useParams<{ madrassahId: string }>();
-  const madrassahId = params?.madrassahId || "";
+export default function SuperAdminMadrassahReportsPage() {
+  const params = useParams();
+  const madrassahId = String(params?.madrassahId || "");
+
   const { loading, profile, firebaseUser, error } = useRequireSuperAdmin();
 
   const [madrassahName, setMadrassahName] = useState("Madrassah");
+  const [runs, setRuns] = useState<ReportRunRow[]>([]);
+  const [selectedRunId, setSelectedRunId] = useState("");
   const [reports, setReports] = useState<StoredReportRow[]>([]);
-  const [loadingData, setLoadingData] = useState(true);
+  const [loadingPage, setLoadingPage] = useState(true);
+  const [loadingReports, setLoadingReports] = useState(false);
+  const [preparing, setPreparing] = useState(false);
   const [pageError, setPageError] = useState("");
   const [msg, setMsg] = useState("");
   const [search, setSearch] = useState("");
-  const [busyId, setBusyId] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [sentId, setSentId] = useState<string | null>(null);
 
   const currentWindow = useMemo(() => getCurrentReportWindow(), []);
 
-  async function loadPage() {
-    if (!madrassahId) return;
+  async function loadMadrassah() {
+    const madrassahSnap = await getDoc(doc(db, "madrassahs", madrassahId));
+    if (madrassahSnap.exists()) {
+      const data = madrassahSnap.data() as any;
+      setMadrassahName(String(data.name || "Madrassah"));
+    }
+  }
 
-    setLoadingData(true);
+  async function loadRuns() {
+    const runSnap = await getDocs(
+      query(
+        collection(db, "madrassahs", madrassahId, "reportRuns"),
+        orderBy("createdAt", "desc")
+      )
+    );
+
+    const nextRuns: ReportRunRow[] = runSnap.docs.map((docSnap) => {
+      const data = docSnap.data() as any;
+
+      return {
+        id: docSnap.id,
+        startKey: String(data.startKey || ""),
+        endKey: String(data.endKey || ""),
+        label: String(data.label || docSnap.id),
+        reportCount: Number(data.reportCount || 0),
+        createdAt: data.createdAt,
+        createdByEmail: String(data.createdByEmail || ""),
+      };
+    });
+
+    setRuns(nextRuns);
+
+    const currentExists = nextRuns.some((r) => r.id === currentWindow.runId);
+
+    if (currentExists) {
+      setSelectedRunId(currentWindow.runId);
+    } else if (nextRuns[0]) {
+      setSelectedRunId(nextRuns[0].id);
+    }
+  }
+
+  async function loadReportsForRun(runId: string) {
+    setLoadingReports(true);
     setPageError("");
-    setMsg("");
 
     try {
-      const [madrassahSnap, reportsSnap] = await Promise.all([
-        getDoc(doc(db, "madrassahs", madrassahId)),
-        getDocs(
-          query(
-            collection(db, "madrassahs", madrassahId, "reportRuns", currentWindow.runId, "reports"),
-            orderBy("studentName")
-          )
-        ),
-      ]);
+      const snap = await getDocs(
+        query(
+          collection(db, "madrassahs", madrassahId, "reportRuns", runId, "reports"),
+          orderBy("studentName")
+        )
+      );
 
-      if (madrassahSnap.exists()) {
-        const data = madrassahSnap.data() as any;
-        setMadrassahName(String(data.name || "Madrassah"));
-      }
-
-      const nextReports: StoredReportRow[] = reportsSnap.docs.map((docSnap) => {
+      const nextReports: StoredReportRow[] = snap.docs.map((docSnap) => {
         const data = docSnap.data() as any;
+
         return {
           id: docSnap.id,
           studentId: String(data.studentId || docSnap.id),
@@ -129,80 +258,313 @@ export default function SuperAdminReportTrackingDetailPage() {
 
       setReports(nextReports);
     } catch (err: any) {
-      setPageError(err?.message || "Could not load report tracking.");
+      setPageError(err?.message || "Could not load report run.");
     } finally {
-      setLoadingData(false);
+      setLoadingReports(false);
     }
   }
 
   useEffect(() => {
-    if (!loading && profile) loadPage();
+    async function init() {
+      if (!madrassahId) return;
+
+      setLoadingPage(true);
+      setPageError("");
+      setMsg("");
+
+      try {
+        await loadMadrassah();
+        await loadRuns();
+      } catch (err: any) {
+        setPageError(err?.message || "Could not load reports page.");
+      } finally {
+        setLoadingPage(false);
+      }
+    }
+
+    if (!loading && profile) {
+      init();
+    }
   }, [loading, profile, madrassahId]);
+
+  useEffect(() => {
+    if (!madrassahId || !selectedRunId) return;
+    loadReportsForRun(selectedRunId);
+  }, [madrassahId, selectedRunId]);
 
   const filteredReports = useMemo(() => {
     const term = search.trim().toLowerCase();
     if (!term) return reports;
 
     return reports.filter((report) =>
-      [report.studentName, report.parentName, report.parentPhone, report.parentEmail]
+      [
+        report.studentName,
+        report.parentName,
+        report.parentPhone,
+        report.parentEmail,
+        report.reportText,
+      ]
         .join(" ")
         .toLowerCase()
         .includes(term)
     );
   }, [reports, search]);
 
-  async function handleToggleSent(report: StoredReportRow) {
-    if (!firebaseUser?.uid) return;
+  const copiedCount = reports.filter((r) => !!r.copiedAt).length;
+  const sentCount = reports.filter((r) => !!r.sentAt).length;
+  const withLogsCount = reports.filter((r) => r.hasLogs).length;
 
-    setBusyId(report.studentId);
+  async function handlePrepareCurrentRun() {
+    if (!madrassahId || !firebaseUser?.uid) {
+      setPageError("Your account is not linked correctly.");
+      return;
+    }
+
+    setPreparing(true);
     setPageError("");
     setMsg("");
 
     try {
-      const ref = doc(
+      const studentsSnap = await getDocs(
+        query(
+          collection(db, "madrassahs", madrassahId, "students"),
+          orderBy("fullName")
+        )
+      );
+
+      const students: StudentRow[] = studentsSnap.docs
+        .map((docSnap) => {
+          const data = docSnap.data() as any;
+
+          return {
+            id: docSnap.id,
+            fullName: String(data.fullName || "Student"),
+            parentName: String(data.parentName || ""),
+            parentPhone: String(data.parentPhone || ""),
+            parentEmail: String(data.parentEmail || ""),
+            isActive: data.isActive !== false,
+          };
+        })
+        .filter((student) => student.isActive);
+
+      const runRef = doc(
         db,
         "madrassahs",
         madrassahId,
         "reportRuns",
-        currentWindow.runId,
-        "reports",
-        report.studentId
+        currentWindow.runId
       );
 
-      if (report.sentAt) {
-        await updateDoc(ref, {
-          sentAt: null,
-          sentByUid: "",
-          sentByEmail: "",
+      await setDoc(
+        runRef,
+        {
+          startKey: currentWindow.startKey,
+          endKey: currentWindow.endKey,
+          label: currentWindow.label,
+          reportCount: students.length,
+          createdByUid: firebaseUser.uid,
+          createdByEmail: profile?.email || firebaseUser.email || "",
+          createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
-        });
-      } else {
-        await updateDoc(ref, {
+        },
+        { merge: true }
+      );
+
+      await Promise.all(
+        students.map(async (student) => {
+          const logsSnap = await getDocs(
+            query(
+              collection(
+                db,
+                "madrassahs",
+                madrassahId,
+                "students",
+                student.id,
+                "logs"
+              ),
+              where("dateKey", ">=", currentWindow.startKey),
+              where("dateKey", "<=", currentWindow.endKey),
+              orderBy("dateKey", "desc")
+            )
+          );
+
+          const logs = logsSnap.docs.map((docSnap) => {
+            const data = docSnap.data() as any;
+
+            return {
+              dateKey: data.dateKey,
+              attendance: data.attendance,
+              sabak: data.sabak,
+              sabakRead: data.sabakRead,
+              sabakReadQuality: data.sabakReadQuality,
+              sabakReadNotes: data.sabakReadNotes,
+              sabakDhor: data.sabakDhor,
+              sabakDhorRead: data.sabakDhorRead,
+              sabakDhorReadQuality: data.sabakDhorReadQuality,
+              sabakDhorReadNotes: data.sabakDhorReadNotes,
+              dhor: data.dhor,
+              dhorRead: data.dhorRead,
+              dhorReadQuality: data.dhorReadQuality,
+              dhorReadNotes: data.dhorReadNotes,
+              sabakDhorMistakes: data.sabakDhorMistakes,
+              dhorMistakes: data.dhorMistakes,
+              weeklyGoal: data.weeklyGoal,
+              weeklyGoalCompleted: data.weeklyGoalCompleted,
+              weeklyGoalCompletedDateKey: data.weeklyGoalCompletedDateKey,
+              weeklyGoalDurationDays: data.weeklyGoalDurationDays,
+            } satisfies WeeklyReportLog;
+          });
+
+          const monthLabel =
+            logs.length > 0
+              ? getMonthLabel(logs[0].dateKey)
+              : getMonthLabel(currentWindow.endKey);
+
+          const reportText = formatWeeklyReportText({
+            studentName: student.fullName,
+            madrassahName,
+            monthLabel,
+            logs,
+          });
+
+          await setDoc(
+            doc(
+              db,
+              "madrassahs",
+              madrassahId,
+              "reportRuns",
+              currentWindow.runId,
+              "reports",
+              student.id
+            ),
+            {
+              studentId: student.id,
+              studentName: student.fullName,
+              parentName: student.parentName,
+              parentPhone: student.parentPhone,
+              parentEmail: student.parentEmail,
+              reportText,
+              monthLabel,
+              hasLogs: logs.length > 0,
+              logCount: logs.length,
+              runId: currentWindow.runId,
+              startKey: currentWindow.startKey,
+              endKey: currentWindow.endKey,
+              updatedAt: serverTimestamp(),
+            },
+            { merge: true }
+          );
+        })
+      );
+
+      await loadRuns();
+      setSelectedRunId(currentWindow.runId);
+      await loadReportsForRun(currentWindow.runId);
+      setMsg("Current week report run prepared successfully.");
+    } catch (err: any) {
+      setPageError(err?.message || "Could not prepare report run.");
+    } finally {
+      setPreparing(false);
+    }
+  }
+
+  async function handleCopy(report: StoredReportRow) {
+    if (!madrassahId || !firebaseUser?.uid || !selectedRunId) return;
+
+    try {
+      await copyText(report.reportText);
+
+      await updateDoc(
+        doc(
+          db,
+          "madrassahs",
+          madrassahId,
+          "reportRuns",
+          selectedRunId,
+          "reports",
+          report.studentId
+        ),
+        {
+          copiedAt: serverTimestamp(),
+          copiedByUid: firebaseUser.uid,
+          copiedByEmail: profile?.email || firebaseUser.email || "",
+        }
+      );
+
+      setCopiedId(report.studentId);
+
+      setReports((prev) =>
+        prev.map((item) =>
+          item.studentId === report.studentId
+            ? {
+                ...item,
+                copiedAt: new Date(),
+                copiedByEmail: profile?.email || firebaseUser.email || "",
+              }
+            : item
+        )
+      );
+
+      window.setTimeout(() => setCopiedId(null), 1400);
+    } catch {
+      alert("Copy failed. Please try again.");
+    }
+  }
+
+  async function handleMarkSent(report: StoredReportRow) {
+    if (!madrassahId || !firebaseUser?.uid || !selectedRunId) return;
+
+    try {
+      await updateDoc(
+        doc(
+          db,
+          "madrassahs",
+          madrassahId,
+          "reportRuns",
+          selectedRunId,
+          "reports",
+          report.studentId
+        ),
+        {
           sentAt: serverTimestamp(),
           sentByUid: firebaseUser.uid,
           sentByEmail: profile?.email || firebaseUser.email || "",
-          updatedAt: serverTimestamp(),
-        });
-      }
+        }
+      );
 
-      await loadPage();
-      setMsg(`${report.studentName} status updated.`);
-    } catch (err: any) {
-      setPageError(err?.message || "Could not update sent status.");
-    } finally {
-      setBusyId(null);
+      setSentId(report.studentId);
+
+      setReports((prev) =>
+        prev.map((item) =>
+          item.studentId === report.studentId
+            ? {
+                ...item,
+                sentAt: new Date(),
+                sentByEmail: profile?.email || firebaseUser.email || "",
+              }
+            : item
+        )
+      );
+
+      window.setTimeout(() => setSentId(null), 1400);
+    } catch {
+      alert("Could not mark as sent. Please try again.");
     }
   }
 
   if (loading) {
-    return <main className="min-h-screen grid place-items-center bg-black text-white">Loading...</main>;
+    return (
+      <main className="min-h-screen grid place-items-center bg-black text-white">
+        Loading...
+      </main>
+    );
   }
 
   if (!profile) {
     return (
       <main className="min-h-screen grid place-items-center bg-black px-6 text-white">
         <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-6 py-4 text-sm text-red-200">
-          {error || "Could not load report tracking detail page."}
+          {error || "Could not load reports page."}
         </div>
       </main>
     );
@@ -210,13 +572,20 @@ export default function SuperAdminReportTrackingDetailPage() {
 
   return (
     <DashboardShell
-      title={madrassahName}
-      subtitle="Track the current weekly report run and mark reports as sent once they’ve been handled."
-      eyebrow="Super Admin • Report Tracking Detail"
+      title={`${madrassahName} Reports`}
+      subtitle="Generate weekly reports from the super admin side, copy them for WhatsApp, and mark each parent report as sent."
+      eyebrow="Super Admin • Weekly Reports"
       rightSlot={
         <>
           <PremiumBadge>{currentWindow.label}</PremiumBadge>
-          <PremiumBadge>{reports.length} report(s)</PremiumBadge>
+          <button
+            type="button"
+            onClick={handlePrepareCurrentRun}
+            disabled={preparing}
+            className="rounded-full bg-[linear-gradient(135deg,#fbf4e8_0%,#d8b67e_45%,#ffffff_100%)] px-5 py-3 text-sm font-semibold text-black shadow-[0_12px_30px_rgba(216,182,126,0.18)] disabled:opacity-60"
+          >
+            {preparing ? "Preparing..." : "Prepare Current Week"}
+          </button>
         </>
       }
     >
@@ -233,43 +602,75 @@ export default function SuperAdminReportTrackingDetailPage() {
       ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <PremiumStatCard label="Prepared" value={String(reports.length)} subtext="Reports in the current run." />
-        <PremiumStatCard label="Copied" value={String(reports.filter((r) => !!r.copiedAt).length)} subtext="Copied reports in this run." />
-        <PremiumStatCard label="Sent" value={String(reports.filter((r) => !!r.sentAt).length)} subtext="Sent reports in this run." />
-        <PremiumStatCard label="Unsent" value={String(reports.filter((r) => !r.sentAt).length)} subtext="Still needing action." />
+        <PremiumStatCard label="Report Runs" value={String(runs.length)} subtext="Saved weekly run history." />
+        <PremiumStatCard label="Reports With Logs" value={String(withLogsCount)} subtext="Prepared reports backed by logs." />
+        <PremiumStatCard label="Copied" value={String(copiedCount)} subtext="Copied from this selected run." />
+        <PremiumStatCard label="Sent" value={String(sentCount)} subtext="Marked sent by super admin." />
       </div>
 
-      <div className="mt-8 rounded-[30px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] p-5 shadow-[0_12px_40px_rgba(0,0,0,0.2)]">
-        <input
-          type="text"
-          placeholder="Search by student or parent details..."
-          className="w-full rounded-2xl border border-white/10 bg-black/10 p-4 text-white outline-none placeholder:text-white/35"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-      </div>
+      <div className="mt-8 grid gap-6 lg:grid-cols-[300px_1fr]">
+        <div className="rounded-[30px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] p-5 shadow-[0_12px_40px_rgba(0,0,0,0.2)]">
+          <div className="mb-4 flex flex-wrap gap-2">
+            <PremiumBadge>Current Window</PremiumBadge>
+            <PremiumBadge>{currentWindow.label}</PremiumBadge>
+          </div>
 
-      <div className="mt-8">
-        {loadingData ? (
-          <div className="rounded-[28px] border border-white/10 bg-white/[0.03] p-8 text-center text-white/60">
-            Loading reports...
+          <p className="text-sm font-medium text-white/75">Report History</p>
+
+          <div className="mt-4 grid gap-3">
+            {loadingPage ? (
+              <p className="text-sm text-white/55">Loading runs...</p>
+            ) : runs.length === 0 ? (
+              <div className="rounded-2xl border border-white/10 bg-black/10 p-4 text-sm text-white/55">
+                No report runs yet.
+              </div>
+            ) : (
+              runs.map((run) => (
+                <RunCard
+                  key={run.id}
+                  run={run}
+                  active={selectedRunId === run.id}
+                  onClick={() => setSelectedRunId(run.id)}
+                />
+              ))
+            )}
           </div>
-        ) : filteredReports.length === 0 ? (
-          <div className="rounded-[28px] border border-white/10 bg-white/[0.03] p-10 text-center text-white/60">
-            {reports.length === 0 ? "No reports prepared for this run yet." : "No reports matched your search."}
+        </div>
+
+        <div className="rounded-[30px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] p-5 shadow-[0_12px_40px_rgba(0,0,0,0.2)]">
+          <input
+            type="text"
+            placeholder="Search by student, parent, phone, email, or report content..."
+            className="w-full rounded-2xl border border-white/10 bg-black/10 p-4 text-white outline-none placeholder:text-white/35"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+
+          <div className="mt-6">
+            {loadingReports ? (
+              <div className="rounded-2xl border border-white/10 bg-black/10 p-8 text-center text-white/60">
+                Loading reports...
+              </div>
+            ) : filteredReports.length === 0 ? (
+              <div className="rounded-2xl border border-white/10 bg-black/10 p-10 text-center text-white/60">
+                {selectedRunId ? "No reports matched your search." : "Select or prepare a run first."}
+              </div>
+            ) : (
+              <div className="grid gap-5">
+                {filteredReports.map((report) => (
+                  <ReportCard
+                    key={report.studentId}
+                    report={report}
+                    copiedId={copiedId}
+                    sentId={sentId}
+                    onCopy={handleCopy}
+                    onMarkSent={handleMarkSent}
+                  />
+                ))}
+              </div>
+            )}
           </div>
-        ) : (
-          <div className="grid gap-4">
-            {filteredReports.map((report) => (
-              <ReportTrackingCard
-                key={report.studentId}
-                report={report}
-                isBusy={busyId === report.studentId}
-                onToggleSent={() => handleToggleSent(report)}
-              />
-            ))}
-          </div>
-        )}
+        </div>
       </div>
     </DashboardShell>
   );
