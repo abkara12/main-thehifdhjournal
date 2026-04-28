@@ -13,6 +13,8 @@ import {
 } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { useRequireAdmin } from "../lib/auth-guards";
+import { signOut } from "firebase/auth";
+import { auth } from "../lib/firebase";
 import {
   DashboardShell,
   PremiumBadge,
@@ -28,6 +30,11 @@ type StaffRow = {
   role: "admin" | "teacher";
   isActive: boolean;
 };
+
+async function handleSignOut() {
+  await signOut(auth);
+  window.location.href = "/";
+}
 
 async function copyTextToClipboard(text: string) {
   if (!text) return false;
@@ -340,6 +347,14 @@ export default function TeachersPage() {
             >
               Copy Join Code
             </button>
+
+            <button
+  type="button"
+  onClick={handleSignOut}
+  className="w-full rounded-full border border-red-300 bg-red-50 px-5 py-3 text-sm font-semibold text-red-700 transition hover:bg-red-100 sm:w-auto xl:px-6 xl:py-3.5 xl:text-[15px]"
+>
+  Sign Out
+</button>
           </div>
         </div>
       }
