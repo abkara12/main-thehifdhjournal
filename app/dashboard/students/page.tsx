@@ -2,14 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { collection, getDocs, orderBy, query } from "firebase/firestore";
+import { collection, getDocs, orderBy, query, where } from "firebase/firestore";
 import { db } from "../../../app/lib/firebase";
 import { useRequireStaff } from "../../lib/auth-guards";
-import {
-  DashboardShell,
-  PremiumBadge,
-  PremiumStatCard,
-} from "../../components/dashboard-shell";
+import { DashboardShell, PremiumStatCard } from "../../components/dashboard-shell";
 
 type StudentRow = {
   id: string;
@@ -21,6 +17,7 @@ type StudentRow = {
   isActive: boolean;
   weeklyGoal: string;
   lastLogDateKey: string;
+  teacherId: string;
 };
 
 function StudentCard({ student }: { student: StudentRow }) {
@@ -77,13 +74,13 @@ function StudentCard({ student }: { student: StudentRow }) {
 }
 
 export default function StudentsPage() {
-  const { loading, profile, error } = useRequireStaff();
+  const { loading, profile, firebaseUser, error } = useRequireStaff();
 
   const [students, setStudents] = useState<StudentRow[]>([]);
   const [loadingStudents, setLoadingStudents] = useState(true);
   const [pageError, setPageError] = useState("");
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
+  const [statusFilter] = useState<"all" | "active" | "inactive">("all");
 
   useEffect(() => {
     async function loadStudents() {
@@ -96,10 +93,23 @@ export default function StudentsPage() {
       setPageError("");
 
       try {
-        const qy = query(
-          collection(db, "madrassahs", profile.madrassahId, "students"),
-          orderBy("fullName")
+        const isTeacherOnly = profile.role === "teacher";
+
+        const studentsRef = collection(
+          db,
+          "madrassahs",
+          profile.madrassahId,
+          "students"
         );
+
+        const qy =
+          isTeacherOnly && firebaseUser?.uid
+            ? query(
+                studentsRef,
+                where("teacherId", "==", firebaseUser.uid),
+                orderBy("fullName")
+              )
+            : query(studentsRef, orderBy("fullName"));
 
         const snap = await getDocs(qy);
 
@@ -116,6 +126,7 @@ export default function StudentsPage() {
             isActive: data.isActive !== false,
             weeklyGoal: String(data.weeklyGoal || ""),
             lastLogDateKey: String(data.lastLogDateKey || ""),
+            teacherId: String(data.teacherId || data.createdBy || ""),
           };
         });
 
@@ -130,7 +141,7 @@ export default function StudentsPage() {
     if (!loading && profile) {
       loadStudents();
     }
-  }, [loading, profile]);
+  }, [loading, profile, firebaseUser]);
 
   const filteredStudents = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -159,8 +170,6 @@ export default function StudentsPage() {
   }, [students, search, statusFilter]);
 
   const totalStudents = students.length;
-  const activeStudents = students.filter((s) => s.isActive).length;
-  const inactiveStudents = students.filter((s) => !s.isActive).length;
   const withGoals = students.filter((s) => s.weeklyGoal.trim()).length;
 
   if (loading) {
@@ -183,22 +192,21 @@ export default function StudentsPage() {
 
   return (
     <DashboardShell
-title="Teacher Workspace"
-subtitle="Open a student, record today’s work, and keep each learner’s daily hifdh progress updated smoothly."eyebrow={
-  <div className="w-full text-center space-y-2">
-    <div className="text-[0.75rem] uppercase tracking-[0.35em] text-[#4f4d4d]">
-      Student Management
-    </div>
-
-    <div className="text-[1.2rem] sm:text-[1.4rem]  uppercase tracking-[0.24em] text-[#a88423]">
-      {profile?.madrassahName || "Your Madrassah"}
-    </div>
-  </div>
-}      rightSlot={
-        <div className="flex w-full flex-col gap-3 rounded-[24px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.78),rgba(255,255,255,0.60))] p-3 shadow-[0_12px_36px_rgba(0,0,0,0.06)] backdrop-blur-xl sm:p-4 lg:min-w-[250px] lg:max-w-[320px]">
-          <div className="flex flex-wrap items-center gap-2">
+      title="Teacher Workspace"
+      subtitle="Open a student, record today’s work, and keep each learner’s daily hifdh progress updated smoothly."
+      eyebrow={
+        <div className="w-full space-y-2 text-center">
+          <div className="text-[0.75rem] uppercase tracking-[0.35em] text-[#4f4d4d]">
+            Student Management
           </div>
 
+          <div className="text-[1.2rem] uppercase tracking-[0.24em] text-[#a88423] sm:text-[1.4rem]">
+            {profile?.madrassahName || "Your Madrassah"}
+          </div>
+        </div>
+      }
+      rightSlot={
+        <div className="flex w-full flex-col gap-3 rounded-[24px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.78),rgba(255,255,255,0.60))] p-3 shadow-[0_12px_36px_rgba(0,0,0,0.06)] backdrop-blur-xl sm:p-4 lg:min-w-[250px] lg:max-w-[320px]">
           <Link
             href="/dashboard/students/new"
             className="w-full rounded-full bg-black px-5 py-3 text-center text-sm font-semibold text-white shadow-[0_12px_30px_rgba(0,0,0,0.12)] transition hover:bg-[#1d1d1d]"
@@ -218,7 +226,11 @@ subtitle="Open a student, record today’s work, and keep each learner’s daily
         <PremiumStatCard
           label="Total Students"
           value={loadingStudents ? "..." : String(totalStudents)}
-          subtext="All student records in this madrassah."
+          subtext={
+            profile.role === "teacher"
+              ? "Your assigned student records."
+              : "All student records in this madrassah."
+          }
         />
 
         <PremiumStatCard
@@ -237,7 +249,6 @@ subtitle="Open a student, record today’s work, and keep each learner’s daily
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-
         </div>
       </div>
 
@@ -250,7 +261,7 @@ subtitle="Open a student, record today’s work, and keep each learner’s daily
           <div className="rounded-[28px] border border-gray-300 bg-white/74 p-10 text-center text-[#666666] shadow-sm backdrop-blur-xl">
             {students.length === 0
               ? "No students found yet."
-              : "No students matched your search or filter."}
+              : "No students matched your search."}
           </div>
         ) : (
           <div className="grid gap-4">

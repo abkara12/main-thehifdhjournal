@@ -77,6 +77,15 @@ export default function NewStudentPage() {
           isActive: true,
           createdBy: firebaseUser?.uid ?? "",
           createdByEmail: profile.email,
+          teacherId: firebaseUser?.uid ?? "",
+          teacherEmail: profile.email || firebaseUser?.email || "",
+          teacherName:
+            profile.fullName ||
+            (profile as any).name ||
+            firebaseUser?.displayName ||
+            profile.email ||
+            firebaseUser?.email ||
+            "Teacher",
           lastLogDateKey: "",
           currentSabak: "",
           currentSabakDhor: "",
