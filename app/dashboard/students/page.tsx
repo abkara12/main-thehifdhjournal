@@ -101,15 +101,10 @@ export default function StudentsPage() {
           profile.madrassahId,
           "students"
         );
-
-        const qy =
-          isTeacherOnly && firebaseUser?.uid
-            ? query(
-                studentsRef,
-                where("teacherId", "==", firebaseUser.uid),
-                orderBy("fullName")
-              )
-            : query(studentsRef, orderBy("fullName"));
+const qy =
+  isTeacherOnly && firebaseUser?.uid
+    ? query(studentsRef, where("teacherId", "==", firebaseUser.uid))
+    : query(studentsRef, orderBy("fullName"));
 
         const snap = await getDocs(qy);
 
@@ -130,7 +125,9 @@ export default function StudentsPage() {
           };
         });
 
-        setStudents(rows);
+        setStudents(
+  rows.sort((a, b) => a.fullName.localeCompare(b.fullName))
+);
       } catch (err: any) {
         setPageError(err?.message || "Could not load students.");
       } finally {
