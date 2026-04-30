@@ -69,45 +69,58 @@ export default function NewStudentPage() {
     try {
       const ref = await addDoc(
         collection(db, "madrassahs", profile.madrassahId, "students"),
-        {
-          fullName: cleanFullName,
-          fullNameLower: cleanFullName.toLowerCase(),
-          parentPhone: cleanParentPhone,
-          parentEmail: cleanParentEmail,
-          isActive: true,
-          createdBy: firebaseUser?.uid ?? "",
-          createdByEmail: profile.email,
-          teacherId: firebaseUser?.uid ?? "",
-          teacherEmail: profile.email || firebaseUser?.email || "",
-          teacherName:
-            profile.fullName ||
-            (profile as any).name ||
-            firebaseUser?.displayName ||
-            profile.email ||
-            firebaseUser?.email ||
-            "Teacher",
-          lastLogDateKey: "",
-          currentSabak: "",
-          currentSabakDhor: "",
-          currentDhor: "",
-          currentSabakReadQuality: "",
-          currentSabakDhorReadQuality: "",
-          currentDhorReadQuality: "",
-          currentSabakReadNotes: "",
-          currentSabakDhorReadNotes: "",
-          currentDhorReadNotes: "",
-          currentSabakDhorMistakes: "",
-          currentDhorMistakes: "",
-          weeklyGoal: "",
-          weeklyGoalWeekKey: "",
-          weeklyGoalStartDateKey: "",
-          weeklyGoalCompletedDateKey: "",
-          weeklyGoalDurationDays: null,
-          updatedByUid: firebaseUser?.uid ?? "",
-          updatedByEmail: profile.email,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        }
+{
+  fullName: cleanFullName,
+  fullNameLower: cleanFullName.toLowerCase(),
+  parentPhone: cleanParentPhone,
+  parentEmail: cleanParentEmail,
+
+  isActive: true,
+
+  createdBy: firebaseUser?.uid ?? "",
+  createdByEmail: profile.email,
+
+  teacherId: firebaseUser?.uid ?? "",
+  teacherIds: firebaseUser?.uid ? [firebaseUser.uid] : [],
+
+  teacherEmail: profile.email || firebaseUser?.email || "",
+  teacherName:
+    profile.fullName ||
+    (profile as any).name ||
+    firebaseUser?.displayName ||
+    profile.email ||
+    firebaseUser?.email ||
+    "Teacher",
+
+  lastLogDateKey: "",
+
+  currentSabak: "",
+  currentSabakDhor: "",
+  currentDhor: "",
+
+  currentSabakReadQuality: "",
+  currentSabakDhorReadQuality: "",
+  currentDhorReadQuality: "",
+
+  currentSabakReadNotes: "",
+  currentSabakDhorReadNotes: "",
+  currentDhorReadNotes: "",
+
+  currentSabakDhorMistakes: "",
+  currentDhorMistakes: "",
+
+  weeklyGoal: "",
+  weeklyGoalWeekKey: "",
+  weeklyGoalStartDateKey: "",
+  weeklyGoalCompletedDateKey: "",
+  weeklyGoalDurationDays: null,
+
+  updatedByUid: firebaseUser?.uid ?? "",
+  updatedByEmail: profile.email,
+
+  createdAt: serverTimestamp(),
+  updatedAt: serverTimestamp(),
+}
       );
 
       setSuccessMsg("Student added successfully.");

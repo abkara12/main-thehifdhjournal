@@ -15,11 +15,7 @@ import { db } from "../lib/firebase";
 import { useRequireAdmin } from "../lib/auth-guards";
 import { signOut } from "firebase/auth";
 import { auth } from "../lib/firebase";
-import {
-  DashboardShell,
-  PremiumBadge,
-  PremiumStatCard,
-} from "../components/dashboard-shell";
+import { DashboardShell, PremiumStatCard } from "../components/dashboard-shell";
 
 type StaffRow = {
   id: string;
@@ -30,6 +26,8 @@ type StaffRow = {
   role: "admin" | "teacher";
   isActive: boolean;
 };
+
+type StudentAccessMode = "shared" | "assigned";
 
 async function handleSignOut() {
   await signOut(auth);
@@ -44,9 +42,7 @@ async function copyTextToClipboard(text: string) {
       await navigator.clipboard.writeText(text);
       return true;
     }
-  } catch {
-    // fall through to fallback
-  }
+  } catch {}
 
   try {
     if (typeof document === "undefined") return false;
@@ -160,10 +156,13 @@ export default function TeachersPage() {
 
   const [staff, setStaff] = useState<StaffRow[]>([]);
   const [joinCode, setJoinCode] = useState("");
+  const [studentAccessMode, setStudentAccessMode] =
+    useState<StudentAccessMode>("shared");
   const [loadingData, setLoadingData] = useState(true);
   const [pageError, setPageError] = useState("");
   const [actionMsg, setActionMsg] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [savingMode, setSavingMode] = useState(false);
   const [search, setSearch] = useState("");
 
   async function loadPageData(currentMadrassahId: string) {
@@ -172,7 +171,7 @@ export default function TeachersPage() {
     setActionMsg("");
 
     try {
-      const [staffSnap, configSnap] = await Promise.all([
+      const [staffSnap, configSnap, madrassahSnap] = await Promise.all([
         getDocs(
           query(
             collection(db, "madrassahs", currentMadrassahId, "staff"),
@@ -180,6 +179,7 @@ export default function TeachersPage() {
           )
         ),
         getDoc(doc(db, "madrassahs", currentMadrassahId, "private", "config")),
+        getDoc(doc(db, "madrassahs", currentMadrassahId)),
       ]);
 
       const rows: StaffRow[] = staffSnap.docs.map((docSnap) => {
@@ -195,8 +195,15 @@ export default function TeachersPage() {
         };
       });
 
+      const madrassahData = madrassahSnap.exists()
+        ? (madrassahSnap.data() as any)
+        : {};
+
       setStaff(rows);
       setJoinCode(configSnap.exists() ? String((configSnap.data() as any).joinCode || "") : "");
+      setStudentAccessMode(
+        madrassahData?.studentAccessMode === "assigned" ? "assigned" : "shared"
+      );
     } catch (err: any) {
       setPageError(err?.message || "Could not load teachers.");
     } finally {
@@ -209,6 +216,38 @@ export default function TeachersPage() {
       loadPageData(profile.madrassahId);
     }
   }, [loading, profile]);
+
+  async function handleChangeStudentAccessMode(nextMode: StudentAccessMode) {
+    if (!profile?.madrassahId) {
+      setPageError("Your account is not linked to a madrassah.");
+      return;
+    }
+
+    if (nextMode === studentAccessMode) return;
+
+    setSavingMode(true);
+    setPageError("");
+    setActionMsg("");
+
+    try {
+      await updateDoc(doc(db, "madrassahs", profile.madrassahId), {
+        studentAccessMode: nextMode,
+        updatedAt: serverTimestamp(),
+      });
+
+      setStudentAccessMode(nextMode);
+
+      setActionMsg(
+        nextMode === "shared"
+          ? "Student access set to shared. All teachers can see the same students."
+          : "Student access set to assigned. Teachers will only see their own students."
+      );
+    } catch (err: any) {
+      setPageError(err?.message || "Could not update student access mode.");
+    } finally {
+      setSavingMode(false);
+    }
+  }
 
   const filteredStaff = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -349,12 +388,12 @@ export default function TeachersPage() {
             </button>
 
             <button
-  type="button"
-  onClick={handleSignOut}
-  className="w-full rounded-full border border-red-300 bg-red-50 px-5 py-3 text-sm font-semibold text-red-700 transition hover:bg-red-100 sm:w-auto xl:px-6 xl:py-3.5 xl:text-[15px]"
->
-  Sign Out
-</button>
+              type="button"
+              onClick={handleSignOut}
+              className="w-full rounded-full border border-red-300 bg-red-50 px-5 py-3 text-sm font-semibold text-red-700 transition hover:bg-red-100 sm:w-auto xl:px-6 xl:py-3.5 xl:text-[15px]"
+            >
+              Sign Out
+            </button>
           </div>
         </div>
       }
@@ -371,17 +410,70 @@ export default function TeachersPage() {
         </div>
       ) : null}
 
+      <div className="mb-8 rounded-[30px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.82),rgba(255,255,255,0.62))] p-5 shadow-[0_12px_40px_rgba(0,0,0,0.06)] backdrop-blur-xl sm:p-6">
+        <p className="text-[11px] uppercase tracking-[0.28em] text-[#8d7440]">
+          Student Access Mode
+        </p>
+
+        <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-[#171717]">
+          How should teachers see students?
+        </h2>
+
+        <p className="mt-3 max-w-3xl text-sm leading-7 text-[#5f5f5f]">
+          Use shared mode when all ustads teach one class together. Use assigned mode when
+          every ustad has their own class and should only see their own students.
+        </p>
+
+        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          <button
+            type="button"
+            disabled={savingMode}
+            onClick={() => handleChangeStudentAccessMode("shared")}
+            className={`rounded-2xl border p-4 text-left transition disabled:opacity-60 ${
+              studentAccessMode === "shared"
+                ? "border-[#B8963D] bg-[#B8963D]/10"
+                : "border-gray-300 bg-white/75 hover:bg-white"
+            }`}
+          >
+            <div className="font-semibold text-[#171717]">Shared Students</div>
+            <div className="mt-1 text-sm leading-6 text-[#666]">
+              Admin and all teachers can see and log for the same students.
+            </div>
+          </button>
+
+          <button
+            type="button"
+            disabled={savingMode}
+            onClick={() => handleChangeStudentAccessMode("assigned")}
+            className={`rounded-2xl border p-4 text-left transition disabled:opacity-60 ${
+              studentAccessMode === "assigned"
+                ? "border-[#B8963D] bg-[#B8963D]/10"
+                : "border-gray-300 bg-white/75 hover:bg-white"
+            }`}
+          >
+            <div className="font-semibold text-[#171717]">Assigned Students</div>
+            <div className="mt-1 text-sm leading-6 text-[#666]">
+              Admin sees all students. Teachers only see students they added.
+            </div>
+          </button>
+        </div>
+
+        <div className="mt-4 text-sm font-medium text-[#5f5f5f]">
+          Current mode:{" "}
+          <span className="font-semibold text-[#171717]">
+            {studentAccessMode === "shared" ? "Shared Students" : "Assigned Students"}
+          </span>
+          {savingMode ? " • Saving..." : ""}
+        </div>
+      </div>
+
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 xl:gap-5 2xl:gap-6">
         <PremiumStatCard
           label="Total Staff"
           value={String(staff.length)}
           subtext="All staff records linked to this madrassah."
         />
-        <PremiumStatCard
-          label="Admins"
-          value={String(adminCount)}
-          subtext="Admin accounts."
-        />
+        <PremiumStatCard label="Admins" value={String(adminCount)} subtext="Admin accounts." />
         <PremiumStatCard
           label="Teachers"
           value={String(teacherCount)}
@@ -411,9 +503,7 @@ export default function TeachersPage() {
           </div>
         ) : filteredStaff.length === 0 ? (
           <div className="rounded-[28px] border border-gray-300 bg-white/70 p-10 text-center text-[#666666] shadow-sm backdrop-blur-xl xl:rounded-[32px] xl:p-14 xl:text-[15px]">
-            {staff.length === 0
-              ? "No staff records found yet."
-              : "No staff matched your search."}
+            {staff.length === 0 ? "No staff records found yet." : "No staff matched your search."}
           </div>
         ) : (
           <div className="grid gap-4 xl:gap-5">

@@ -2,10 +2,20 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { collection, getDocs, orderBy, query, where } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  orderBy,
+  query,
+  where,
+} from "firebase/firestore";
 import { db } from "../../../app/lib/firebase";
 import { useRequireStaff } from "../../lib/auth-guards";
 import { DashboardShell, PremiumStatCard } from "../../components/dashboard-shell";
+
+type StudentAccessMode = "shared" | "assigned";
 
 type StudentRow = {
   id: string;
@@ -81,6 +91,8 @@ export default function StudentsPage() {
   const [pageError, setPageError] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter] = useState<"all" | "active" | "inactive">("all");
+  const [studentAccessMode, setStudentAccessMode] =
+    useState<StudentAccessMode>("shared");
 
   useEffect(() => {
     async function loadStudents() {
@@ -93,7 +105,16 @@ export default function StudentsPage() {
       setPageError("");
 
       try {
-        const isTeacherOnly = profile.role === "teacher";
+        const madrassahRef = doc(db, "madrassahs", profile.madrassahId);
+        const madrassahSnap = await getDoc(madrassahRef);
+        const madrassahData = madrassahSnap.exists()
+          ? (madrassahSnap.data() as any)
+          : {};
+
+        const mode: StudentAccessMode =
+          madrassahData?.studentAccessMode === "assigned" ? "assigned" : "shared";
+
+        setStudentAccessMode(mode);
 
         const studentsRef = collection(
           db,
@@ -101,10 +122,13 @@ export default function StudentsPage() {
           profile.madrassahId,
           "students"
         );
-const qy =
-  isTeacherOnly && firebaseUser?.uid
-    ? query(studentsRef, where("teacherId", "==", firebaseUser.uid))
-    : query(studentsRef, orderBy("fullName"));
+
+        const shouldOnlyShowAssigned =
+          mode === "assigned" && profile.role === "teacher" && !!firebaseUser?.uid;
+
+        const qy = shouldOnlyShowAssigned
+          ? query(studentsRef, where("teacherId", "==", firebaseUser.uid))
+          : query(studentsRef, orderBy("fullName"));
 
         const snap = await getDocs(qy);
 
@@ -125,9 +149,7 @@ const qy =
           };
         });
 
-        setStudents(
-  rows.sort((a, b) => a.fullName.localeCompare(b.fullName))
-);
+        setStudents(rows.sort((a, b) => a.fullName.localeCompare(b.fullName)));
       } catch (err: any) {
         setPageError(err?.message || "Could not load students.");
       } finally {
@@ -224,7 +246,7 @@ const qy =
           label="Total Students"
           value={loadingStudents ? "..." : String(totalStudents)}
           subtext={
-            profile.role === "teacher"
+            profile.role === "teacher" && studentAccessMode === "assigned"
               ? "Your assigned student records."
               : "All student records in this madrassah."
           }

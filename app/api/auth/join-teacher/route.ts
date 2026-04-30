@@ -91,7 +91,7 @@ export async function POST(req: Request) {
     }
 
     const madrassahId = String(joinData.madrassahId || "");
-    const madrassahName = String(joinData.madrassahName || "");
+    const joinCodeMadrassahName = String(joinData.madrassahName || "");
 
     if (!madrassahId) {
       return NextResponse.json(
@@ -99,6 +99,28 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
+
+    const madrassahSnap = await db.doc(`madrassahs/${madrassahId}`).get();
+
+    if (!madrassahSnap.exists) {
+      return NextResponse.json(
+        { error: "This madrassah could not be found." },
+        { status: 400 }
+      );
+    }
+
+    const madrassahData = madrassahSnap.data() as any;
+
+    if (madrassahData?.isActive === false) {
+      return NextResponse.json(
+        { error: "This madrassah is currently inactive." },
+        { status: 400 }
+      );
+    }
+
+    const madrassahName = String(
+      madrassahData?.name || joinCodeMadrassahName || "Madrassah"
+    );
 
     const userRecord = await auth.createUser({
       email,
@@ -146,14 +168,14 @@ export async function POST(req: Request) {
     if (createdUid) {
       try {
         await auth.deleteUser(createdUid);
-      } catch {
-        // swallow cleanup failure
-      }
+      } catch {}
     }
 
-    return NextResponse.json(
-      { error: error?.message || "Could not join madrassah." },
-      { status: 500 }
-    );
+    const message =
+      error?.code === "auth/email-already-exists"
+        ? "An account with this email already exists."
+        : error?.message || "Could not join madrassah.";
+
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

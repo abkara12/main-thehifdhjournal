@@ -7,7 +7,8 @@ import { onAuthStateChanged, User } from "firebase/auth";
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { auth, db } from "../../../lib/firebase";
 
-/** -------------------- Date helpers -------------------- */
+type StudentAccessMode = "shared" | "assigned";
+
 function getDateKeySA() {
   const now = new Date();
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -52,9 +53,7 @@ function isoWeekKeyFromDateKey(dateKey: string) {
       (date.getTime() - firstThursday.getTime()) / (7 * 24 * 60 * 60 * 1000)
     );
 
-  const year = date.getFullYear();
-  const ww = String(weekNo).padStart(2, "0");
-  return `${year}-W${ww}`;
+  return `${date.getFullYear()}-W${String(weekNo).padStart(2, "0")}`;
 }
 
 function toText(v: unknown) {
@@ -62,7 +61,44 @@ function toText(v: unknown) {
   return typeof v === "string" ? v : String(v);
 }
 
-/** -------------------- UI shell -------------------- */
+function userCanAccessStudent({
+  mode,
+  role,
+  uid,
+  student,
+}: {
+  mode: StudentAccessMode;
+  role: string | null;
+  uid: string;
+  student: any;
+}) {
+  if (role === "admin" || role === "super_admin") return true;
+  if (role !== "teacher") return false;
+
+  if (mode === "shared") return true;
+
+  const teacherIds = Array.isArray(student?.teacherIds) ? student.teacherIds : [];
+
+  return (
+    student?.teacherId === uid ||
+    student?.createdBy === uid ||
+    teacherIds.includes(uid)
+  );
+}
+
+const READING_OPTIONS = [
+  { value: "", label: "Select…" },
+  { value: "Excellent", label: "Excellent" },
+  { value: "Good", label: "Good" },
+  { value: "Average", label: "Average" },
+  { value: "Poor", label: "Poor" },
+];
+
+type ExistingLogMeta = {
+  updatedByName?: string;
+  updatedAtText?: string;
+};
+
 function Shell({
   title,
   subtitle,
@@ -85,17 +121,17 @@ function Shell({
         <div className="absolute inset-0 opacity-[0.035] mix-blend-multiply bg-[url('/noise.png')]" />
       </div>
 
-      <div className="max-w-5xl mx-auto px-5 sm:px-10 py-8 sm:py-10">
+      <div className="mx-auto max-w-5xl px-5 py-8 sm:px-10 sm:py-10">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
           <div className="min-w-0">
-            <p className="uppercase tracking-widest text-xs text-[#B8963D]">
+            <p className="text-xs uppercase tracking-widest text-[#B8963D]">
               Dashboard → Student
             </p>
-            <h1 className="mt-2 text-2xl sm:text-4xl font-semibold tracking-tight break-words">
+            <h1 className="mt-2 break-words text-2xl font-semibold tracking-tight sm:text-4xl">
               {title}
             </h1>
             {subtitle ? (
-              <p className="mt-2 text-gray-700 leading-relaxed max-w-2xl">
+              <p className="mt-2 max-w-2xl leading-relaxed text-gray-700">
                 {subtitle}
               </p>
             ) : null}
@@ -112,39 +148,23 @@ function Shell({
 
 function LoadingCard() {
   return (
-    <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur p-6 sm:p-7 shadow-sm">
-      <div className="h-5 w-40 bg-black/10 rounded-full animate-pulse" />
-      <div className="mt-3 h-10 w-2/3 bg-black/10 rounded-2xl animate-pulse" />
+    <div className="rounded-3xl border border-gray-300 bg-white/70 p-6 shadow-sm backdrop-blur sm:p-7">
+      <div className="h-5 w-40 animate-pulse rounded-full bg-black/10" />
+      <div className="mt-3 h-10 w-2/3 animate-pulse rounded-2xl bg-black/10" />
       <div className="mt-6 grid gap-3">
-        <div className="h-12 bg-black/10 rounded-2xl animate-pulse" />
-        <div className="h-12 bg-black/10 rounded-2xl animate-pulse" />
-        <div className="h-12 bg-black/10 rounded-2xl animate-pulse" />
+        <div className="h-12 animate-pulse rounded-2xl bg-black/10" />
+        <div className="h-12 animate-pulse rounded-2xl bg-black/10" />
+        <div className="h-12 animate-pulse rounded-2xl bg-black/10" />
       </div>
     </div>
   );
 }
 
-/** -------------------- Reading quality options -------------------- */
-const READING_OPTIONS = [
-  { value: "", label: "Select…" },
-  { value: "Excellent", label: "Excellent" },
-  { value: "Good", label: "Good" },
-  { value: "Average", label: "Average" },
-  { value: "Poor", label: "Poor" },
-];
-
-type ExistingLogMeta = {
-  updatedByName?: string;
-  updatedAtText?: string;
-};
-
-/** -------------------- Page -------------------- */
 export default function AdminStudentPage() {
   const params = useParams<{ uid: string }>();
   const studentId = params?.uid || "";
 
   const [attendance, setAttendance] = useState<"present" | "absent">("present");
-
   const [me, setMe] = useState<User | null>(null);
   const [checking, setChecking] = useState(true);
   const [role, setRole] = useState<string | null>(null);
@@ -158,16 +178,12 @@ export default function AdminStudentPage() {
   const [sabak, setSabak] = useState("");
   const [sabakDhor, setSabakDhor] = useState("");
   const [dhor, setDhor] = useState("");
-
   const [sabakReadQuality, setSabakReadQuality] = useState("");
   const [sabakReadNotes, setSabakReadNotes] = useState("");
-
   const [sabakDhorReadQuality, setSabakDhorReadQuality] = useState("");
   const [sabakDhorReadNotes, setSabakDhorReadNotes] = useState("");
-
   const [dhorReadQuality, setDhorReadQuality] = useState("");
   const [dhorReadNotes, setDhorReadNotes] = useState("");
-
   const [sabakDhorMistakes, setSabakDhorMistakes] = useState("");
   const [dhorMistakes, setDhorMistakes] = useState("");
 
@@ -180,7 +196,6 @@ export default function AdminStudentPage() {
   const [markGoalCompleted, setMarkGoalCompleted] = useState(false);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-
   const [hasExistingTodayLog, setHasExistingTodayLog] = useState(false);
   const [editorMode, setEditorMode] = useState<"new" | "edit" | "overwrite" | null>(null);
   const [existingLogMeta, setExistingLogMeta] = useState<ExistingLogMeta | null>(null);
@@ -191,40 +206,30 @@ export default function AdminStudentPage() {
 
   function resetFields() {
     setAttendance("present");
-
     setSabak("");
     setSabakDhor("");
     setDhor("");
-
     setSabakReadQuality("");
     setSabakReadNotes("");
-
     setSabakDhorReadQuality("");
     setSabakDhorReadNotes("");
-
     setDhorReadQuality("");
     setDhorReadNotes("");
-
     setSabakDhorMistakes("");
     setDhorMistakes("");
   }
 
   function fillFieldsFromLog(data: any) {
     setAttendance(data?.attendance === "absent" ? "absent" : "present");
-
     setSabak(toText(data?.sabak));
     setSabakDhor(toText(data?.sabakDhor));
     setDhor(toText(data?.dhor));
-
     setSabakReadQuality(toText(data?.sabakReadQuality || data?.sabakRead));
     setSabakReadNotes(toText(data?.sabakReadNotes));
-
     setSabakDhorReadQuality(toText(data?.sabakDhorReadQuality || data?.sabakDhorRead));
     setSabakDhorReadNotes(toText(data?.sabakDhorReadNotes));
-
     setDhorReadQuality(toText(data?.dhorReadQuality || data?.dhorRead));
     setDhorReadNotes(toText(data?.dhorReadNotes));
-
     setSabakDhorMistakes(toText(data?.sabakDhorMistakes));
     setDhorMistakes(toText(data?.dhorMistakes));
   }
@@ -283,7 +288,7 @@ export default function AdminStudentPage() {
 
   useEffect(() => {
     async function loadStudent() {
-      if (!studentId || !madrassahId) return;
+      if (!studentId || !madrassahId || !me) return;
 
       resetFields();
       setMarkGoalCompleted(false);
@@ -295,7 +300,17 @@ export default function AdminStudentPage() {
       setExistingLogMeta(null);
 
       try {
-        const sDoc = await getDoc(doc(db, "madrassahs", madrassahId, "students", studentId));
+        const madrassahSnap = await getDoc(doc(db, "madrassahs", madrassahId));
+        const madrassahData = madrassahSnap.exists()
+          ? (madrassahSnap.data() as any)
+          : {};
+
+        const mode: StudentAccessMode =
+          madrassahData?.studentAccessMode === "assigned" ? "assigned" : "shared";
+
+        const sDoc = await getDoc(
+          doc(db, "madrassahs", madrassahId, "students", studentId)
+        );
 
         if (!sDoc.exists()) {
           setStudentName("Student");
@@ -304,6 +319,12 @@ export default function AdminStudentPage() {
         }
 
         const data = sDoc.data() as any;
+
+        if (!userCanAccessStudent({ mode, role, uid: me.uid, student: data })) {
+          setStudentName(toText(data.fullName) || "Student");
+          setPageErr("You do not have access to this student.");
+          return;
+        }
 
         setStudentExists(true);
         setStudentName(toText(data.fullName) || "Student");
@@ -315,21 +336,26 @@ export default function AdminStudentPage() {
         const dur = data.weeklyGoalDurationDays;
         setWeeklyGoalDurationDays(typeof dur === "number" ? dur : dur ? Number(dur) : null);
 
-        const logRef = doc(db, "madrassahs", madrassahId, "students", studentId, "logs", dateKey);
+        const logRef = doc(
+          db,
+          "madrassahs",
+          madrassahId,
+          "students",
+          studentId,
+          "logs",
+          dateKey
+        );
         const logSnap = await getDoc(logRef);
 
         if (logSnap.exists()) {
           const logData = logSnap.data() as any;
-
           setHasExistingTodayLog(true);
           setEditorMode(null);
 
           const updatedAtValue = logData?.updatedAt?.toDate?.();
           setExistingLogMeta({
             updatedByName:
-              toText(logData?.updatedByName) ||
-              toText(logData?.updatedByEmail) ||
-              "",
+              toText(logData?.updatedByName) || toText(logData?.updatedByEmail) || "",
             updatedAtText: updatedAtValue
               ? updatedAtValue.toLocaleString("en-ZA", {
                   timeZone: "Africa/Johannesburg",
@@ -347,7 +373,7 @@ export default function AdminStudentPage() {
     }
 
     loadStudent();
-  }, [studentId, madrassahId, dateKey]);
+  }, [studentId, madrassahId, dateKey, me, role]);
 
   async function openEditTodayLog() {
     if (!madrassahId || !studentId) return;
@@ -355,7 +381,15 @@ export default function AdminStudentPage() {
     try {
       setPageErr(null);
 
-      const logRef = doc(db, "madrassahs", madrassahId, "students", studentId, "logs", dateKey);
+      const logRef = doc(
+        db,
+        "madrassahs",
+        madrassahId,
+        "students",
+        studentId,
+        "logs",
+        dateKey
+      );
       const logSnap = await getDoc(logRef);
 
       if (!logSnap.exists()) {
@@ -381,24 +415,13 @@ export default function AdminStudentPage() {
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
 
-    if (!studentId) {
-      setMsg("Error: Invalid student.");
-      return;
-    }
-
+    if (!studentId) return setMsg("Error: Invalid student.");
     if (!me || !madrassahId || !role || !["admin", "teacher"].includes(role)) {
-      setMsg("Error: You do not have permission to save.");
-      return;
+      return setMsg("Error: You do not have permission to save.");
     }
-
-    if (!studentExists) {
-      setMsg("Error: Student not found.");
-      return;
-    }
-
+    if (!studentExists) return setMsg("Error: Student not found.");
     if (hasExistingTodayLog && !editorMode) {
-      setMsg("Error: Choose Edit or Overwrite for today’s saved log first.");
-      return;
+      return setMsg("Error: Choose Edit or Overwrite for today’s saved log first.");
     }
 
     setSaving(true);
@@ -408,16 +431,12 @@ export default function AdminStudentPage() {
       const cleanSabak = sabak.trim();
       const cleanSabakDhor = sabakDhor.trim();
       const cleanDhor = dhor.trim();
-
       const cleanSabakReadQuality = sabakReadQuality.trim();
       const cleanSabakReadNotes = sabakReadNotes.trim();
-
       const cleanSabakDhorReadQuality = sabakDhorReadQuality.trim();
       const cleanSabakDhorReadNotes = sabakDhorReadNotes.trim();
-
       const cleanDhorReadQuality = dhorReadQuality.trim();
       const cleanDhorReadNotes = dhorReadNotes.trim();
-
       const cleanSabakDhorMistakes = sabakDhorMistakes.replace(/[^\d]/g, "");
       const cleanDhorMistakes = dhorMistakes.replace(/[^\d]/g, "");
 
@@ -446,7 +465,16 @@ export default function AdminStudentPage() {
         nextDuration = null;
       }
 
-      const logRef = doc(db, "madrassahs", madrassahId, "students", studentId, "logs", dateKey);
+      const logRef = doc(
+        db,
+        "madrassahs",
+        madrassahId,
+        "students",
+        studentId,
+        "logs",
+        dateKey
+      );
+
       const existingLogSnap = await getDoc(logRef);
       const updaterName = getUpdaterName();
 
@@ -454,37 +482,28 @@ export default function AdminStudentPage() {
         logRef,
         {
           dateKey,
-
           ...(existingLogSnap.exists() ? {} : { createdAt: serverTimestamp() }),
-
           attendance,
-
           sabak: cleanSabak,
           sabakDhor: cleanSabakDhor,
           dhor: cleanDhor,
-
           sabakRead: cleanSabakReadQuality,
           sabakDhorRead: cleanSabakDhorReadQuality,
           dhorRead: cleanDhorReadQuality,
-
           sabakReadQuality: cleanSabakReadQuality,
           sabakDhorReadQuality: cleanSabakDhorReadQuality,
           dhorReadQuality: cleanDhorReadQuality,
-
           sabakReadNotes: cleanSabakReadNotes,
           sabakDhorReadNotes: cleanSabakDhorReadNotes,
           dhorReadNotes: cleanDhorReadNotes,
-
           sabakDhorMistakes: cleanSabakDhorMistakes,
           dhorMistakes: cleanDhorMistakes,
-
           weeklyGoal: nextGoal,
           weeklyGoalWeekKey: nextWeekKey || null,
           weeklyGoalStartDateKey: nextStartKey || null,
           weeklyGoalCompletedDateKey: nextCompletedKey || null,
           weeklyGoalDurationDays: nextDuration,
           weeklyGoalCompleted: Boolean(nextCompletedKey),
-
           updatedBy: me.uid,
           updatedByName: updaterName,
           updatedByEmail: me.email ?? "",
@@ -501,22 +520,17 @@ export default function AdminStudentPage() {
           weeklyGoalStartDateKey: nextStartKey || null,
           weeklyGoalCompletedDateKey: nextCompletedKey || null,
           weeklyGoalDurationDays: nextDuration,
-
           currentSabak: cleanSabak,
           currentSabakDhor: cleanSabakDhor,
           currentDhor: cleanDhor,
-
           currentSabakReadQuality: cleanSabakReadQuality,
           currentSabakDhorReadQuality: cleanSabakDhorReadQuality,
           currentDhorReadQuality: cleanDhorReadQuality,
-
           currentSabakReadNotes: cleanSabakReadNotes,
           currentSabakDhorReadNotes: cleanSabakDhorReadNotes,
           currentDhorReadNotes: cleanDhorReadNotes,
-
           currentSabakDhorMistakes: cleanSabakDhorMistakes,
           currentDhorMistakes: cleanDhorMistakes,
-
           updatedAt: serverTimestamp(),
           lastUpdatedBy: me.uid,
           lastUpdatedByName: updaterName,
@@ -561,20 +575,14 @@ export default function AdminStudentPage() {
   if (!me) {
     return (
       <Shell title="Please sign in" subtitle="You must be signed in to log work for a student.">
-        <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur p-6 sm:p-7 shadow-sm">
+        <div className="rounded-3xl border border-gray-300 bg-white/70 p-6 shadow-sm backdrop-blur sm:p-7">
           <p className="text-gray-700">Go to login, then return to the dashboard.</p>
-          <div className="mt-5 flex flex-col sm:flex-row gap-3">
-            <Link
-              href="/login"
-              className="inline-flex items-center justify-center h-11 px-6 rounded-full bg-black text-white text-sm font-semibold hover:bg-gray-900"
-            >
+          <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+            <Link href="/login" className="inline-flex h-11 items-center justify-center rounded-full bg-black px-6 text-sm font-semibold text-white hover:bg-gray-900">
               Go to login
             </Link>
-            <Link
-              href="/admin"
-              className="inline-flex items-center justify-center h-11 px-6 rounded-full border border-gray-300 bg-white/70 hover:bg-white text-sm font-semibold"
-            >
-              Back to Dashboard
+            <Link href="/dashboard/students" className="inline-flex h-11 items-center justify-center rounded-full border border-gray-300 bg-white/70 px-6 text-sm font-semibold hover:bg-white">
+              Back to Students
             </Link>
           </div>
         </div>
@@ -582,10 +590,10 @@ export default function AdminStudentPage() {
     );
   }
 
-  if (!role || !["admin", "teacher"].includes(role)) {
+  if (!role || !["admin", "teacher", "super_admin"].includes(role)) {
     return (
       <Shell title="Access denied" subtitle="This account cannot log work for students.">
-        <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur p-6 sm:p-7 shadow-sm">
+        <div className="rounded-3xl border border-gray-300 bg-white/70 p-6 shadow-sm backdrop-blur sm:p-7">
           <div className="text-sm text-gray-600">Signed in as</div>
           <div className="mt-1 font-semibold">{myFullName || me.email}</div>
         </div>
@@ -596,7 +604,7 @@ export default function AdminStudentPage() {
   if (!madrassahId) {
     return (
       <Shell title="No madrassah linked" subtitle="This account is missing a madrassah connection.">
-        <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur p-6 sm:p-7 shadow-sm">
+        <div className="rounded-3xl border border-gray-300 bg-white/70 p-6 shadow-sm backdrop-blur sm:p-7">
           <p className="text-gray-700">Your account is not linked to a madrassah yet.</p>
         </div>
       </Shell>
@@ -605,15 +613,12 @@ export default function AdminStudentPage() {
 
   if (!studentId || !studentExists) {
     return (
-      <Shell title="Student not found" subtitle="This student could not be found for your madrassah.">
-        <div className="rounded-3xl border border-red-200 bg-red-50 p-6 sm:p-7 shadow-sm">
+      <Shell title="Student not found" subtitle="This student could not be found or accessed.">
+        <div className="rounded-3xl border border-red-200 bg-red-50 p-6 shadow-sm sm:p-7">
           <p className="text-red-700">{pageErr || "Invalid student."}</p>
           <div className="mt-5">
-            <Link
-              href="/admin"
-              className="inline-flex items-center justify-center h-11 px-6 rounded-full bg-black text-white text-sm font-semibold hover:bg-gray-900"
-            >
-              Back to Dashboard
+            <Link href="/dashboard/students" className="inline-flex h-11 items-center justify-center rounded-full bg-black px-6 text-sm font-semibold text-white hover:bg-gray-900">
+              Back to Students
             </Link>
           </div>
         </div>
@@ -626,43 +631,21 @@ export default function AdminStudentPage() {
       title={`Log work for ${studentName || "student"}`}
       subtitle={`Submitting for ${dateKey} • ${currentWeekKey}`}
       rightSlot={
-        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-          <Link
-            href="/admin"
-            className="inline-flex w-full sm:w-auto items-center justify-center h-11 px-5 rounded-full border border-gray-300 bg-white/70 hover:bg-white transition-colors text-sm font-semibold"
-          >
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+          <Link href="/dashboard/students" className="inline-flex h-11 w-full items-center justify-center rounded-full border border-gray-300 bg-white/70 px-5 text-sm font-semibold transition-colors hover:bg-white sm:w-auto">
             Back
           </Link>
-          <Link
-            href={`/admin/student/${studentId}/overview`}
-            className="inline-flex w-full sm:w-auto items-center justify-center h-11 px-5 rounded-full bg-[#111111] text-white hover:bg-[#1c1c1c] shadow-lg shadow-black/10 transition-colors text-sm font-semibold shadow-sm"
-          >
+          <Link href={`/dashboard/students/${studentId}/overview`} className="inline-flex h-11 w-full items-center justify-center rounded-full bg-[#111111] px-5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#1c1c1c] sm:w-auto">
             Student Overview
           </Link>
         </div>
       }
     >
-      <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur p-5 sm:p-8 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="inline-flex items-center gap-2 rounded-full border border-gray-300 bg-white/70 px-4 py-2 text-xs font-semibold text-gray-700 w-fit">
+      <div className="rounded-3xl border border-gray-300 bg-white/70 p-5 shadow-sm backdrop-blur sm:p-8">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="inline-flex w-fit items-center gap-2 rounded-full border border-gray-300 bg-white/70 px-4 py-2 text-xs font-semibold text-gray-700">
             <span className="h-2 w-2 rounded-full bg-[#B8963D]" />
             Update today’s work
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            {goalAlreadyCompleted ? (
-              <span className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">
-                Completed in {weeklyGoalDurationDays ?? "—"} day(s)
-              </span>
-            ) : goalNotReached ? (
-              <span className="inline-flex items-center gap-2 rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700">
-                Not reached
-              </span>
-            ) : weeklyGoal ? (
-              <span className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700">
-                In progress
-              </span>
-            ) : null}
           </div>
         </div>
 
@@ -677,42 +660,30 @@ export default function AdminStudentPage() {
             <div className="text-sm font-semibold text-amber-900">
               Today’s log has already been saved for this student.
             </div>
-
-            <div className="mt-2 text-sm text-amber-800 leading-relaxed">
-              To prevent accidental overwriting, choose whether you want to edit the saved log or intentionally start fresh.
+            <div className="mt-2 text-sm leading-relaxed text-amber-800">
+              Choose whether you want to edit the saved log or intentionally start fresh.
             </div>
 
             {existingLogMeta?.updatedByName || existingLogMeta?.updatedAtText ? (
               <div className="mt-4 rounded-2xl border border-amber-200 bg-white/70 px-4 py-3 text-sm text-gray-700">
                 {existingLogMeta?.updatedByName ? (
                   <div>
-                    Last updated by:{" "}
-                    <span className="font-semibold">{existingLogMeta.updatedByName}</span>
+                    Last updated by: <span className="font-semibold">{existingLogMeta.updatedByName}</span>
                   </div>
                 ) : null}
                 {existingLogMeta?.updatedAtText ? (
                   <div className="mt-1">
-                    Saved at:{" "}
-                    <span className="font-semibold">{existingLogMeta.updatedAtText}</span>
+                    Saved at: <span className="font-semibold">{existingLogMeta.updatedAtText}</span>
                   </div>
                 ) : null}
               </div>
             ) : null}
 
-            <div className="mt-5 flex flex-col sm:flex-row gap-3">
-              <button
-                type="button"
-                onClick={openEditTodayLog}
-                className="inline-flex items-center justify-center h-12 px-6 rounded-2xl bg-black text-white font-semibold hover:bg-gray-900"
-              >
+            <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+              <button type="button" onClick={openEditTodayLog} className="inline-flex h-12 items-center justify-center rounded-2xl bg-black px-6 font-semibold text-white hover:bg-gray-900">
                 Edit today’s log
               </button>
-
-              <button
-                type="button"
-                onClick={openOverwriteTodayLog}
-                className="inline-flex items-center justify-center h-12 px-6 rounded-2xl border border-gray-300 bg-white text-gray-900 font-semibold hover:bg-gray-50"
-              >
+              <button type="button" onClick={openOverwriteTodayLog} className="inline-flex h-12 items-center justify-center rounded-2xl border border-gray-300 bg-white px-6 font-semibold text-gray-900 hover:bg-gray-50">
                 Overwrite with blank form
               </button>
             </div>
@@ -721,233 +692,75 @@ export default function AdminStudentPage() {
 
         {editorMode ? (
           <form onSubmit={handleSave} className="mt-6 grid gap-5">
-            {editorMode === "edit" ? (
-              <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
-                You are editing today’s saved log.
-              </div>
-            ) : editorMode === "overwrite" ? (
-              <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                You are starting fresh for today. Saving will overwrite today’s existing log with the values below.
-              </div>
-            ) : null}
-
-            <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur p-5 sm:p-6">
-              <div className="text-sm font-semibold text-gray-900">Attendance</div>
-
+            <Section title="Attendance">
               <div className="mt-4 flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setAttendance("present")}
-                  className={`px-4 py-2 rounded-xl border ${
-                    attendance === "present"
-                      ? "bg-emerald-100 border-emerald-400 text-emerald-700"
-                      : "bg-white border-gray-300"
-                  }`}
-                >
+                <button type="button" onClick={() => setAttendance("present")} className={`rounded-xl border px-4 py-2 ${attendance === "present" ? "border-emerald-400 bg-emerald-100 text-emerald-700" : "border-gray-300 bg-white"}`}>
                   Present
                 </button>
-
-                <button
-                  type="button"
-                  onClick={() => setAttendance("absent")}
-                  className={`px-4 py-2 rounded-xl border ${
-                    attendance === "absent"
-                      ? "bg-red-100 border-red-400 text-red-700"
-                      : "bg-white border-gray-300"
-                  }`}
-                >
+                <button type="button" onClick={() => setAttendance("absent")} className={`rounded-xl border px-4 py-2 ${attendance === "absent" ? "border-red-400 bg-red-100 text-red-700" : "border-gray-300 bg-white"}`}>
                   Absent
                 </button>
               </div>
-            </div>
+            </Section>
 
-            <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur p-5 sm:p-6">
-              <div className="text-sm font-semibold text-gray-900">Sabak</div>
-              <div className="mt-4 grid gap-4">
-                <Field
-                  label="Sabak amount"
-                  value={sabak}
-                  setValue={setSabak}
-                  hint="Example: 2 pages / 1 ruku / 5 lines"
-                />
-
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <SelectField
-                    label="How did the student read Sabak?"
-                    value={sabakReadQuality}
-                    setValue={setSabakReadQuality}
-                    options={READING_OPTIONS}
-                  />
-                  <Field
-                    label="Sabak reading notes (optional)"
-                    value={sabakReadNotes}
-                    setValue={setSabakReadNotes}
-                    hint="Short notes: fluency, tajweed, stops, etc."
-                  />
-                </div>
+            <Section title="Sabak">
+              <Field label="Sabak amount" value={sabak} setValue={setSabak} hint="Example: 5 lines" />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <SelectField label="How did the student read Sabak?" value={sabakReadQuality} setValue={setSabakReadQuality} options={READING_OPTIONS} />
+                <Field label="Sabak reading notes" value={sabakReadNotes} setValue={setSabakReadNotes} hint="Optional" />
               </div>
-            </div>
+            </Section>
 
-            <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur p-5 sm:p-6">
-              <div className="text-sm font-semibold text-gray-900">Sabak Dhor</div>
-              <div className="mt-4 grid gap-4">
-                <Field
-                  label="Sabak Dhor amount"
-                  value={sabakDhor}
-                  setValue={setSabakDhor}
-                  hint="Revision for current sabak"
-                />
-
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <SelectField
-                    label="How did the student read Sabak Dhor?"
-                    value={sabakDhorReadQuality}
-                    setValue={setSabakDhorReadQuality}
-                    options={READING_OPTIONS}
-                  />
-                  <Field
-                    label="Sabak Dhor reading notes (optional)"
-                    value={sabakDhorReadNotes}
-                    setValue={setSabakDhorReadNotes}
-                    hint="Short notes"
-                  />
-                </div>
-
-                <Field
-                  label="Sabak Dhor mistakes"
-                  value={sabakDhorMistakes}
-                  setValue={setSabakDhorMistakes}
-                  hint="Number"
-                />
+            <Section title="Sabak Dhor">
+              <Field label="Sabak Dhor amount" value={sabakDhor} setValue={setSabakDhor} hint="Revision" />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <SelectField label="How did the student read Sabak Dhor?" value={sabakDhorReadQuality} setValue={setSabakDhorReadQuality} options={READING_OPTIONS} />
+                <Field label="Sabak Dhor reading notes" value={sabakDhorReadNotes} setValue={setSabakDhorReadNotes} hint="Optional" />
               </div>
-            </div>
+              <Field label="Sabak Dhor mistakes" value={sabakDhorMistakes} setValue={setSabakDhorMistakes} hint="Number" />
+            </Section>
 
-            <div className="rounded-3xl border border-gray-300 bg-white/70 backdrop-blur p-5 sm:p-6">
-              <div className="text-sm font-semibold text-gray-900">Dhor</div>
-              <div className="mt-4 grid gap-4">
-                <Field
-                  label="Dhor amount"
-                  value={dhor}
-                  setValue={setDhor}
-                  hint="Older revision"
-                />
-
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <SelectField
-                    label="How did the student read Dhor?"
-                    value={dhorReadQuality}
-                    setValue={setDhorReadQuality}
-                    options={READING_OPTIONS}
-                  />
-                  <Field
-                    label="Dhor reading notes (optional)"
-                    value={dhorReadNotes}
-                    setValue={setDhorReadNotes}
-                    hint="Short notes"
-                  />
-                </div>
-
-                <Field
-                  label="Dhor mistakes"
-                  value={dhorMistakes}
-                  setValue={setDhorMistakes}
-                  hint="Number"
-                />
+            <Section title="Dhor">
+              <Field label="Dhor amount" value={dhor} setValue={setDhor} hint="Older revision" />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <SelectField label="How did the student read Dhor?" value={dhorReadQuality} setValue={setDhorReadQuality} options={READING_OPTIONS} />
+                <Field label="Dhor reading notes" value={dhorReadNotes} setValue={setDhorReadNotes} hint="Optional" />
               </div>
-            </div>
+              <Field label="Dhor mistakes" value={dhorMistakes} setValue={setDhorMistakes} hint="Number" />
+            </Section>
 
-            <div className="rounded-3xl border border-gray-200 bg-white/70 p-5 sm:p-6">
-              <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+            <Section title="Weekly Goal">
+              <Field label="Weekly Sabak Goal" value={weeklyGoal} setValue={setWeeklyGoal} hint={goalLocked ? "Locked until completed" : "Set goal"} />
+
+              <div className="grid gap-2 sm:grid-cols-3">
+                <MiniInfo label="Started" value={weeklyGoalStartDateKey || "—"} />
+                <MiniInfo label="Completed" value={weeklyGoalCompletedDateKey || "—"} />
+                <MiniInfo label="Duration" value={weeklyGoalDurationDays ? `${weeklyGoalDurationDays} day(s)` : "—"} />
+              </div>
+
+              <label className="flex items-center justify-between gap-4 rounded-2xl border border-gray-300 bg-white/70 px-4 py-4">
                 <div>
-                  <div className="text-sm font-semibold text-[#5B726D]">Weekly Goal</div>
-                  <div className="mt-1 text-sm text-gray-700">
-                    Set once per week. When finished, tick “Completed” to calculate duration.
+                  <div className="text-sm font-semibold text-gray-900">Weekly Goal Completed</div>
+                  <div className="mt-1 text-xs text-gray-600">
+                    Tick only when the student has finished their weekly goal.
                   </div>
                 </div>
+                <input
+                  type="checkbox"
+                  checked={goalAlreadyCompleted ? true : markGoalCompleted}
+                  disabled={!weeklyGoal.trim() || goalAlreadyCompleted}
+                  onChange={(e) => setMarkGoalCompleted(e.target.checked)}
+                  className="h-6 w-6 accent-black disabled:opacity-50"
+                />
+              </label>
+            </Section>
 
-                <div className="text-xs text-gray-600">
-                  Week: <span className="font-semibold">{currentWeekKey}</span>
-                </div>
-              </div>
+            <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
+              <button disabled={saving} className="h-12 w-full rounded-2xl bg-black px-7 font-semibold text-white shadow-sm hover:bg-gray-900 disabled:opacity-60 sm:w-auto">
+                {saving ? "Saving..." : "Save"}
+              </button>
 
-              <div className="mt-4 grid gap-4">
-                <label className="grid gap-2">
-                  <div className="flex items-end justify-between gap-4">
-                    <span className="text-sm font-semibold text-gray-900">Weekly Sabak Goal</span>
-                    <span className="text-xs text-gray-500">
-                      {goalLocked ? "Locked until completed" : "Set a new goal"}
-                    </span>
-                  </div>
-
-                  <input
-                    value={weeklyGoal}
-                    onChange={(e) => setWeeklyGoal(e.target.value)}
-                    disabled={goalLocked}
-                    className="h-12 rounded-2xl border border-gray-200 bg-white/80 px-4 outline-none focus:ring-2 focus:ring-[#A46B72]/30 disabled:opacity-60"
-                    placeholder="Example: 10 pages"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    After typing a new goal, press <span className="font-semibold">Enter</span> or click Save to activate it.
-                  </p>
-                </label>
-
-                <div className="grid gap-2 sm:grid-cols-3">
-                  <MiniInfo label="Started" value={weeklyGoalStartDateKey || "—"} />
-                  <MiniInfo label="Completed" value={weeklyGoalCompletedDateKey || "—"} />
-                  <MiniInfo
-                    label="Duration"
-                    value={weeklyGoalDurationDays ? `${weeklyGoalDurationDays} day(s)` : "—"}
-                  />
-                </div>
-
-                <label className="flex items-center justify-between gap-4 rounded-2xl border border-gray-300 bg-white/70 px-4 py-4">
-                  <div>
-                    <div className="text-sm font-semibold text-gray-900">Weekly Goal Completed</div>
-                    <div className="mt-1 text-xs text-gray-600">
-                      Tick only when the student has finished their weekly goal.
-                    </div>
-                  </div>
-
-                  <input
-                    type="checkbox"
-                    checked={goalAlreadyCompleted ? true : markGoalCompleted}
-                    disabled={!weeklyGoal.trim() || goalAlreadyCompleted}
-                    onChange={(e) => setMarkGoalCompleted(e.target.checked)}
-                    className="h-6 w-6 accent-black disabled:opacity-50"
-                  />
-                </label>
-              </div>
-            </div>
-
-            <div className="pt-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                <button
-                  disabled={saving}
-                  className="h-12 w-full sm:w-auto px-7 rounded-2xl bg-black text-white font-semibold hover:bg-gray-900 disabled:opacity-60 shadow-sm"
-                >
-                  {saving ? "Saving..." : "Save"}
-                </button>
-
-                {hasExistingTodayLog ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      resetFields();
-                      setMarkGoalCompleted(false);
-                      setEditorMode(null);
-                    }}
-                    className="h-12 w-full sm:w-auto px-7 rounded-2xl border border-gray-300 bg-white font-semibold hover:bg-gray-50"
-                  >
-                    Cancel
-                  </button>
-                ) : null}
-              </div>
-
-              <div
-                className={`text-sm font-medium ${
-                  msg?.startsWith("Error") ? "text-red-600" : "text-gray-700"
-                }`}
-              >
+              <div className={`text-sm font-medium ${msg?.startsWith("Error") ? "text-red-600" : "text-gray-700"}`}>
                 {msg ?? ""}
               </div>
             </div>
@@ -955,6 +768,15 @@ export default function AdminStudentPage() {
         ) : null}
       </div>
     </Shell>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="grid gap-4 rounded-3xl border border-gray-300 bg-white/70 p-5 backdrop-blur sm:p-6">
+      <div className="text-sm font-semibold text-gray-900">{title}</div>
+      {children}
+    </div>
   );
 }
 
@@ -1021,7 +843,7 @@ function MiniInfo({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl border border-gray-300 bg-white/70 px-4 py-3">
       <div className="text-xs text-gray-500">{label}</div>
-      <div className="mt-1 text-sm font-semibold text-gray-900 break-words">{value}</div>
+      <div className="mt-1 break-words text-sm font-semibold text-gray-900">{value}</div>
     </div>
   );
 }

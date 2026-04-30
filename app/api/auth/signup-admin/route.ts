@@ -153,12 +153,23 @@ export async function POST(req: Request) {
       adminUserId: createdUid,
       isActive: true,
 
+      studentAccessMode: "shared",
+
       subscriptionStatus: "trial",
       onboardingStatus: "pending",
       plan: "starter",
       trialEndsOn: "",
       nextPaymentDate: "",
       notes: "",
+
+      billingAmount: "",
+      billingCurrency: "ZAR",
+      billingCycle: "monthly",
+      paymentStatus: "unpaid",
+      lastPaymentDate: "",
+      paymentMethod: "eft",
+      billingNotes: "",
+
       reportAccessKeyMirror: reportAccessKey,
 
       createdAt: now,
@@ -214,14 +225,14 @@ export async function POST(req: Request) {
     if (createdUid) {
       try {
         await auth.deleteUser(createdUid);
-      } catch {
-        // swallow cleanup failure
-      }
+      } catch {}
     }
 
-    return NextResponse.json(
-      { error: error?.message || "Could not create admin account." },
-      { status: 500 }
-    );
+    const message =
+      error?.code === "auth/email-already-exists"
+        ? "An account with this email already exists."
+        : error?.message || "Could not create admin account.";
+
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
