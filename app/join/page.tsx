@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../lib/firebase";
 
+
 export default function JoinPage() {
   const router = useRouter();
 

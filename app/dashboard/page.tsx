@@ -160,6 +160,7 @@ export default function TeachersPage() {
 
   const [staff, setStaff] = useState<StaffRow[]>([]);
   const [joinCode, setJoinCode] = useState("");
+  const [studentAccessMode, setStudentAccessMode] = useState<"shared" | "assigned">("shared");
   const [loadingData, setLoadingData] = useState(true);
   const [pageError, setPageError] = useState("");
   const [actionMsg, setActionMsg] = useState("");
@@ -172,7 +173,7 @@ export default function TeachersPage() {
     setActionMsg("");
 
     try {
-      const [staffSnap, configSnap] = await Promise.all([
+      const [staffSnap, configSnap, madrassahSnap] = await Promise.all([
         getDocs(
           query(
             collection(db, "madrassahs", currentMadrassahId, "staff"),
@@ -180,6 +181,7 @@ export default function TeachersPage() {
           )
         ),
         getDoc(doc(db, "madrassahs", currentMadrassahId, "private", "config")),
+        getDoc(doc(db, "madrassahs", currentMadrassahId)),
       ]);
 
       const rows: StaffRow[] = staffSnap.docs.map((docSnap) => {
@@ -197,6 +199,12 @@ export default function TeachersPage() {
 
       setStaff(rows);
       setJoinCode(configSnap.exists() ? String((configSnap.data() as any).joinCode || "") : "");
+      setStudentAccessMode(
+        madrassahSnap.exists() &&
+          (madrassahSnap.data() as any).studentAccessMode === "assigned"
+          ? "assigned"
+          : "shared"
+      );
     } catch (err: any) {
       setPageError(err?.message || "Could not load teachers.");
     } finally {
@@ -295,6 +303,32 @@ export default function TeachersPage() {
     }
   }
 
+  async function handleStudentAccessModeChange(nextMode: "shared" | "assigned") {
+    if (!profile?.madrassahId) {
+      setPageError("Your account is not linked to a madrassah.");
+      return;
+    }
+
+    setPageError("");
+    setActionMsg("");
+
+    try {
+      await updateDoc(doc(db, "madrassahs", profile.madrassahId), {
+        studentAccessMode: nextMode,
+        updatedAt: serverTimestamp(),
+      });
+
+      setStudentAccessMode(nextMode);
+      setActionMsg(
+        nextMode === "shared"
+          ? "Student access set to shared. All teachers can see all students."
+          : "Student access set to assigned. Teachers only see their own students."
+      );
+    } catch (err: any) {
+      setPageError(err?.message || "Could not update student access mode.");
+    }
+  }
+
   if (loading) {
     return (
       <main className="grid min-h-screen place-items-center bg-[#F8F6F1] text-[#171717]">
@@ -355,6 +389,24 @@ export default function TeachersPage() {
 >
   Sign Out
 </button>
+
+            <div className="w-full rounded-2xl border border-gray-300 bg-white/70 p-3 text-left">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8a8a8a]">
+                Student Access
+              </p>
+              <select
+                value={studentAccessMode}
+                onChange={(e) =>
+                  handleStudentAccessModeChange(
+                    e.target.value === "assigned" ? "assigned" : "shared"
+                  )
+                }
+                className="mt-2 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-[#171717] outline-none focus:border-[#B8963D]"
+              >
+                <option value="shared">Shared — all teachers see all students</option>
+                <option value="assigned">Assigned — teachers only see their own</option>
+              </select>
+            </div>
           </div>
         </div>
       }
