@@ -323,11 +323,23 @@ export default function AdminStudentPage() {
 
         const data = sDoc.data() as any;
 
-        if (!userCanAccessStudent({ mode, role, uid: me.uid, student: data })) {
-          setStudentName(toText(data.fullName) || "Student");
-          setPageErr("You do not have access to this student.");
-          return;
-        }
+const cleanRole = String(role || "").trim().toLowerCase();
+const teacherIds = Array.isArray(data?.teacherIds) ? data.teacherIds : [];
+
+const isAssignedToTeacher =
+  data?.teacherId === me.uid ||
+  data?.createdBy === me.uid ||
+  teacherIds.includes(me.uid);
+
+if (
+  mode === "assigned" &&
+  cleanRole === "teacher" &&
+  !isAssignedToTeacher
+) {
+  setStudentName(toText(data.fullName) || "Student");
+  setPageErr("You do not have access to this student.");
+  return;
+}
 
         setStudentExists(true);
         setStudentName(toText(data.fullName) || "Student");
