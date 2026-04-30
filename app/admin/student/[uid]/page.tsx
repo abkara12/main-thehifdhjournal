@@ -7,8 +7,6 @@ import { onAuthStateChanged, User } from "firebase/auth";
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { auth, db } from "../../../lib/firebase";
 
-type StudentAccessMode = "shared" | "assigned";
-
 function getDateKeySA() {
   const now = new Date();
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -59,34 +57,6 @@ function isoWeekKeyFromDateKey(dateKey: string) {
 function toText(v: unknown) {
   if (v === null || v === undefined) return "";
   return typeof v === "string" ? v : String(v);
-}
-
-function userCanAccessStudent({
-  mode,
-  role,
-  uid,
-  student,
-}: {
-  mode: StudentAccessMode;
-  role: string | null;
-  uid: string;
-  student: any;
-}) {
-  const cleanRole = String(role || "").trim().toLowerCase();
-
-  if (cleanRole === "admin" || cleanRole === "super_admin") return true;
-
-  if (mode === "shared") return true;
-
-  if (cleanRole !== "teacher") return false;
-
-  const teacherIds = Array.isArray(student?.teacherIds) ? student.teacherIds : [];
-
-  return (
-    student?.teacherId === uid ||
-    student?.createdBy === uid ||
-    teacherIds.includes(uid)
-  );
 }
 
 const READING_OPTIONS = [
@@ -248,12 +218,6 @@ export default function AdminStudentPage() {
   const goalAlreadyCompleted =
     Boolean(weeklyGoalCompletedDateKey) || (weeklyGoalDurationDays ?? 0) > 0;
 
-  const goalNotReached =
-    weeklyGoal.trim().length > 0 &&
-    weeklyGoalStartDateKey.trim().length > 0 &&
-    !weeklyGoalCompletedDateKey &&
-    diffDaysInclusive(weeklyGoalStartDateKey, dateKey) > 7;
-
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
       setMe(u);
@@ -303,14 +267,6 @@ export default function AdminStudentPage() {
       setExistingLogMeta(null);
 
       try {
-        const madrassahSnap = await getDoc(doc(db, "madrassahs", madrassahId));
-        const madrassahData = madrassahSnap.exists()
-          ? (madrassahSnap.data() as any)
-          : {};
-
-        const mode: StudentAccessMode =
-          madrassahData?.studentAccessMode === "assigned" ? "assigned" : "shared";
-
         const sDoc = await getDoc(
           doc(db, "madrassahs", madrassahId, "students", studentId)
         );
@@ -322,24 +278,6 @@ export default function AdminStudentPage() {
         }
 
         const data = sDoc.data() as any;
-
-const cleanRole = String(role || "").trim().toLowerCase();
-const teacherIds = Array.isArray(data?.teacherIds) ? data.teacherIds : [];
-
-const isAssignedToTeacher =
-  data?.teacherId === me.uid ||
-  data?.createdBy === me.uid ||
-  teacherIds.includes(me.uid);
-
-if (
-  mode === "assigned" &&
-  cleanRole === "teacher" &&
-  !isAssignedToTeacher
-) {
-  setStudentName(toText(data.fullName) || "Student");
-  setPageErr("You do not have access to this student.");
-  return;
-}
 
         setStudentExists(true);
         setStudentName(toText(data.fullName) || "Student");
@@ -360,6 +298,7 @@ if (
           "logs",
           dateKey
         );
+
         const logSnap = await getDoc(logRef);
 
         if (logSnap.exists()) {
@@ -405,6 +344,7 @@ if (
         "logs",
         dateKey
       );
+
       const logSnap = await getDoc(logRef);
 
       if (!logSnap.exists()) {
@@ -553,12 +493,6 @@ if (
         { merge: true }
       );
 
-      setWeeklyGoal(nextGoal);
-      setWeeklyGoalWeekKey(nextWeekKey || "");
-      setWeeklyGoalStartDateKey(nextStartKey || "");
-      setWeeklyGoalCompletedDateKey(nextCompletedKey || "");
-      setWeeklyGoalDurationDays(nextDuration);
-
       setMsg("Saved ✅");
       setTimeout(() => setMsg(null), 2500);
 
@@ -592,20 +526,12 @@ if (
       <Shell title="Please sign in" subtitle="You must be signed in to log work for a student.">
         <div className="rounded-3xl border border-gray-300 bg-white/70 p-6 shadow-sm backdrop-blur sm:p-7">
           <p className="text-gray-700">Go to login, then return to the dashboard.</p>
-          <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-            <Link href="/login" className="inline-flex h-11 items-center justify-center rounded-full bg-black px-6 text-sm font-semibold text-white hover:bg-gray-900">
-              Go to login
-            </Link>
-            <Link href="/dashboard/students" className="inline-flex h-11 items-center justify-center rounded-full border border-gray-300 bg-white/70 px-6 text-sm font-semibold hover:bg-white">
-              Back to Students
-            </Link>
-          </div>
         </div>
       </Shell>
     );
   }
 
-  if (!role || !["admin", "teacher", "super_admin"].includes(role)) {
+  if (!role || !["admin", "teacher"].includes(role)) {
     return (
       <Shell title="Access denied" subtitle="This account cannot log work for students.">
         <div className="rounded-3xl border border-gray-300 bg-white/70 p-6 shadow-sm backdrop-blur sm:p-7">
@@ -628,7 +554,7 @@ if (
 
   if (!studentId || !studentExists) {
     return (
-      <Shell title="Student not found" subtitle="This student could not be found or accessed.">
+      <Shell title="Student not found" subtitle="This student could not be found for your madrassah.">
         <div className="rounded-3xl border border-red-200 bg-red-50 p-6 shadow-sm sm:p-7">
           <p className="text-red-700">{pageErr || "Invalid student."}</p>
           <div className="mt-5">
@@ -657,42 +583,20 @@ if (
       }
     >
       <div className="rounded-3xl border border-gray-300 bg-white/70 p-5 shadow-sm backdrop-blur sm:p-8">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="inline-flex w-fit items-center gap-2 rounded-full border border-gray-300 bg-white/70 px-4 py-2 text-xs font-semibold text-gray-700">
-            <span className="h-2 w-2 rounded-full bg-[#B8963D]" />
-            Update today’s work
-          </div>
-        </div>
-
         {pageErr ? (
-          <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="mb-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {pageErr}
           </div>
         ) : null}
 
         {hasExistingTodayLog && !editorMode ? (
-          <div className="mt-6 rounded-3xl border border-amber-200 bg-amber-50 p-5 sm:p-6">
+          <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5 sm:p-6">
             <div className="text-sm font-semibold text-amber-900">
               Today’s log has already been saved for this student.
             </div>
             <div className="mt-2 text-sm leading-relaxed text-amber-800">
               Choose whether you want to edit the saved log or intentionally start fresh.
             </div>
-
-            {existingLogMeta?.updatedByName || existingLogMeta?.updatedAtText ? (
-              <div className="mt-4 rounded-2xl border border-amber-200 bg-white/70 px-4 py-3 text-sm text-gray-700">
-                {existingLogMeta?.updatedByName ? (
-                  <div>
-                    Last updated by: <span className="font-semibold">{existingLogMeta.updatedByName}</span>
-                  </div>
-                ) : null}
-                {existingLogMeta?.updatedAtText ? (
-                  <div className="mt-1">
-                    Saved at: <span className="font-semibold">{existingLogMeta.updatedAtText}</span>
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
 
             <div className="mt-5 flex flex-col gap-3 sm:flex-row">
               <button type="button" onClick={openEditTodayLog} className="inline-flex h-12 items-center justify-center rounded-2xl bg-black px-6 font-semibold text-white hover:bg-gray-900">
@@ -706,7 +610,7 @@ if (
         ) : null}
 
         {editorMode ? (
-          <form onSubmit={handleSave} className="mt-6 grid gap-5">
+          <form onSubmit={handleSave} className="grid gap-5">
             <Section title="Attendance">
               <div className="mt-4 flex gap-3">
                 <button type="button" onClick={() => setAttendance("present")} className={`rounded-xl border px-4 py-2 ${attendance === "present" ? "border-emerald-400 bg-emerald-100 text-emerald-700" : "border-gray-300 bg-white"}`}>
