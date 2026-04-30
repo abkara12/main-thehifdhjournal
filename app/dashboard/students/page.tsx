@@ -2,7 +2,15 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { collection, doc, getDoc, getDocs, orderBy, query, where } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  orderBy,
+  query,
+  where,
+} from "firebase/firestore";
 import { db } from "../../../app/lib/firebase";
 import { useRequireStaff } from "../../lib/auth-guards";
 import { DashboardShell, PremiumStatCard } from "../../components/dashboard-shell";
@@ -115,7 +123,10 @@ export default function StudentsPage() {
 
         const qy =
           isTeacherOnly && studentAccessMode === "assigned" && firebaseUser?.uid
-            ? query(studentsRef, where("teacherIds", "array-contains", firebaseUser.uid))
+            ? query(
+                studentsRef,
+                where("teacherIds", "array-contains", firebaseUser.uid)
+              )
             : query(studentsRef, orderBy("fullName"));
 
         const snap = await getDocs(qy);
@@ -144,9 +155,7 @@ export default function StudentsPage() {
           };
         });
 
-        setStudents(
-  rows.sort((a, b) => a.fullName.localeCompare(b.fullName))
-);
+        setStudents(rows.sort((a, b) => a.fullName.localeCompare(b.fullName)));
       } catch (err: any) {
         setPageError(err?.message || "Could not load students.");
       } finally {
@@ -242,11 +251,7 @@ export default function StudentsPage() {
         <PremiumStatCard
           label="Total Students"
           value={loadingStudents ? "..." : String(totalStudents)}
-          subtext={
-            profile.role === "teacher"
-              ? "Your assigned student records."
-              : "All student records in this madrassah."
-          }
+          subtext="Student records visible to this account."
         />
 
         <PremiumStatCard
