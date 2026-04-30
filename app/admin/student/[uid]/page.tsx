@@ -76,9 +76,7 @@ function userCanAccessStudent({
 
   if (cleanRole === "admin" || cleanRole === "super_admin") return true;
 
-  if (mode === "shared") {
-    return cleanRole === "teacher";
-  }
+  if (mode === "shared") return true;
 
   if (cleanRole !== "teacher") return false;
 
@@ -293,7 +291,7 @@ export default function AdminStudentPage() {
 
   useEffect(() => {
     async function loadStudent() {
-      if (!studentId || !madrassahId || !me) return;
+      if (!studentId || !madrassahId || !me || !role) return;
 
       resetFields();
       setMarkGoalCompleted(false);
