@@ -72,10 +72,15 @@ function userCanAccessStudent({
   uid: string;
   student: any;
 }) {
-  if (role === "admin" || role === "super_admin") return true;
-  if (role !== "teacher") return false;
+  const cleanRole = String(role || "").trim().toLowerCase();
 
-  if (mode === "shared") return true;
+  if (cleanRole === "admin" || cleanRole === "super_admin") return true;
+
+  if (mode === "shared") {
+    return cleanRole === "teacher";
+  }
+
+  if (cleanRole !== "teacher") return false;
 
   const teacherIds = Array.isArray(student?.teacherIds) ? student.teacherIds : [];
 
