@@ -6,7 +6,6 @@ import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { db } from "../../../../app/lib/firebase";
 import { useRequireStaff } from "../../../lib/auth-guards";
 
-
 function normalizeName(value: string) {
   return value.replace(/\s+/g, " ").trim();
 }
@@ -79,7 +78,6 @@ export default function NewStudentPage() {
           createdBy: firebaseUser?.uid ?? "",
           createdByEmail: profile.email,
           teacherId: firebaseUser?.uid ?? "",
-          teacherIds: firebaseUser?.uid ? [firebaseUser.uid] : [],
           teacherEmail: profile.email || firebaseUser?.email || "",
           teacherName:
             profile.fullName ||

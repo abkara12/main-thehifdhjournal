@@ -372,7 +372,7 @@ export default function StudentOverviewPage() {
   const params = useParams<{ studentId: string }>();
   const studentId = params?.studentId || "";
 
-  const { loading, profile, firebaseUser, error } = useRequireStaff();
+  const { loading, profile, error } = useRequireStaff();
 
   const [studentMeta, setStudentMeta] = useState<StudentMeta | null>(null);
   const [studentName, setStudentName] = useState("");
@@ -406,34 +406,6 @@ export default function StudentOverviewPage() {
       }
 
       const sData = sDoc.data() as any;
-
-      const madrassahSnap = await getDoc(doc(db, "madrassahs", currentMadrassahId));
-      const studentAccessMode =
-        madrassahSnap.exists() &&
-        (madrassahSnap.data() as any).studentAccessMode === "assigned"
-          ? "assigned"
-          : "shared";
-
-      const studentTeacherIds = Array.isArray(sData.teacherIds)
-        ? sData.teacherIds.map((id: unknown) => String(id))
-        : [];
-      const legacyStudentTeacherId = toText(sData.teacherId || sData.createdBy);
-      const teacherCanAccessStudent =
-        studentTeacherIds.includes(firebaseUser?.uid || "") ||
-        legacyStudentTeacherId === firebaseUser?.uid;
-
-      if (
-        profile?.role === "teacher" &&
-        studentAccessMode === "assigned" &&
-        !teacherCanAccessStudent
-      ) {
-        setStudentName("Student");
-        setStudentMeta(null);
-        setRows([]);
-        setPageErr("You do not have access to this student.");
-        return;
-      }
-
       setStudentExists(true);
       setStudentName(toText(sData.fullName) || "Student");
       setStudentMeta({
@@ -477,7 +449,7 @@ export default function StudentOverviewPage() {
   useEffect(() => {
     if (!profile?.madrassahId || !studentId) return;
     loadStudentMetaAndLogs(profile.madrassahId, studentId);
-  }, [profile, studentId, firebaseUser]);
+  }, [profile, studentId]);
 
   const absentsByMonth = useMemo(() => {
     const map: Record<string, number> = {};

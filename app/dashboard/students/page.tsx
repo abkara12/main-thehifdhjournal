@@ -2,15 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  orderBy,
-  query,
-  where,
-} from "firebase/firestore";
+import { collection, getDocs, orderBy, query, where } from "firebase/firestore";
 import { db } from "../../../app/lib/firebase";
 import { useRequireStaff } from "../../lib/auth-guards";
 import { DashboardShell, PremiumStatCard } from "../../components/dashboard-shell";
@@ -26,7 +18,6 @@ type StudentRow = {
   weeklyGoal: string;
   lastLogDateKey: string;
   teacherId: string;
-  teacherIds: string[];
 };
 
 function StudentCard({ student }: { student: StudentRow }) {
@@ -104,30 +95,16 @@ export default function StudentsPage() {
       try {
         const isTeacherOnly = profile.role === "teacher";
 
-        const madrassahSnap = await getDoc(
-          doc(db, "madrassahs", profile.madrassahId)
-        );
-
-        const studentAccessMode =
-          madrassahSnap.exists() &&
-          (madrassahSnap.data() as any).studentAccessMode === "assigned"
-            ? "assigned"
-            : "shared";
-
         const studentsRef = collection(
           db,
           "madrassahs",
           profile.madrassahId,
           "students"
         );
-
-        const qy =
-          isTeacherOnly && studentAccessMode === "assigned" && firebaseUser?.uid
-            ? query(
-                studentsRef,
-                where("teacherIds", "array-contains", firebaseUser.uid)
-              )
-            : query(studentsRef, orderBy("fullName"));
+const qy =
+  isTeacherOnly && firebaseUser?.uid
+    ? query(studentsRef, where("teacherId", "==", firebaseUser.uid))
+    : query(studentsRef, orderBy("fullName"));
 
         const snap = await getDocs(qy);
 
@@ -145,17 +122,12 @@ export default function StudentsPage() {
             weeklyGoal: String(data.weeklyGoal || ""),
             lastLogDateKey: String(data.lastLogDateKey || ""),
             teacherId: String(data.teacherId || data.createdBy || ""),
-            teacherIds: Array.isArray(data.teacherIds)
-              ? data.teacherIds.map((id: unknown) => String(id))
-              : data.teacherId
-              ? [String(data.teacherId)]
-              : data.createdBy
-              ? [String(data.createdBy)]
-              : [],
           };
         });
 
-        setStudents(rows.sort((a, b) => a.fullName.localeCompare(b.fullName)));
+        setStudents(
+  rows.sort((a, b) => a.fullName.localeCompare(b.fullName))
+);
       } catch (err: any) {
         setPageError(err?.message || "Could not load students.");
       } finally {
@@ -251,7 +223,11 @@ export default function StudentsPage() {
         <PremiumStatCard
           label="Total Students"
           value={loadingStudents ? "..." : String(totalStudents)}
-          subtext="Student records visible to this account."
+          subtext={
+            profile.role === "teacher"
+              ? "Your assigned student records."
+              : "All student records in this madrassah."
+          }
         />
 
         <PremiumStatCard

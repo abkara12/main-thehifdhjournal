@@ -22,7 +22,6 @@ import {
   PremiumBadge,
 } from "../../../components/dashboard-shell";
 
-
 /* ---------------- helpers ---------------- */
 function toText(v: unknown) {
   if (v === null || v === undefined) return "";
@@ -318,33 +317,13 @@ export default function StudentDetailPage() {
 
         const data = sDoc.data() as any;
 
-        const madrassahSnap = await getDoc(
-          doc(db, "madrassahs", profile.madrassahId)
-        );
+        const studentTeacherId = toText(data.teacherId || data.createdBy);
 
-        const studentAccessMode =
-          madrassahSnap.exists() &&
-          (madrassahSnap.data() as any).studentAccessMode === "assigned"
-            ? "assigned"
-            : "shared";
-
-        const studentTeacherIds = Array.isArray(data.teacherIds)
-          ? data.teacherIds.map((id: unknown) => String(id))
-          : [];
-        const legacyStudentTeacherId = toText(data.teacherId || data.createdBy);
-        const teacherCanAccessStudent =
-          studentTeacherIds.includes(firebaseUser?.uid || "") ||
-          legacyStudentTeacherId === firebaseUser?.uid;
-
-        if (
-          profile.role === "teacher" &&
-          studentAccessMode === "assigned" &&
-          !teacherCanAccessStudent
-        ) {
-          setStudentName("Student");
-          setPageErr("You do not have access to this student.");
-          return;
-        }
+if (profile.role === "teacher" && studentTeacherId !== firebaseUser?.uid) {
+  setStudentName("Student");
+  setPageErr("You do not have access to this student.");
+  return;
+}
 
         const lastLogDateKey = toText(data.lastLogDateKey);
         const staleCurrentFields =
