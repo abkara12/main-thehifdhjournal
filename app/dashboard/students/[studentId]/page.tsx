@@ -317,13 +317,6 @@ export default function StudentDetailPage() {
 
         const data = sDoc.data() as any;
 
-        const studentTeacherId = toText(data.teacherId || data.createdBy);
-
-if (profile.role === "teacher" && studentTeacherId !== firebaseUser?.uid) {
-  setStudentName("Student");
-  setPageErr("You do not have access to this student.");
-  return;
-}
 
         const lastLogDateKey = toText(data.lastLogDateKey);
         const staleCurrentFields =
