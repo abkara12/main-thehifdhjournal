@@ -30,6 +30,15 @@ type StudentRow = {
   teacherId: string;
 };
 
+type ClassOwnerOption = {
+  id: string;
+  userId: string;
+  fullName: string;
+  email: string;
+  role: "admin" | "teacher";
+  isActive?: boolean;
+};
+
 function StudentCard({ student }: { student: StudentRow }) {
   return (
     <Link
@@ -94,6 +103,8 @@ export default function StudentsPage() {
   const [studentAccessMode, setStudentAccessMode] =
     useState<StudentAccessMode>("shared");
 
+      const [classOwners, setClassOwners] = useState<ClassOwnerOption[]>([]);
+const [selectedClassOwnerId, setSelectedClassOwnerId] = useState("all");
   useEffect(() => {
     async function loadStudents() {
       if (!profile?.madrassahId) {
@@ -115,6 +126,30 @@ export default function StudentsPage() {
           madrassahData?.studentAccessMode === "assigned" ? "assigned" : "shared";
 
         setStudentAccessMode(mode);
+
+        if (profile.role === "admin") {
+  const staffSnap = await getDocs(
+    query(
+      collection(db, "madrassahs", profile.madrassahId, "staff"),
+      orderBy("fullName")
+    )
+  );
+
+  const owners: ClassOwnerOption[] = staffSnap.docs.map((staffDoc) => {
+    const staffData = staffDoc.data() as any;
+
+    return {
+      id: staffDoc.id,
+      userId: String(staffData.userId || staffDoc.id),
+      fullName: String(staffData.fullName || staffData.email || "Unnamed Teacher"),
+      email: String(staffData.email || ""),
+      role: staffData.role === "admin" ? "admin" : "teacher",
+      isActive: staffData.isActive !== false,
+    };
+  });
+
+  setClassOwners(owners);
+}
 
         const studentsRef = collection(
           db,
@@ -162,31 +197,36 @@ export default function StudentsPage() {
     }
   }, [loading, profile, firebaseUser]);
 
-  const filteredStudents = useMemo(() => {
-    const term = search.trim().toLowerCase();
+const filteredStudents = useMemo(() => {
+  const term = search.trim().toLowerCase();
 
-    return students.filter((student) => {
-      const matchesSearch =
-        !term ||
-        [
-          student.fullName,
-          student.parentName,
-          student.parentPhone,
-          student.parentEmail,
-          student.weeklyGoal,
-        ]
-          .join(" ")
-          .toLowerCase()
-          .includes(term);
+  return students.filter((student) => {
+    const matchesClass =
+      profile?.role !== "admin" ||
+      selectedClassOwnerId === "all" ||
+      student.teacherId === selectedClassOwnerId;
 
-      const matchesStatus =
-        statusFilter === "all" ||
-        (statusFilter === "active" && student.isActive) ||
-        (statusFilter === "inactive" && !student.isActive);
+    const matchesSearch =
+      !term ||
+      [
+        student.fullName,
+        student.parentName,
+        student.parentPhone,
+        student.parentEmail,
+        student.weeklyGoal,
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(term);
 
-      return matchesSearch && matchesStatus;
-    });
-  }, [students, search, statusFilter]);
+    const matchesStatus =
+      statusFilter === "all" ||
+      (statusFilter === "active" && student.isActive) ||
+      (statusFilter === "inactive" && !student.isActive);
+
+    return matchesClass && matchesSearch && matchesStatus;
+  });
+}, [students, search, statusFilter, selectedClassOwnerId, profile?.role]);
 
   const totalStudents = students.length;
   const withGoals = students.filter((s) => s.weeklyGoal.trim()).length;
@@ -260,15 +300,35 @@ export default function StudentsPage() {
       </div>
 
       <div className="mt-8 rounded-[30px] border border-gray-300 bg-[linear-gradient(180deg,rgba(255,255,255,0.82),rgba(255,255,255,0.64))] p-5 shadow-[0_12px_40px_rgba(0,0,0,0.06)] backdrop-blur-xl">
-        <div className="grid gap-4 lg:grid-cols-[1fr_auto]">
-          <input
-            type="text"
-            placeholder="Search by student, parent, phone, email, or weekly goal..."
-            className="w-full rounded-2xl border border-gray-300 bg-white/88 p-4 text-[#171717] outline-none placeholder:text-[#8a8a8a] transition focus:border-[#B8963D] focus:bg-white"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
+<div className="grid gap-4 lg:grid-cols-[260px_1fr]">
+  {profile.role === "admin" ? (
+    <select
+      value={selectedClassOwnerId}
+      onChange={(e) => setSelectedClassOwnerId(e.target.value)}
+      className="w-full rounded-2xl border border-gray-300 bg-white/88 p-4 text-[#171717] outline-none transition focus:border-[#B8963D] focus:bg-white"
+    >
+      <option value="all">All classes</option>
+
+      {classOwners.map((owner) => {
+        const count = students.filter((s) => s.teacherId === owner.userId).length;
+
+        return (
+          <option key={owner.id} value={owner.userId}>
+            {owner.fullName} — {count} student{count === 1 ? "" : "s"}
+          </option>
+        );
+      })}
+    </select>
+  ) : null}
+
+  <input
+    type="text"
+    placeholder="Search by student, parent, phone, email, or weekly goal..."
+    className="w-full rounded-2xl border border-gray-300 bg-white/88 p-4 text-[#171717] outline-none placeholder:text-[#8a8a8a] transition focus:border-[#B8963D] focus:bg-white"
+    value={search}
+    onChange={(e) => setSearch(e.target.value)}
+  />
+</div>
       </div>
 
       <div className="mt-8">
