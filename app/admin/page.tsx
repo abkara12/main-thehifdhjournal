@@ -22,6 +22,16 @@ type StudentOption = {
   fullName: string;
   fullNameLower?: string;
   isActive?: boolean;
+  createdBy?: string;
+};
+
+type ClassOwnerOption = {
+  id: string;
+  userId: string;
+  fullName: string;
+  email: string;
+  role: "admin" | "teacher";
+  isActive?: boolean;
 };
 
 function getDateKeySA() {
@@ -184,6 +194,9 @@ export default function AdminPage() {
   const [selectedStudentId, setSelectedStudentId] = useState("");
   const [studentSearch, setStudentSearch] = useState("");
 
+  const [classOwners, setClassOwners] = useState<ClassOwnerOption[]>([]);
+const [selectedClassOwnerId, setSelectedClassOwnerId] = useState("all");
+
   const [studentFullName, setStudentFullName] = useState("");
   const [parentName, setParentName] = useState("");
   const [parentPhone, setParentPhone] = useState("");
@@ -211,12 +224,13 @@ export default function AdminPage() {
 
       const list: StudentOption[] = snap.docs.map((d) => {
         const data = d.data() as any;
-        return {
-          id: d.id,
-          fullName: String(data.fullName || "Unnamed Student"),
-          fullNameLower: String(data.fullNameLower || "").toLowerCase(),
-          isActive: data.isActive !== false,
-        };
+return {
+  id: d.id,
+  fullName: String(data.fullName || "Unnamed Student"),
+  fullNameLower: String(data.fullNameLower || "").toLowerCase(),
+  isActive: data.isActive !== false,
+  createdBy: String(data.createdBy || ""),
+};
       });
 
       setStudents(list);
@@ -235,6 +249,32 @@ export default function AdminPage() {
       setLoadingStudents(false);
     }
   }
+
+
+  async function loadClassOwners(currentMadrassahId: string) {
+  try {
+    const staffRef = collection(db, "madrassahs", currentMadrassahId, "staff");
+    const qy = query(staffRef, orderBy("fullName"));
+    const snap = await getDocs(qy);
+
+    const list: ClassOwnerOption[] = snap.docs.map((d) => {
+      const data = d.data() as any;
+
+      return {
+        id: d.id,
+        userId: String(data.userId || d.id),
+        fullName: String(data.fullName || data.email || "Unnamed Teacher"),
+        email: String(data.email || ""),
+        role: data.role === "admin" ? "admin" : "teacher",
+        isActive: data.isActive !== false,
+      };
+    });
+
+    setClassOwners(list);
+  } catch {
+    setClassOwners([]);
+  }
+}
 
   async function loadMadrassahMeta(currentMadrassahId: string, currentRole: string) {
     try {
@@ -312,10 +352,16 @@ export default function AdminPage() {
         setMadrassahName(nextMadrassahName);
 
         if (nextMadrassahId && nextRole && ["admin", "teacher"].includes(nextRole)) {
-          await Promise.all([
-            loadStudents(nextMadrassahId),
-            loadMadrassahMeta(nextMadrassahId, nextRole),
-          ]);
+const loadingTasks = [
+  loadStudents(nextMadrassahId),
+  loadMadrassahMeta(nextMadrassahId, nextRole),
+];
+
+if (nextRole === "admin") {
+  loadingTasks.push(loadClassOwners(nextMadrassahId));
+}
+
+await Promise.all(loadingTasks);
         }
       } catch (e: any) {
         setPageErr(e?.message ?? "Could not load your account.");
@@ -449,11 +495,22 @@ export default function AdminPage() {
     await loadStudents(madrassahId);
   }
 
-  const filteredStudents = useMemo(() => {
-    const term = studentSearch.trim().toLowerCase();
-    if (!term) return students;
-    return students.filter((s) => s.fullName.toLowerCase().includes(term));
-  }, [students, studentSearch]);
+const filteredStudents = useMemo(() => {
+  const term = studentSearch.trim().toLowerCase();
+
+  const classFilteredStudents =
+    selectedClassOwnerId === "all"
+      ? students
+      : selectedClassOwnerId === "unassigned"
+      ? students.filter((s) => !s.createdBy)
+      : students.filter((s) => s.createdBy === selectedClassOwnerId);
+
+  if (!term) return classFilteredStudents;
+
+  return classFilteredStudents.filter((s) =>
+    s.fullName.toLowerCase().includes(term)
+  );
+}, [students, studentSearch, selectedClassOwnerId]);
 
   useEffect(() => {
     if (!filteredStudents.length) {
@@ -733,6 +790,41 @@ export default function AdminPage() {
               </button>
             </div>
           </div>
+
+
+          {isAdmin ? (
+  <label className="grid gap-2">
+    <span className="text-sm font-semibold text-gray-900">Choose class</span>
+
+    <div className="relative">
+      <select
+        value={selectedClassOwnerId}
+        onChange={(e) => setSelectedClassOwnerId(e.target.value)}
+        className="w-full h-12 rounded-2xl border border-gray-300 bg-white/80 px-4 pr-10 outline-none focus:ring-2 focus:ring-[#B8963D]/30"
+      >
+        <option value="all">All students</option>
+
+        {classOwners.map((owner) => {
+          const count = students.filter((s) => s.createdBy === owner.userId).length;
+
+          return (
+            <option key={owner.id} value={owner.userId}>
+              {owner.fullName} {owner.role === "admin" ? "(Admin)" : "(Teacher)"} — {count} student{count === 1 ? "" : "s"}
+            </option>
+          );
+        })}
+
+        {students.some((s) => !s.createdBy) ? (
+          <option value="unassigned">Unassigned students</option>
+        ) : null}
+      </select>
+
+      <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">
+        ▼
+      </div>
+    </div>
+  </label>
+) : null}
 
           <div className="mt-6 grid gap-4">
             <label className="grid gap-2">
