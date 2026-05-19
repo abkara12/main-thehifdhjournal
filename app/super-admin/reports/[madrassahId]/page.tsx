@@ -83,6 +83,41 @@ function openWhatsAppMessage(phone: string, message: string) {
   return true;
 }
 
+function getDateKeyOffset(dateKey: string, offsetDays: number) {
+  const date = new Date(`${dateKey}T00:00:00`);
+  date.setDate(date.getDate() + offsetDays);
+  return date.toISOString().split("T")[0];
+}
+
+function mapLogDoc(docSnap: any): WeeklyReportLog {
+  const data = docSnap.data() as any;
+
+  return {
+    dateKey: data.dateKey,
+    attendance: data.attendance,
+    sabak: data.sabak,
+    sabakRead: data.sabakRead,
+    sabakReadQuality: data.sabakReadQuality,
+    sabakReadNotes: data.sabakReadNotes,
+    sabakDhor: data.sabakDhor,
+    sabakDhorRead: data.sabakDhorRead,
+    sabakDhorReadQuality: data.sabakDhorReadQuality,
+    sabakDhorReadNotes: data.sabakDhorReadNotes,
+    dhor: data.dhor,
+    dhorRead: data.dhorRead,
+    dhorReadQuality: data.dhorReadQuality,
+    dhorReadNotes: data.dhorReadNotes,
+    sabakDhorMistakes: data.sabakDhorMistakes,
+    dhorMistakes: data.dhorMistakes,
+    generalNotes: data.generalNotes,
+    weeklyReflection: data.weeklyReflection,
+    weeklyGoal: data.weeklyGoal,
+    weeklyGoalCompleted: data.weeklyGoalCompleted,
+    weeklyGoalCompletedDateKey: data.weeklyGoalCompletedDateKey,
+    weeklyGoalDurationDays: data.weeklyGoalDurationDays,
+  };
+}
+
 function RunCard({
   run,
   active,
@@ -379,48 +414,50 @@ export default function SuperAdminMadrassahReportsPage() {
 
       await Promise.all(
         students.map(async (student) => {
-          const logsSnap = await getDocs(
+          const logsRef = collection(
+            db,
+            "madrassahs",
+            madrassahId,
+            "students",
+            student.id,
+            "logs"
+          );
+
+          const currentLogsSnap = await getDocs(
             query(
-              collection(
-                db,
-                "madrassahs",
-                madrassahId,
-                "students",
-                student.id,
-                "logs"
-              ),
+              logsRef,
               where("dateKey", ">=", currentWindow.startKey),
               where("dateKey", "<=", currentWindow.endKey),
               orderBy("dateKey", "desc")
             )
           );
 
-          const logs = logsSnap.docs.map((docSnap) => {
-            const data = docSnap.data() as any;
+          const previousStartKey = getDateKeyOffset(currentWindow.startKey, -7);
+          const previousEndKey = getDateKeyOffset(currentWindow.startKey, -1);
 
-            return {
-              dateKey: data.dateKey,
-              attendance: data.attendance,
-              sabak: data.sabak,
-              sabakRead: data.sabakRead,
-              sabakReadQuality: data.sabakReadQuality,
-              sabakReadNotes: data.sabakReadNotes,
-              sabakDhor: data.sabakDhor,
-              sabakDhorRead: data.sabakDhorRead,
-              sabakDhorReadQuality: data.sabakDhorReadQuality,
-              sabakDhorReadNotes: data.sabakDhorReadNotes,
-              dhor: data.dhor,
-              dhorRead: data.dhorRead,
-              dhorReadQuality: data.dhorReadQuality,
-              dhorReadNotes: data.dhorReadNotes,
-              sabakDhorMistakes: data.sabakDhorMistakes,
-              dhorMistakes: data.dhorMistakes,
-              weeklyGoal: data.weeklyGoal,
-              weeklyGoalCompleted: data.weeklyGoalCompleted,
-              weeklyGoalCompletedDateKey: data.weeklyGoalCompletedDateKey,
-              weeklyGoalDurationDays: data.weeklyGoalDurationDays,
-            } satisfies WeeklyReportLog;
-          });
+          const previousLogsSnap = await getDocs(
+            query(
+              logsRef,
+              where("dateKey", ">=", previousStartKey),
+              where("dateKey", "<=", previousEndKey),
+              orderBy("dateKey", "desc")
+            )
+          );
+
+          const monthStartKey = getDateKeyOffset(currentWindow.endKey, -30);
+
+          const monthlyLogsSnap = await getDocs(
+            query(
+              logsRef,
+              where("dateKey", ">=", monthStartKey),
+              where("dateKey", "<=", currentWindow.endKey),
+              orderBy("dateKey", "desc")
+            )
+          );
+
+          const logs = currentLogsSnap.docs.map(mapLogDoc);
+          const previousLogs = previousLogsSnap.docs.map(mapLogDoc);
+          const monthlyLogs = monthlyLogsSnap.docs.map(mapLogDoc);
 
           const monthLabel =
             logs.length > 0
@@ -432,6 +469,9 @@ export default function SuperAdminMadrassahReportsPage() {
             madrassahName,
             monthLabel,
             logs,
+            previousLogs,
+            monthlyLogs,
+            teacherName: "Ustad",
           });
 
           await setDoc(
