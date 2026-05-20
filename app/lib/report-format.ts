@@ -40,6 +40,10 @@ function toText(value: unknown) {
   return typeof value === "string" ? value.trim() : String(value).trim();
 }
 
+function isAbsent(log: WeeklyReportLog) {
+  return toText(log.attendance).toLowerCase().includes("absent");
+}
+
 function getQualityScore(value?: string) {
   const q = toText(value).toLowerCase();
 
@@ -57,7 +61,7 @@ function averageQuality(logs: WeeklyReportLog[], fields: (keyof WeeklyReportLog)
   let total = 0;
   let count = 0;
 
-  logs.forEach((log) => {
+  logs.filter((log) => !isAbsent(log)).forEach((log) => {
     fields.forEach((field) => {
       const value = toText(log[field]);
       if (value) {
@@ -71,14 +75,7 @@ function averageQuality(logs: WeeklyReportLog[], fields: (keyof WeeklyReportLog)
 }
 
 function getPresentLogs(logs: WeeklyReportLog[]) {
-  return logs.filter((log) => {
-    const attendance = toText(log.attendance).toLowerCase();
-
-    if (!attendance) return true;
-    if (attendance.includes("absent")) return false;
-
-    return true;
-  });
+  return logs.filter((log) => !isAbsent(log));
 }
 
 function getGoalCompleted(log?: WeeklyReportLog) {
@@ -102,26 +99,22 @@ function getOverallWeek(logs: WeeklyReportLog[]) {
   if (presentLogs.length >= 5 && avg >= 3.2) return "Outstanding ⭐";
   if (presentLogs.length >= 5 && avg >= 2.7) return "Excellent";
   if (presentLogs.length >= 4 && avg >= 2.2) return "Good";
-  if (presentLogs.length >= 3) return "Needs Attention";
+  if (presentLogs.length >= 3) return "Building Consistency";
 
-  return "Requires More Consistency";
+  return "Needs More Consistency";
 }
 
 function getSabakStrength(logs: WeeklyReportLog[]) {
-  if (!logs.length) return "No sabak recorded";
-
   const avg = averageQuality(logs, ["sabakReadQuality", "sabakRead"]);
 
   if (avg >= 3.2) return "Excellent";
   if (avg >= 2.7) return "Strong";
   if (avg >= 2.1) return "Good";
 
-  return "Needs Attention";
+  return "Can Improve";
 }
 
 function getRevisionStrength(logs: WeeklyReportLog[]) {
-  if (!logs.length) return "No revision recorded";
-
   const avg = averageQuality(logs, [
     "sabakDhorReadQuality",
     "sabakDhorRead",
@@ -133,45 +126,37 @@ function getRevisionStrength(logs: WeeklyReportLog[]) {
   if (avg >= 2.7) return "Strong";
   if (avg >= 2.1) return "Good";
 
-  return "Needs Attention";
+  return "Needs More Revision";
 }
 
-function compareNumber(current: number, previous: number, label: string) {
-  if (!previous && current) return `✅ ${label} started strongly`;
-  if (current > previous) return `✅ ${label} improved`;
-  if (current < previous) return `⚠️ ${label} decreased`;
-  return `➖ ${label} stayed the same`;
-}
-
-function getBadges({
+function buildTeacherHighlight({
   attendance,
   goalCompleted,
-  revisionStrength,
   sabakStrength,
+  revisionStrength,
 }: {
   attendance: number;
   goalCompleted: boolean;
-  revisionStrength: string;
   sabakStrength: string;
+  revisionStrength: string;
 }) {
-  const badges: string[] = [];
-
-  if (attendance >= 5) badges.push("🌟 Full Attendance Star");
-  if (goalCompleted) badges.push("🎯 Goal Achiever");
-
-  if (revisionStrength === "Excellent" || revisionStrength === "Strong") {
-    badges.push("📚 Strong Revision Badge");
+  if (attendance >= 5 && goalCompleted) {
+    return "Excellent consistency and effort shown throughout the week.";
   }
 
   if (sabakStrength === "Excellent" || sabakStrength === "Strong") {
-    badges.push("📖 Sabak Excellence Badge");
+    return "Very pleasing effort in sabak this week.";
   }
 
-  if (badges.length >= 3) {
-    badges.push("🔥 Consistency Champion");
+  if (revisionStrength === "Excellent" || revisionStrength === "Strong") {
+    return "Revision was a strong point this week, alhamdulillah.";
   }
 
-  return badges.length ? badges : ["🌱 Building Consistency"];
+  if (attendance <= 2) {
+    return "A stronger attendance routine will help progress improve.";
+  }
+
+  return "Steady effort was shown this week, with room to build further.";
 }
 
 function buildAutoReflection({
@@ -188,22 +173,22 @@ function buildAutoReflection({
   revisionStrength: string;
 }) {
   if (overallWeek.includes("Outstanding") || overallWeek === "Excellent") {
-    return `Alhamdulillah, ${studentName} had a very pleasing week. The consistency, effort and progress shown are signs of a strong hifdh routine. Please continue encouraging daily revision at home so this momentum continues, in shaa Allah.`;
+    return `Alhamdulillah, ${studentName} had a very pleasing week. The effort, consistency and progress shown are signs of a strong hifdh routine. Please continue encouraging daily revision at home so this momentum continues, in shaa Allah.`;
   }
 
   if (attendance <= 2) {
-    return `${studentName} will benefit greatly from stronger attendance and consistency. Regular attendance is one of the biggest keys to steady hifdh progress. Please help ensure a stronger routine next week, in shaa Allah.`;
+    return `${studentName} will benefit from stronger attendance and consistency. Regular attendance is one of the biggest foundations for steady hifdh progress. Please help build a stronger routine next week, in shaa Allah.`;
   }
 
-  if (revisionStrength === "Needs Attention") {
-    return `${studentName} is making effort, but revision requires extra attention. A few minutes of listening at home daily can make a big difference in strengthening older work.`;
+  if (revisionStrength === "Needs More Revision") {
+    return `${studentName} is making effort, but revision needs extra attention. A few minutes of listening at home daily can make a big difference in strengthening older work.`;
   }
 
   if (!goalCompleted) {
     return `${studentName} made progress this week, but the weekly goal was not fully completed. With stronger preparation and revision next week, better progress can be achieved, in shaa Allah.`;
   }
 
-  return `Alhamdulillah, ${studentName} made steady progress this week. Please continue supporting the hifdh journey at home through encouragement, revision and du'aa.`;
+  return `Alhamdulillah, ${studentName} made steady progress this week. Please continue supporting this hifdh journey at home through encouragement, revision and du'aa.`;
 }
 
 function buildParentFocus({
@@ -219,7 +204,7 @@ function buildParentFocus({
     return "Please focus on full attendance next week. Consistency is one of the strongest foundations for successful hifdh.";
   }
 
-  if (revisionStrength === "Needs Attention") {
+  if (revisionStrength === "Needs More Revision") {
     return "Please listen to revision over the weekend, especially older dhor, so the memorised work remains firm.";
   }
 
@@ -230,23 +215,38 @@ function buildParentFocus({
   return "Please continue encouraging daily revision at home. Even a short, consistent routine makes a major difference.";
 }
 
-function getLoggedDayStreak(logs: WeeklyReportLog[]) {
-  const uniqueDays = new Set(
-    logs.map((log) => toText(log.dateKey)).filter(Boolean)
-  );
+function getBadges({
+  attendance,
+  goalCompleted,
+  revisionStrength,
+  sabakStrength,
+}: {
+  attendance: number;
+  goalCompleted: boolean;
+  revisionStrength: string;
+  sabakStrength: string;
+}) {
+  const badges: string[] = [];
 
-  return uniqueDays.size;
+  if (attendance >= 5) badges.push("🌟 Full Attendance");
+  if (goalCompleted) badges.push("🎯 Weekly Goal Completed");
+
+  if (revisionStrength === "Excellent" || revisionStrength === "Strong") {
+    badges.push("📚 Strong Revision");
+  }
+
+  if (sabakStrength === "Excellent" || sabakStrength === "Strong") {
+    badges.push("📖 Strong Sabak");
+  }
+
+  return badges.length ? badges : ["🌱 Building Consistency"];
 }
 
-function getGoalStreak(logs: WeeklyReportLog[]) {
-  const completedGoalDates = new Set(
-    logs
-      .filter((log) => getGoalCompleted(log))
-      .map((log) => toText(log.weeklyGoalCompletedDateKey || log.dateKey))
-      .filter(Boolean)
-  );
-
-  return completedGoalDates.size;
+function compareNumber(current: number, previous: number, label: string) {
+  if (!previous && current) return `✅ ${label} started strongly`;
+  if (current > previous) return `✅ ${label} improved`;
+  if (current < previous) return `⚠️ ${label} needs more attention`;
+  return `➖ ${label} remained steady`;
 }
 
 export function formatWeeklyReportText({
@@ -255,22 +255,17 @@ export function formatWeeklyReportText({
   monthLabel,
   logs,
   previousLogs = [],
-  monthlyLogs,
   teacherName = "Ustad",
 }: WeeklyReportInput) {
   const currentLogs = logs || [];
-  const currentMonthlyLogs = monthlyLogs?.length ? monthlyLogs : currentLogs;
-
   const latestLog = currentLogs[0];
+
   const presentLogs = getPresentLogs(currentLogs);
 
   const weeklyGoal = toText(latestLog?.weeklyGoal) || "-";
   const goalCompleted = getGoalCompleted(latestLog);
-  const goalStatus = goalCompleted ? "Achieved ✅" : "In Progress ⚠️";
-  const duration = toText(latestLog?.weeklyGoalDurationDays) || "-";
-
+  const goalStatus = goalCompleted ? "Completed ✅" : "Still In Progress";
   const attendance = presentLogs.length;
-  const previousAttendance = getPresentLogs(previousLogs).length;
 
   const overallWeek = getOverallWeek(currentLogs);
   const sabakStrength = getSabakStrength(currentLogs);
@@ -300,10 +295,10 @@ export function formatWeeklyReportText({
     "dhorRead",
   ]);
 
-  const realWeeklyReflection = toText(latestLog?.weeklyReflection);
+  const previousAttendance = getPresentLogs(previousLogs).length;
 
   const weeklyReflection =
-    realWeeklyReflection ||
+    toText(latestLog?.weeklyReflection) ||
     buildAutoReflection({
       studentName,
       overallWeek,
@@ -311,6 +306,13 @@ export function formatWeeklyReportText({
       goalCompleted,
       revisionStrength,
     });
+
+  const teacherHighlight = buildTeacherHighlight({
+    attendance,
+    goalCompleted,
+    sabakStrength,
+    revisionStrength,
+  });
 
   const parentFocus = buildParentFocus({
     attendance,
@@ -325,12 +327,9 @@ export function formatWeeklyReportText({
     sabakStrength,
   });
 
-  const loggedDayStreak = getLoggedDayStreak(currentMonthlyLogs);
-  const goalStreak = getGoalStreak(currentMonthlyLogs);
-
   let reportText = `السلام عليكم ورحمة الله وبركاته
 
-🌙 *Weekly Hifdh Journey Report*
+🌙 *Weekly Hifdh Progress Report*
 
 *Student:* ${studentName}
 *Madrassah:* ${madrassahName}
@@ -339,40 +338,26 @@ export function formatWeeklyReportText({
 
 ━━━━━━━━━━━━━━━━━━
 
-🏆 *This Week’s Snapshot*
+🌟 *Teacher Highlight*
 
-⭐ *Overall Week:* ${overallWeek}
+${teacherHighlight}
+
+━━━━━━━━━━━━━━━━━━
+
+🏆 *This Week At A Glance*
+
+⭐ *Overall:* ${overallWeek}
 📅 *Attendance:* ${attendance}/5 days
 🎯 *Weekly Goal:* ${weeklyGoal}
 ✅ *Goal Status:* ${goalStatus}
-📖 *Sabak Strength:* ${sabakStrength}
-🔁 *Revision Strength:* ${revisionStrength}
-⏳ *Goal Duration:* ${duration} day(s)
+📖 *Sabak:* ${sabakStrength}
+🔁 *Revision:* ${revisionStrength}
 
 ━━━━━━━━━━━━━━━━━━
 
-💬 *Weekly Reflection From ${teacherName}*
+💬 *Teacher’s Reflection*
 
 ${weeklyReflection}
-
-━━━━━━━━━━━━━━━━━━
-
-📈 *Progress Compared To Last Week*
-
-${
-  previousLogs.length
-    ? `${compareNumber(attendance, previousAttendance, "Attendance")}
-${compareNumber(currentSabakAvg, previousSabakAvg, "Sabak quality")}
-${compareNumber(currentRevisionAvg, previousRevisionAvg, "Revision quality")}`
-    : "Previous week data is not available yet. From next week, this section will show improvement trends, in shaa Allah."
-}
-
-━━━━━━━━━━━━━━━━━━
-
-🔥 *Current Streaks*
-
-• ${goalStreak} goal achievement record(s) this month
-• ${loggedDayStreak} logged day(s) recorded this month
 
 ━━━━━━━━━━━━━━━━━━
 
@@ -382,24 +367,23 @@ ${badges.map((badge) => `• ${badge}`).join("\n")}
 
 ━━━━━━━━━━━━━━━━━━
 
-🏡 *Parent Focus For The Weekend*
+🏡 *Focus For Home*
 
 ${parentFocus}
 
-━━━━━━━━━━━━━━━━━━
+`;
 
-📊 *Monthly Summary*
+  if (previousLogs.length) {
+    reportText += `━━━━━━━━━━━━━━━━━━
 
-📅 Logs Recorded: ${currentMonthlyLogs.length}
-🎯 Goals Achieved: ${goalStreak}
-📖 Strongest Area: ${sabakStrength}
-🔁 Focus Area: ${
-    revisionStrength === "Needs Attention"
-      ? "Older dhor revision"
-      : "Maintain consistency"
-  }
+📈 *Compared To Last Week*
+
+${compareNumber(attendance, previousAttendance, "Attendance")}
+${compareNumber(currentSabakAvg, previousSabakAvg, "Sabak")}
+${compareNumber(currentRevisionAvg, previousRevisionAvg, "Revision")}
 
 `;
+  }
 
   if (!currentLogs.length) {
     reportText += `━━━━━━━━━━━━━━━━━━
@@ -410,71 +394,74 @@ Please ensure daily progress is logged so parents can receive meaningful weekly 
   } else {
     reportText += `━━━━━━━━━━━━━━━━━━
 
-📚 *Detailed Daily Breakdown*
+📚 *Daily Breakdown*
 
 `;
 
     currentLogs.forEach((log, index) => {
       const { dayName, dateFormatted } = formatDateKey(log.dateKey);
 
-      reportText += `📅 *${dayName} - ${dateFormatted}*
+      if (isAbsent(log)) {
+        reportText += `📅 *${dayName} - ${dateFormatted}*
 
-📌 *Attendance*
-${toText(log.attendance) || "-"}
+❌ *Absent*`;
+      } else {
+        reportText += `📅 *${dayName} - ${dateFormatted}*
 
 📖 *Sabak*
 ${toText(log.sabak) || "-"} | ${
-        toText(log.sabakReadQuality) || toText(log.sabakRead) || "-"
-      }`;
+          toText(log.sabakReadQuality) || toText(log.sabakRead) || "-"
+        }`;
 
-      if (toText(log.sabakReadNotes)) {
-        reportText += `
+        if (toText(log.sabakReadNotes)) {
+          reportText += `
 _Note:_ ${toText(log.sabakReadNotes)}`;
-      }
+        }
 
-      reportText += `
+        reportText += `
 
 🔁 *Sabak Dhor*
 ${toText(log.sabakDhor) || "-"} | ${
-        toText(log.sabakDhorReadQuality) || toText(log.sabakDhorRead) || "-"
-      }`;
+          toText(log.sabakDhorReadQuality) || toText(log.sabakDhorRead) || "-"
+        }`;
 
-      if (toText(log.sabakDhorReadNotes)) {
-        reportText += `
+        if (toText(log.sabakDhorReadNotes)) {
+          reportText += `
 _Note:_ ${toText(log.sabakDhorReadNotes)}`;
-      }
+        }
 
-      reportText += `
+        reportText += `
 
 📚 *Dhor*
 ${toText(log.dhor) || "-"} | ${
-        toText(log.dhorReadQuality) || toText(log.dhorRead) || "-"
-      }`;
+          toText(log.dhorReadQuality) || toText(log.dhorRead) || "-"
+        }`;
 
-      if (toText(log.dhorReadNotes)) {
-        reportText += `
+        if (toText(log.dhorReadNotes)) {
+          reportText += `
 _Note:_ ${toText(log.dhorReadNotes)}`;
-      }
+        }
 
-      if (toText(log.sabakDhorMistakes)) {
-        reportText += `
+        if (toText(log.sabakDhorMistakes)) {
+          reportText += `
 
 ⚠️ *Sabak Dhor Mistakes*
 ${toText(log.sabakDhorMistakes)}`;
-      }
+        }
 
-      if (toText(log.dhorMistakes)) {
-        reportText += `
+        if (toText(log.dhorMistakes)) {
+          reportText += `
 
 ⚠️ *Dhor Mistakes*
 ${toText(log.dhorMistakes)}`;
-      }
+        }
 
-      if (toText(log.generalNotes)) {
-        reportText += `
+        if (toText(log.generalNotes)) {
+          reportText += `
 
 🗒️ *General Note*
 ${toText(log.generalNotes)}`;
+        }
       }
 
       if (index !== currentLogs.length - 1) {
@@ -491,17 +478,7 @@ ${toText(log.generalNotes)}`;
 
 ━━━━━━━━━━━━━━━━━━
 
-💬 *Parent Reply Options*
-
-You may reply with:
-
-1️⃣ Concern  
-2️⃣ Appreciation  
-3️⃣ Question for ${teacherName}
-
-━━━━━━━━━━━━━━━━━━
-
-May Allah place barakah in this hifdh journey and make the Qur’an a means of success in this world and the Aakhirah.
+Every letter recited is an investment for this world and the Aakhirah. May Allah place barakah in this hifdh journey and make ${studentName} from the people of the Qur’an.
 
 *Powered by The Hifdh Journal*`;
 
