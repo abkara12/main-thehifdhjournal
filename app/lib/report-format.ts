@@ -120,19 +120,24 @@ function getSabakStrength(logs: WeeklyReportLog[]) {
   return "Can Improve";
 }
 
-function getRevisionStrength(logs: WeeklyReportLog[]) {
-  const avg = averageQuality(logs, [
-    "sabakDhorReadQuality",
-    "sabakDhorRead",
-    "dhorReadQuality",
-    "dhorRead",
-  ]);
+function getSabakDhorStrength(logs: WeeklyReportLog[]) {
+  const avg = averageQuality(logs, ["sabakDhorReadQuality", "sabakDhorRead"]);
 
   if (avg >= 3.2) return "Excellent";
   if (avg >= 2.7) return "Strong";
   if (avg >= 2.1) return "Good";
 
-  return "Needs More Revision";
+  return "Needs More Attention";
+}
+
+function getDhorStrength(logs: WeeklyReportLog[]) {
+  const avg = averageQuality(logs, ["dhorReadQuality", "dhorRead"]);
+
+  if (avg >= 3.2) return "Excellent";
+  if (avg >= 2.7) return "Strong";
+  if (avg >= 2.1) return "Good";
+
+  return "Needs More Attention";
 }
 
 function compareNumber(current: number, previous: number, label: string) {
@@ -154,11 +159,11 @@ function getMistakeFocus(logs: WeeklyReportLog[]) {
   const hasDhorMistakes = logs.some((log) => toText(log.dhorMistakes));
 
   if (hasSabakDhorMistakes && hasDhorMistakes) {
-    return "Some mistakes were noted in revision, so extra listening and correction at home will be beneficial.";
+    return "Some mistakes were noted in both sabak dhor and dhor revision, so extra listening and correction at home will be beneficial.";
   }
 
   if (hasDhorMistakes) {
-    return "Some dhor mistakes were noted, so older revision should be given extra attention.";
+    return "Some dhor revision mistakes were noted, so older revision should be given extra attention.";
   }
 
   if (hasSabakDhorMistakes) {
@@ -172,30 +177,85 @@ function buildTeacherHighlight({
   attendance,
   goalCompleted,
   sabakStrength,
-  revisionStrength,
+  sabakDhorStrength,
+  dhorStrength,
+  previousLogs,
+  currentLogs,
 }: {
   attendance: number;
   goalCompleted: boolean;
   sabakStrength: string;
-  revisionStrength: string;
+  sabakDhorStrength: string;
+  dhorStrength: string;
+  previousLogs: WeeklyReportLog[];
+  currentLogs: WeeklyReportLog[];
 }) {
+  const teacherNotes = currentLogs.map((log) => toText(log.generalNotes)).filter(Boolean);
+
+  if (teacherNotes.length) {
+    const note = teacherNotes[0];
+    return note.length <= 120 ? note : `${note.slice(0, 120).trim()}...`;
+  }
+
+  const currentSabakAvg = averageQuality(currentLogs, ["sabakReadQuality", "sabakRead"]);
+  const previousSabakAvg = averageQuality(previousLogs, ["sabakReadQuality", "sabakRead"]);
+
+  const currentSabakDhorAvg = averageQuality(currentLogs, [
+    "sabakDhorReadQuality",
+    "sabakDhorRead",
+  ]);
+  const previousSabakDhorAvg = averageQuality(previousLogs, [
+    "sabakDhorReadQuality",
+    "sabakDhorRead",
+  ]);
+
+  const currentDhorAvg = averageQuality(currentLogs, ["dhorReadQuality", "dhorRead"]);
+  const previousDhorAvg = averageQuality(previousLogs, ["dhorReadQuality", "dhorRead"]);
+
+  const sabakImproved = previousLogs.length && currentSabakAvg > previousSabakAvg;
+  const sabakDhorImproved = previousLogs.length && currentSabakDhorAvg > previousSabakDhorAvg;
+  const dhorImproved = previousLogs.length && currentDhorAvg > previousDhorAvg;
+
+  const hasSabakDhorMistakes = currentLogs.some((log) => toText(log.sabakDhorMistakes));
+  const hasDhorMistakes = currentLogs.some((log) => toText(log.dhorMistakes));
+
+  if (attendance >= 5 && goalCompleted && sabakImproved && sabakDhorImproved && dhorImproved) {
+    return "Excellent improvement noticed across sabak, sabak dhor and dhor revision this week.";
+  }
+
+  if (sabakImproved) return "A noticeable improvement was seen in sabak preparation this week.";
+  if (sabakDhorImproved) return "Recent revision improved noticeably this week.";
+  if (dhorImproved) return "Older dhor revision showed pleasing improvement this week.";
+
   if (attendance >= 5 && goalCompleted) {
-    return "A strong week of consistency, effort and goal completion.";
+    return "Very pleasing consistency in attendance, preparation and weekly goal completion.";
   }
 
   if (sabakStrength === "Excellent" || sabakStrength === "Strong") {
-    return "Pleasing effort shown in sabak this week.";
+    return "Sabak preparation was a pleasing area this week.";
   }
 
-  if (revisionStrength === "Excellent" || revisionStrength === "Strong") {
-    return "Revision was a strong point this week, alhamdulillah.";
+  if (sabakDhorStrength === "Excellent" || sabakDhorStrength === "Strong") {
+    return "Sabak dhor was firm and pleasing this week.";
+  }
+
+  if (dhorStrength === "Excellent" || dhorStrength === "Strong") {
+    return "Older dhor revision was a strong point this week.";
   }
 
   if (attendance <= 2) {
-    return "A stronger attendance routine will help progress improve.";
+    return "A stronger attendance routine will help progress improve further.";
   }
 
-  return "Steady effort shown, with room to build further.";
+  if (hasDhorMistakes) {
+    return "Extra attention to older dhor revision will help strengthen retention.";
+  }
+
+  if (hasSabakDhorMistakes) {
+    return "Recent revision needs a little more strengthening and consistency.";
+  }
+
+  return "Steady effort was shown this week, with room to build further.";
 }
 
 function buildAutoReflection({
@@ -203,7 +263,8 @@ function buildAutoReflection({
   attendance,
   goalCompleted,
   sabakStrength,
-  revisionStrength,
+  sabakDhorStrength,
+  dhorStrength,
   previousLogs,
   currentLogs,
 }: {
@@ -211,69 +272,69 @@ function buildAutoReflection({
   attendance: number;
   goalCompleted: boolean;
   sabakStrength: string;
-  revisionStrength: string;
+  sabakDhorStrength: string;
+  dhorStrength: string;
   previousLogs: WeeklyReportLog[];
   currentLogs: WeeklyReportLog[];
 }) {
   const notes = getTeacherNotesFromLogs(currentLogs);
   const mistakeFocus = getMistakeFocus(currentLogs);
 
-  const currentSabakAvg = averageQuality(currentLogs, [
-    "sabakReadQuality",
-    "sabakRead",
-  ]);
+  const currentSabakAvg = averageQuality(currentLogs, ["sabakReadQuality", "sabakRead"]);
+  const previousSabakAvg = averageQuality(previousLogs, ["sabakReadQuality", "sabakRead"]);
 
-  const previousSabakAvg = averageQuality(previousLogs, [
-    "sabakReadQuality",
-    "sabakRead",
-  ]);
-
-  const currentRevisionAvg = averageQuality(currentLogs, [
+  const currentSabakDhorAvg = averageQuality(currentLogs, [
     "sabakDhorReadQuality",
     "sabakDhorRead",
-    "dhorReadQuality",
-    "dhorRead",
   ]);
-
-  const previousRevisionAvg = averageQuality(previousLogs, [
+  const previousSabakDhorAvg = averageQuality(previousLogs, [
     "sabakDhorReadQuality",
     "sabakDhorRead",
-    "dhorReadQuality",
-    "dhorRead",
   ]);
+
+  const currentDhorAvg = averageQuality(currentLogs, ["dhorReadQuality", "dhorRead"]);
+  const previousDhorAvg = averageQuality(previousLogs, ["dhorReadQuality", "dhorRead"]);
 
   const sabakImproved = previousLogs.length && currentSabakAvg > previousSabakAvg;
-  const revisionImproved = previousLogs.length && currentRevisionAvg > previousRevisionAvg;
+  const sabakDhorImproved = previousLogs.length && currentSabakDhorAvg > previousSabakDhorAvg;
+  const dhorImproved = previousLogs.length && currentDhorAvg > previousDhorAvg;
 
   let reflection = "";
 
   if (notes.length) {
     reflection = `Alhamdulillah, ${studentName} had helpful feedback noted during the week. ${notes.join(" ")} Please continue supporting this progress at home through encouragement and daily revision.`;
-  } else if (attendance >= 5 && goalCompleted && revisionStrength !== "Needs More Revision") {
-    reflection = `Alhamdulillah, ${studentName} had a strong and pleasing week. The consistency in attendance, completion of the weekly goal and steady revision show good effort and commitment.`;
+  } else if (
+    attendance >= 5 &&
+    goalCompleted &&
+    dhorStrength !== "Needs More Attention" &&
+    sabakDhorStrength !== "Needs More Attention"
+  ) {
+    reflection = `Alhamdulillah, ${studentName} had a strong and pleasing week. The consistency in attendance, completion of the weekly goal, sabak dhor and dhor revision show good effort and commitment.`;
   } else if (attendance <= 2) {
     reflection = `${studentName} will benefit greatly from a stronger attendance routine. With more consistent attendance, it will become easier to build momentum and make steady hifdh progress, in shaa Allah.`;
-  } else if (revisionStrength === "Needs More Revision") {
-    reflection = `${studentName} is making effort, but revision needs more attention. Strengthening older work through short, regular listening at home will help the memorised portions become firmer.`;
+  } else if (dhorStrength === "Needs More Attention") {
+    reflection = `${studentName} is making effort, but older dhor revision needs more attention. Strengthening older work through short, regular listening at home will help the memorised portions become firmer.`;
+  } else if (sabakDhorStrength === "Needs More Attention") {
+    reflection = `${studentName} is making effort, but sabak dhor needs more consistency. Strengthening recent revision will help the new work remain firm.`;
   } else if (sabakStrength === "Excellent" || sabakStrength === "Strong") {
-    reflection = `Alhamdulillah, ${studentName} showed pleasing effort in sabak this week. If the same attention is given to revision, the overall hifdh routine will become much stronger.`;
+    reflection = `Alhamdulillah, ${studentName} showed pleasing effort in sabak this week. If the same attention continues with sabak dhor and dhor revision, the overall hifdh routine will become much stronger.`;
   } else if (!goalCompleted) {
     reflection = `${studentName} made some progress this week, but the weekly goal was not fully completed. A little more preparation before class can help next week’s goal become easier to reach, in shaa Allah.`;
   } else {
-    reflection = `Alhamdulillah, ${studentName} made steady progress this week. The main focus now is to keep building consistency so that both new lesson and revision continue improving together.`;
+    reflection = `Alhamdulillah, ${studentName} made steady progress this week. The main focus now is to keep building consistency so that sabak, sabak dhor and dhor revision continue improving together.`;
   }
 
-  if (sabakImproved && revisionImproved) {
-    reflection += ` It is also pleasing to see improvement in both sabak and revision compared to last week.`;
+  if (sabakImproved && sabakDhorImproved && dhorImproved) {
+    reflection += ` It is also pleasing to see improvement in sabak, sabak dhor and dhor revision compared to last week.`;
   } else if (sabakImproved) {
     reflection += ` There was also a positive improvement in sabak compared to last week.`;
-  } else if (revisionImproved) {
-    reflection += ` There was also a positive improvement in revision compared to last week.`;
+  } else if (sabakDhorImproved) {
+    reflection += ` There was also a positive improvement in sabak dhor compared to last week.`;
+  } else if (dhorImproved) {
+    reflection += ` There was also a positive improvement in dhor revision compared to last week.`;
   }
 
-  if (mistakeFocus) {
-    reflection += ` ${mistakeFocus}`;
-  }
+  if (mistakeFocus) reflection += ` ${mistakeFocus}`;
 
   return reflection;
 }
@@ -282,12 +343,14 @@ function buildWhatWentWell({
   attendance,
   goalCompleted,
   sabakStrength,
-  revisionStrength,
+  sabakDhorStrength,
+  dhorStrength,
 }: {
   attendance: number;
   goalCompleted: boolean;
   sabakStrength: string;
-  revisionStrength: string;
+  sabakDhorStrength: string;
+  dhorStrength: string;
 }) {
   const points: string[] = [];
 
@@ -300,8 +363,12 @@ function buildWhatWentWell({
     points.push("Sabak was a pleasing area this week.");
   }
 
-  if (revisionStrength === "Excellent" || revisionStrength === "Strong") {
-    points.push("Revision showed good strength.");
+  if (sabakDhorStrength === "Excellent" || sabakDhorStrength === "Strong") {
+    points.push("Sabak dhor showed good strength.");
+  }
+
+  if (dhorStrength === "Excellent" || dhorStrength === "Strong") {
+    points.push("Dhor revision was firm this week.");
   }
 
   if (!points.length) {
@@ -315,30 +382,22 @@ function buildFocusForNextWeek({
   attendance,
   goalCompleted,
   sabakStrength,
-  revisionStrength,
+  sabakDhorStrength,
+  dhorStrength,
 }: {
   attendance: number;
   goalCompleted: boolean;
   sabakStrength: string;
-  revisionStrength: string;
+  sabakDhorStrength: string;
+  dhorStrength: string;
 }) {
   const points: string[] = [];
 
-  if (attendance <= 3) {
-    points.push("Work towards stronger attendance and routine.");
-  }
-
-  if (!goalCompleted) {
-    points.push("Prepare earlier so the weekly goal can be completed.");
-  }
-
-  if (revisionStrength === "Needs More Revision") {
-    points.push("Give extra attention to older dhor revision.");
-  }
-
-  if (sabakStrength === "Can Improve") {
-    points.push("Strengthen sabak preparation before class.");
-  }
+  if (attendance <= 3) points.push("Work towards stronger attendance and routine.");
+  if (!goalCompleted) points.push("Prepare earlier so the weekly goal can be completed.");
+  if (sabakStrength === "Can Improve") points.push("Strengthen sabak preparation before class.");
+  if (sabakDhorStrength === "Needs More Attention") points.push("Give extra attention to sabak dhor.");
+  if (dhorStrength === "Needs More Attention") points.push("Give extra attention to older dhor revision.");
 
   if (!points.length) {
     points.push("Continue daily revision so the progress remains firm.");
@@ -357,7 +416,6 @@ function buildDailyBreakdown(log: WeeklyReportLog) {
   }
 
   let dayText = `📅 *${dayName} - ${dateFormatted}*`;
-
   let hasDetails = false;
 
   if (hasAnyText(log.sabak, log.sabakReadQuality, log.sabakRead, log.sabakReadNotes)) {
@@ -404,7 +462,7 @@ _Note:_ ${toText(log.sabakDhorReadNotes)}`;
     if (toText(log.sabakDhorMistakes)) {
       dayText += `
 
-⚠️ *Mistakes*
+⚠️ *Sabak Dhor Mistakes*
 ${toText(log.sabakDhorMistakes)}`;
     }
   }
@@ -414,7 +472,7 @@ ${toText(log.sabakDhorMistakes)}`;
 
     dayText += `
 
-📚 *Dhor*
+📚 *Dhor Revision*
 ${toText(log.dhor) || "Not specified"}`;
 
     const quality = toText(log.dhorReadQuality) || toText(log.dhorRead);
@@ -428,7 +486,7 @@ _Note:_ ${toText(log.dhorReadNotes)}`;
     if (toText(log.dhorMistakes)) {
       dayText += `
 
-⚠️ *Mistakes*
+⚠️ *Dhor Revision Mistakes*
 ${toText(log.dhorMistakes)}`;
     }
   }
@@ -473,31 +531,23 @@ export function formatWeeklyReportText({
 
   const overallWeek = getOverallWeek(currentLogs);
   const sabakStrength = getSabakStrength(currentLogs);
-  const revisionStrength = getRevisionStrength(currentLogs);
+  const sabakDhorStrength = getSabakDhorStrength(currentLogs);
+  const dhorStrength = getDhorStrength(currentLogs);
 
-  const currentSabakAvg = averageQuality(currentLogs, [
-    "sabakReadQuality",
-    "sabakRead",
-  ]);
+  const currentSabakAvg = averageQuality(currentLogs, ["sabakReadQuality", "sabakRead"]);
+  const previousSabakAvg = averageQuality(previousLogs, ["sabakReadQuality", "sabakRead"]);
 
-  const previousSabakAvg = averageQuality(previousLogs, [
-    "sabakReadQuality",
-    "sabakRead",
-  ]);
-
-  const currentRevisionAvg = averageQuality(currentLogs, [
+  const currentSabakDhorAvg = averageQuality(currentLogs, [
     "sabakDhorReadQuality",
     "sabakDhorRead",
-    "dhorReadQuality",
-    "dhorRead",
   ]);
-
-  const previousRevisionAvg = averageQuality(previousLogs, [
+  const previousSabakDhorAvg = averageQuality(previousLogs, [
     "sabakDhorReadQuality",
     "sabakDhorRead",
-    "dhorReadQuality",
-    "dhorRead",
   ]);
+
+  const currentDhorAvg = averageQuality(currentLogs, ["dhorReadQuality", "dhorRead"]);
+  const previousDhorAvg = averageQuality(previousLogs, ["dhorReadQuality", "dhorRead"]);
 
   const previousAttendance = getPresentLogs(previousLogs).length;
 
@@ -508,7 +558,8 @@ export function formatWeeklyReportText({
       attendance,
       goalCompleted,
       sabakStrength,
-      revisionStrength,
+      sabakDhorStrength,
+      dhorStrength,
       previousLogs,
       currentLogs,
     });
@@ -517,21 +568,26 @@ export function formatWeeklyReportText({
     attendance,
     goalCompleted,
     sabakStrength,
-    revisionStrength,
+    sabakDhorStrength,
+    dhorStrength,
+    previousLogs,
+    currentLogs,
   });
 
   const whatWentWell = buildWhatWentWell({
     attendance,
     goalCompleted,
     sabakStrength,
-    revisionStrength,
+    sabakDhorStrength,
+    dhorStrength,
   });
 
   const focusForNextWeek = buildFocusForNextWeek({
     attendance,
     goalCompleted,
     sabakStrength,
-    revisionStrength,
+    sabakDhorStrength,
+    dhorStrength,
   });
 
   let reportText = `السلام عليكم ورحمة الله وبركاته
@@ -558,7 +614,8 @@ ${teacherHighlight}
 🎯 *Weekly Goal:* ${weeklyGoal}
 ✅ *Goal Status:* ${goalStatus}
 📖 *Sabak:* ${sabakStrength}
-🔁 *Revision:* ${revisionStrength}
+🔁 *Sabak Dhor:* ${sabakDhorStrength}
+📚 *Dhor Revision:* ${dhorStrength}
 
 ━━━━━━━━━━━━━━━━━━
 
@@ -587,7 +644,8 @@ ${focusForNextWeek.map((point) => `• ${point}`).join("\n")}
 
 ${compareNumber(attendance, previousAttendance, "Attendance")}
 ${compareNumber(currentSabakAvg, previousSabakAvg, "Sabak")}
-${compareNumber(currentRevisionAvg, previousRevisionAvg, "Revision")}
+${compareNumber(currentSabakDhorAvg, previousSabakDhorAvg, "Sabak Dhor")}
+${compareNumber(currentDhorAvg, previousDhorAvg, "Dhor Revision")}
 
 `;
   }
