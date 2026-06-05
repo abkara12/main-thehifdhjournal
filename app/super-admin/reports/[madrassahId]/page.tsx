@@ -471,7 +471,6 @@ export default function SuperAdminMadrassahReportsPage() {
             logs,
             previousLogs,
             monthlyLogs,
-            teacherName: "Ustad",
           });
 
           await setDoc(

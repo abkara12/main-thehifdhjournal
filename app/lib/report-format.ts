@@ -816,6 +816,58 @@ function buildParentGuidance({
   return guidance;
 }
 
+const attendanceFocus = [
+  "Aim to attend every class to maintain momentum.",
+  "Consistency in attendance should be the main focus next week.",
+  "Regular attendance will greatly improve overall progress.",
+  "Establishing a stronger routine will help build confidence.",
+  "Making every lesson count should be a priority."
+];
+
+const goalFocus = [
+  "Break the weekly target into smaller daily goals.",
+  "Earlier preparation should help achieve next week's target.",
+  "Focus on completing daily tasks consistently.",
+  "A stronger revision schedule will support goal completion.",
+  "Improving preparation outside class should help achieve targets."
+];
+
+const sabakFocus = [
+  "Listen to the new lesson more frequently before class.",
+  "Increase fluency before presenting the new lesson.",
+  "Reduce hesitation by revising the lesson multiple times.",
+  "Focus on smoother recitation during sabak.",
+  "Spend extra time strengthening new lesson preparation."
+];
+
+const sabakDhorFocus = [
+  "Increase revision of recently memorised portions.",
+  "Dedicate additional time to sabak dhor revision.",
+  "Focus on retaining newer memorisation more confidently.",
+  "Review recent lessons consistently throughout the week.",
+  "Strengthen recall of recently completed portions."
+];
+
+const dhorFocus = [
+  "Allocate extra time to older revision.",
+  "Strengthen retention of older portions through repetition.",
+  "Review older surahs more consistently.",
+  "Focus on maintaining long-term retention.",
+  "Spend additional time on weaker older portions."
+];
+
+const excellenceFocus = [
+  "Maintain the excellent standards achieved this week.",
+  "Continue the strong routine that produced these results.",
+  "Build on this week's momentum and consistency.",
+  "Aim to sustain the quality demonstrated this week.",
+  "Continue striving for excellence across all areas."
+];
+
+function randomItem(items: string[]) {
+  return items[Math.floor(Math.random() * items.length)];
+}
+
 function buildFocusForNextWeek({
   attendance,
   goalCompleted,
@@ -831,17 +883,32 @@ function buildFocusForNextWeek({
 }) {
   const points: string[] = [];
 
-  if (attendance <= 3) points.push("Work towards stronger attendance and routine.");
-  if (!goalCompleted) points.push("Prepare earlier so the weekly goal can be completed.");
-  if (sabakStrength === "Can Improve") points.push("Strengthen sabak preparation before class.");
-  if (sabakDhorStrength === "Needs More Attention") points.push("Give extra attention to sabak dhor.");
-  if (dhorStrength === "Needs More Attention") points.push("Give extra attention to older dhor revision.");
-
-  if (!points.length) {
-    points.push("Continue daily revision so the progress remains firm.");
+  if (attendance <= 3) {
+    points.push(randomItem(attendanceFocus));
   }
 
-  return points;
+  if (!goalCompleted) {
+    points.push(randomItem(goalFocus));
+  }
+
+  if (sabakStrength === "Can Improve") {
+    points.push(randomItem(sabakFocus));
+  }
+
+  if (sabakDhorStrength === "Needs More Attention") {
+    points.push(randomItem(sabakDhorFocus));
+  }
+
+  if (dhorStrength === "Needs More Attention") {
+    points.push(randomItem(dhorFocus));
+  }
+
+  if (!points.length) {
+    points.push(randomItem(excellenceFocus));
+    points.push(randomItem(excellenceFocus));
+  }
+
+  return [...new Set(points)].slice(0, 3);
 }
 
 function buildDailyBreakdown(log: WeeklyReportLog) {
@@ -1084,7 +1151,6 @@ ${teacherHighlight}
 
 ⭐ *Overall:* ${overallWeek}
 🏅 *Assessment:* ${teacherAssessment}
-🌟 *Score:* ${hifdhScore}/100📅 *Attendance:* ${attendance}/5 days
 🎯 *Weekly Goal:* ${weeklyGoal}
 ✅ *Goal Status:* ${goalStatus}
 📖 *Sabak:* ${sabakStrength}
@@ -1099,9 +1165,7 @@ ${teacherHighlight}
 🏅 *Teacher Assessment*
 ${teacherAssessment}
 
-🌟 *Hifdh Score:* ${hifdhScore}/100
 📈 *Trend:* ${progressTrend}
-👤 *Student Profile:* ${studentProfile}
 
 
 💬 *Teacher’s Reflection*
