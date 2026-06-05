@@ -1022,7 +1022,6 @@ export function formatWeeklyReportText({
   monthLabel,
   logs,
   previousLogs = [],
-  teacherName = "Ustad",
 }: WeeklyReportInput) {
   const currentLogs = logs || [];
   const latestLog = currentLogs[0];
@@ -1137,7 +1136,6 @@ const whatWentWell = buildWhatWentWell({
 *Student:* ${studentName}
 *Madrassah:* ${madrassahName}
 *Month:* ${monthLabel || "-"}
-*Teacher:* ${teacherName}
 
 ━━━━━━━━━━━━━━━━━━
 
